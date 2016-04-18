@@ -6,10 +6,7 @@
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
 #include <iostream>
 
-template <size_t N>
-using Vec = Eigen::Matrix<double, N, 1>;
-
-const double pi = 3.14159265358979323846;
+#include "global_constants.h"
 
 /*
  * Class containing single compressor

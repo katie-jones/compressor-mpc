@@ -13,21 +13,36 @@ typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Type>
     ControlledStepper;
 
 const Compressor::CompressorInput Compressor::default_input =
-    ((CompressorInput() << 0.304, 0.405, 0.393, 0, 1).finished());
+    ((CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
 
 const Compressor::CompressorState Compressor::default_initial_state =
     ((CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());
 
-Compressor::CompressorState Compressor::GetDerivative(const CompressorState x,
-                                                      const CompressorInput u,
-                                                      const bool flag) const {
+double Compressor::GetMassFlowOut() const { return GetMassFlowOut(x); }
+
+double Compressor::GetMassFlowOut(
+    const Compressor::CompressorState x_in) const {
+  const double p2 = x_in(1);
+  const double dp_sqrt2 =
+      10 * sqrt(abs(p2 - pout)) * boost::math::sign(p2 - pout);
+
+  const Vec<8> M5((Vec<8>() << dp_sqrt2 * pow(u(2), 3), dp_sqrt2 * u(2) * u(2),
+                   dp_sqrt2 * u(2), dp_sqrt2, pow(u(2), 3), u(2) * u(2), u(2),
+                   1).finished());
+
+  return coeffs.D.transpose() * M5 + coeffs.m_out_c;
+}
+
+Compressor::CompressorState Compressor::GetDerivative(
+    const CompressorState x_in, const CompressorInput u,
+    const bool flag) const {
   CompressorState dxdt;
 
-  const double p1 = x(0);
-  const double p2 = x(1);
-  const double mc = x(2);
-  const double wc = x(3);
-  const double mr = x(4);
+  const double p1 = x_in(0);
+  const double p2 = x_in(1);
+  const double mc = x_in(2);
+  const double wc = x_in(3);
+  const double mr = x_in(4);
 
   const double td = u(0) * coeffs.torque_drive_c / wc;
   const double u_in = u(1);
@@ -53,14 +68,7 @@ Compressor::CompressorState Compressor::GetDerivative(const CompressorState x,
   else
     m_rec_ss = coeffs.m_rec_ss_c(0) * sqrt(p2 * 1e5 - p1 * 1e5) * u_rec;
 
-  const double dp_sqrt2 =
-      10 * sqrt(abs(p2 - pout)) * boost::math::sign(p2 - pout);
-
-  const Vec<8> M5((Vec<8>() << dp_sqrt2 * pow(u_out, 3),
-                   dp_sqrt2 * u_out * u_out, dp_sqrt2 * u_out, dp_sqrt2,
-                   pow(u_out, 3), u_out * u_out, u_out, 1).finished());
-
-  const double m_out = coeffs.D.transpose() * M5 + coeffs.m_out_c;
+  const double m_out = GetMassFlowOut(x_in);
 
   const double mc2 = mc * mc;
   const double mc3 = mc * mc2;
@@ -82,6 +90,17 @@ Compressor::CompressorState Compressor::GetDerivative(const CompressorState x,
   dxdt(4) = coeffs.tau_r * (m_rec_ss - mr);
 
   return dxdt;
+}
+
+Compressor::CompressorOutput Compressor::GetOutput() const {
+  const double p1 = x(0);
+  const double p2 = x(1);
+  const double mass_flow = x(2);
+  const double surge_distance =
+      -(p2 / p1) / coeffs.SD_c(0) - coeffs.SD_c(1) / coeffs.SD_c(0) - mass_flow;
+  Compressor::CompressorOutput y;
+  y << p2, surge_distance;
+  return y;
 }
 
 Compressor::Coefficients::Coefficients(const Compressor::Coefficients &x) {

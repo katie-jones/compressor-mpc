@@ -14,11 +14,13 @@
  */
 class Compressor {
  public:
-  const static int n_states = 5;
-  const static int n_inputs = 5;
+  constexpr static int n_states = 5;
+  constexpr static int n_inputs = 4;
+  constexpr static int n_outputs = 2;
 
   typedef Eigen::Array<double, n_states, 1> CompressorState;
   typedef Eigen::Array<double, n_inputs, 1> CompressorInput;
+  typedef Vec<n_outputs> CompressorOutput;
   typedef void (*IntegrationCallbackPtr)(const CompressorState, const double);
 
   struct Coefficients {
@@ -39,12 +41,13 @@ class Compressor {
 
   const static CompressorInput default_input;
   const static CompressorState default_initial_state;
+  constexpr static double default_pout = 1.0;
 
   Compressor(CompressorState x = default_initial_state,
-             CompressorInput u = default_input,
+             CompressorInput u = default_input, double pout = default_pout,
              Coefficients coeffs = Coefficients(),
              FlowConstants flow_constants = FlowConstants())
-      : x(x), u(u), coeffs(coeffs), flow_constants(flow_constants) {}
+      : x(x), u(u), pout(pout), coeffs(coeffs), flow_constants(flow_constants) {}
 
   void operator()(const CompressorState &x_in, CompressorState &dxdt,
                   const double /* t */) const {
@@ -53,6 +56,11 @@ class Compressor {
 
   CompressorState GetDerivative(const CompressorState x,
                                 const CompressorInput u, const bool flag) const;
+
+  CompressorOutput GetOutput() const;
+
+  double GetMassFlowOut(const CompressorState x_in) const;
+  double GetMassFlowOut() const;
 
   friend void IntegrateCompressor(Compressor comp, const double t0,
                                   const double tf, const double dt,
@@ -68,6 +76,7 @@ class Compressor {
   const FlowConstants flow_constants;
   CompressorInput u;
   CompressorState x;
+  double pout;
 
  private:
   typedef boost::numeric::odeint::runge_kutta_dopri5<

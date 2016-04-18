@@ -9,7 +9,7 @@ using namespace std;
 typedef Compressor Cp;
 
 Cp::CompressorInput uinit =
-    ((Cp::CompressorInput() << 0.304, 0.405, 0.393, 0, 1).finished());
+    ((Cp::CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
 
 Cp::CompressorState xinit =
     ((Cp::CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());

@@ -34,6 +34,24 @@ class ParallelCompressors {
                       SysInput u = GetDefaultInput())
       : x(x), u(u) {}
 
+  ParallelCompressors(Comp comps_in[], Tank tank = Tank(),
+                      SysState x = GetDefaultState(),
+                      SysInput u = GetDefaultInput())
+      : x(x), u(u), tank(tank) {
+    for (int i = 0; i < n_compressors; i++) {
+      comps[i] = comps_in[i];
+    }
+  }
+
+  ParallelCompressors(Comp comp, Tank tank = Tank(),
+                      SysState x = GetDefaultState(),
+                      SysInput u = GetDefaultInput())
+      : x(x), u(u), tank(tank) {
+    for (int i = 0; i < n_compressors; i++) {
+      comps[i] = Comp(comp);
+    }
+  }
+
   SysState GetDerivative(const SysState x_in, const SysInput u_in) const;
 
   const static inline SysState GetDefaultState() {

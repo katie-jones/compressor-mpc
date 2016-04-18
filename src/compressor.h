@@ -66,8 +66,8 @@ class Comp {
   }
 
  protected:
-  const Coefficients coeffs;
-  const FlowConstants flow_constants;
+  Coefficients coeffs;
+  FlowConstants flow_constants;
 
   friend ParallelCompressors;
 };

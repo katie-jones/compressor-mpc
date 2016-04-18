@@ -1,18 +1,14 @@
-#ifndef COMPRESSOR_H
-#define COMPRESSOR_H
+#ifndef CHILD_COMPRESSOR_H
+#define CHILD_COMPRESSOR_H
 
 #include <Eigen/Eigen>
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
-#include <iostream>
 
 #include "global_constants.h"
+// #include "parallel_compressors.h"
 
-/*
- * Class containing single compressor
- * Overloaded () operator to give state derivative
- */
-class Compressor {
+class Comp {
  public:
   constexpr static int n_states = 5;
   constexpr static int n_inputs = 4;
@@ -21,7 +17,6 @@ class Compressor {
   typedef Eigen::Array<double, n_states, 1> CompressorState;
   typedef Eigen::Array<double, n_inputs, 1> CompressorInput;
   typedef Vec<n_outputs> CompressorOutput;
-  typedef void (*IntegrationCallbackPtr)(const CompressorState, const double);
 
   struct Coefficients {
     double J, tau_r, m_in_c, m_out_c, torque_drive_c;
@@ -39,51 +34,27 @@ class Compressor {
     FlowConstants(const FlowConstants &x);
   };
 
-  const static CompressorInput default_input;
-  const static CompressorState default_initial_state;
-  constexpr static double default_pout = 1.0;
+  Comp(Coefficients coeffs = Coefficients(),
+       FlowConstants flow_constants = FlowConstants())
+      : coeffs(coeffs), flow_constants(flow_constants) {}
 
-  Compressor(CompressorState x = default_initial_state,
-             CompressorInput u = default_input, double pout = default_pout,
-             Coefficients coeffs = Coefficients(),
-             FlowConstants flow_constants = FlowConstants())
-      : x(x), u(u), pout(pout), coeffs(coeffs), flow_constants(flow_constants) {}
-
-  void operator()(const CompressorState &x_in, CompressorState &dxdt,
-                  const double /* t */) const {
-    dxdt = GetDerivative(x_in, u, true);
-  }
+  Comp(const Comp &x) : coeffs(x.coeffs), flow_constants(x.flow_constants) {}
 
   CompressorState GetDerivative(const CompressorState x,
-                                const CompressorInput u, const bool flag) const;
-
-  CompressorOutput GetOutput() const;
-
-  double GetMassFlowOut(const CompressorState x_in) const;
-  double GetMassFlowOut() const;
-
-  friend void IntegrateCompressor(Compressor comp, const double t0,
-                                  const double tf, const double dt,
-                                  IntegrationCallbackPtr callback,
-                                  const double rel_error = 1e-6,
-                                  const double abs_error = 1e-6) {
-    ControlledStepper stepper =
-        make_controlled(rel_error, abs_error, Compressor::Dopri5Stepper());
-    integrate_const(stepper, comp, comp.x, t0, tf, dt, callback);
+                                const CompressorInput u, const double pout,
+                                double &m_out);
+  inline CompressorState GetDerivative(const CompressorState x,
+                                       const CompressorInput u,
+                                       const double pout) {
+    double m_out = 0;
+    return GetDerivative(x, u, pout, m_out);
   }
 
+ private:
   const Coefficients coeffs;
   const FlowConstants flow_constants;
-  CompressorInput u;
-  CompressorState x;
-  double pout;
 
- private:
-  typedef boost::numeric::odeint::runge_kutta_dopri5<
-      CompressorState, double, CompressorState, double,
-      boost::numeric::odeint::vector_space_algebra> Dopri5Stepper;
-  typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
-      ControlledStepper;
+  // friend ParallelCompressors;
 };
 
 // Define norm of Eigen::Array
@@ -91,11 +62,11 @@ namespace boost {
 namespace numeric {
 namespace odeint {
 template <>
-struct vector_space_norm_inf<Compressor::CompressorState> {
+struct vector_space_norm_inf<Comp::CompressorState> {
   typedef double result_type;
-  double operator()(Compressor::CompressorState x) const {
+  double operator()(Comp::CompressorState x) const {
     double absval = 0;
-    for (int i = 0; i < Compressor::n_states; i++) absval += x[i] * x[i];
+    for (int i = 0; i < Comp::n_states; i++) absval += x[i] * x[i];
     return sqrt(absval);
   }
 };
@@ -103,6 +74,4 @@ struct vector_space_norm_inf<Compressor::CompressorState> {
 }
 }
 
-
 #endif
-

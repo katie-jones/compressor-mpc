@@ -31,28 +31,13 @@ class Tank {
   const static TankInput default_input;
   const static TankState default_initial_state;
 
-  Tank(TankState xinit, TankInput uinit) : x(xinit), u(uinit) {}
-  Tank() : x(default_initial_state), u(default_input) {}
+  Tank(Params params = Params()) : params(params) {}
 
-  ~Tank() {}
+  TankState GetDerivative(const TankState x, const TankInput u,
+                          const double mass_flow_compressors) const;
 
-  TankState GetDerivative(const TankState x, const TankInput u, const double mass_flow_compressors) const;
-
-  void operator()(const TankState &x_in, TankState &dxdt,
-                  const double /* t */) const {
-    dxdt = GetDerivative(x_in, u, mass_flow_in);
-  }
-
-  TankInput u;
-  TankState x;
-  double mass_flow_in;
   const Params params;
 
- private:
-  typedef boost::numeric::odeint::runge_kutta_dopri5<TankState> Dopri5Stepper;
-  typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
-      ControlledStepper;
 };
 
 #endif
-

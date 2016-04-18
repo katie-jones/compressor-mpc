@@ -1,9 +1,14 @@
-#include "child_compressor.h"
+#include "compressor.h"
+
+#include <cmath>
+#include <iostream>
+
+using namespace std;
 
 Comp::CompressorState Comp::GetDerivative(const CompressorState x,
                                           const CompressorInput u,
                                           const double pout,
-                                          double &m_out) {
+                                          double &m_out) const {
   CompressorState dxdt;
 
   const double p1 = x(0);
@@ -60,5 +65,82 @@ Comp::CompressorState Comp::GetDerivative(const CompressorState x,
   dxdt(4) = coeffs.tau_r * (m_rec_ss - mr);
 
   return dxdt;
+}
+
+Comp::CompressorOutput Comp::GetOutput(const CompressorState x) const {
+  const double p1 = x(0);
+  const double p2 = x(1);
+  const double mass_flow = x(2);
+  const double surge_distance =
+      -(p2 / p1) / coeffs.SD_c(0) - coeffs.SD_c(1) / coeffs.SD_c(0) - mass_flow;
+  Comp::CompressorOutput y;
+  y << p2, surge_distance;
+  return y;
+}
+
+
+
+
+
+Comp::Coefficients::Coefficients(const Comp::Coefficients &x) {
+  J = x.J;
+  tau_r = x.tau_r;
+  m_in_c = x.m_in_c;
+  m_out_c = x.m_out_c;
+  torque_drive_c = x.torque_drive_c;
+  C = x.C;
+  D = x.D;
+  A = x.A;
+  m_rec_ss_c = x.m_rec_ss_c;
+  SD_c = x.SD_c;
+  T_ss_c = x.T_ss_c;
+}
+
+Comp::Coefficients::Coefficients() {
+  J = (0.4 + 0.2070) * 0.4;
+  tau_r = 1 / 0.5 + 1;
+  A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,
+       3.57321648097597e-05, -9.1783572200945e-07, -0.252701086129365,
+       0.136885752773673, -0.02642368327081, 0.00161012740365743,
+       54.8046725371143, -29.9550791497765, 5.27827499839098,
+       0.693826282579158).finished();
+
+  C = (Vec<8>() << -0.423884232813775, 0.626400271518973, -0.0995040168384753,
+       0.0201535563630318, -0.490814924104294, 0.843580880467905,
+       -0.423103455111209, 0.0386841406482887).finished();
+
+  D = (Vec<8>() << -0.0083454, -0.0094965, 0.16826, -0.032215, -0.61199,
+       0.94175, -0.48522, 0.10369).finished();
+
+  m_in_c = 0.0051;
+  m_rec_ss_c = (Vec<2>() << 0.0047, 0.0263).finished();
+
+  m_out_c = 0.017;
+
+  T_ss_c = (Vec<3>() << 2.5543945754982, 47.4222669576423, 0.6218).finished();
+
+  SD_c = (Vec<2>() << 5.55, 0.66).finished();
+
+  torque_drive_c = 15000;
+}
+
+Comp::FlowConstants::FlowConstants() {
+  a = 340;
+  Pin = 1;
+  Pout = 1;
+  V1 = 2 * pi * (0.60 / 2) * (0.60 / 2) * 2 +
+       pi * (0.08 / 2) * (0.08 / 2) * 8.191;
+  V2 = 0.5 * V1;
+
+  AdivL = pi * (0.08 / 2) * (0.08 / 2) / 3 * 0.1;
+}
+
+Comp::FlowConstants::FlowConstants(const FlowConstants &x) {
+  a = x.a;
+  Pin = x.Pin;
+  Pout = x.Pout;
+  V1 = x.V1;
+  V2 = x.V2;
+  AdivL = x.AdivL;
 }
 

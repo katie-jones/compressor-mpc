@@ -11,6 +11,7 @@ add_library(compressor compressor.cc)
 target_link_libraries(test compressor)
 
 add_library(tank tank.cc)
+add_library(parcomp parallel_compressors.cc)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

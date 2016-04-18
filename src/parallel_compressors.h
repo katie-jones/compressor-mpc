@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "global_constants.h"
-#include "child_compressor.h"
+#include "compressor.h"
 #include "tank.h"
 
 /*

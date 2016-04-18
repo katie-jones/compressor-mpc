@@ -42,36 +42,22 @@ class Comp {
 
   CompressorState GetDerivative(const CompressorState x,
                                 const CompressorInput u, const double pout,
-                                double &m_out);
+                                double &m_out) const;
   inline CompressorState GetDerivative(const CompressorState x,
                                        const CompressorInput u,
-                                       const double pout) {
+                                       const double pout) const {
     double m_out = 0;
     return GetDerivative(x, u, pout, m_out);
   }
+  
+  CompressorOutput GetOutput(const CompressorState x) const;
 
- private:
+ protected:
   const Coefficients coeffs;
   const FlowConstants flow_constants;
 
   // friend ParallelCompressors;
 };
 
-// Define norm of Eigen::Array
-namespace boost {
-namespace numeric {
-namespace odeint {
-template <>
-struct vector_space_norm_inf<Comp::CompressorState> {
-  typedef double result_type;
-  double operator()(Comp::CompressorState x) const {
-    double absval = 0;
-    for (int i = 0; i < Comp::n_states; i++) absval += x[i] * x[i];
-    return sqrt(absval);
-  }
-};
-}
-}
-}
 
 #endif

@@ -3,18 +3,13 @@
 #include <fstream>
 
 #include "compressor.h"
+#include "compressor_simulation.h"
 
 using namespace std;
 
-typedef Compressor Cp;
+typedef Comp Cp;
 
-Cp::CompressorInput uinit =
-    ((Cp::CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
-
-Cp::CompressorState xinit =
-    ((Cp::CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());
-
-Compressor comp(xinit, uinit);
+CompressorSimulation comp;
 ofstream statefile;
 
 void Callback(const Cp::CompressorState x, const double t) {

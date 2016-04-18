@@ -17,9 +17,6 @@ class Tank {
   typedef double TankInput;
   typedef double TankState;
 
-  const static int n_states = 1;
-  const static int n_inputs = 1;
-
   struct Params {
     double pout;
     double volume;
@@ -29,31 +26,33 @@ class Tank {
     Params(const Params &x);
   };
 
-  void operator()(const TankState &x_in, TankState &dxdt,
-                  const double /* t */) const {
-  
-    dxdt = GetDerivative(x_in, u);
-  }
-
-  TankInput u;
-  TankState x;
-  Params params;
+  const static int n_states = 1;
+  const static int n_inputs = 1;
+  const static TankInput default_input;
+  const static TankState default_initial_state;
 
   Tank(TankState xinit, TankInput uinit) : x(xinit), u(uinit) {}
   Tank() : x(default_initial_state), u(default_input) {}
 
-  TankState GetDerivative(const TankState x,
-                                const TankInput u) const;
+  ~Tank() {}
 
-  const static TankInput default_input;
-  const static TankState default_initial_state;
+  TankState GetDerivative(const TankState x, const TankInput u, const double mass_flow_compressors) const;
+
+  void operator()(const TankState &x_in, TankState &dxdt,
+                  const double /* t */) const {
+    dxdt = GetDerivative(x_in, u, mass_flow_in);
+  }
+
+  TankInput u;
+  TankState x;
+  double mass_flow_in;
+  const Params params;
 
  private:
-  typedef boost::numeric::odeint::runge_kutta_dopri5<double> Dopri5Stepper;
+  typedef boost::numeric::odeint::runge_kutta_dopri5<TankState> Dopri5Stepper;
   typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
       ControlledStepper;
 };
-
 
 #endif
 

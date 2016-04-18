@@ -13,8 +13,11 @@
  */
 class Tank {
  public:
-  typedef double TankInput;
-  typedef double TankState;
+  constexpr static int n_states = 1;
+  constexpr static int n_inputs = 1;
+
+  typedef Vec<n_inputs> TankInput;
+  typedef Vec<n_states> TankState;
 
   struct Params {
     double pout;
@@ -25,15 +28,12 @@ class Tank {
     Params(const Params &x);
   };
 
-  constexpr static int n_states = 1;
-  constexpr static int n_inputs = 1;
-  constexpr static TankInput default_input = 0.7;
-  constexpr static TankState default_state = 1.12;
-
   Tank(Params params = Params()) : params(params) {}
 
   TankState GetDerivative(const TankState x, const TankInput u,
                           const double mass_flow_compressors) const;
+  static inline TankInput GetDefaultInput() { return TankInput(0.7); }
+  static inline TankState GetDefaultState() { return TankState(1.12); }
 
   const Params params;
 

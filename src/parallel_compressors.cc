@@ -1,14 +1,23 @@
 #include "parallel_compressors.h"
 
+ParallelCompressors::SysState ParallelCompressors::GetDerivative(
+    const SysState x, const SysInput u) const {
+  SysState dxdt;
+  Tank::TankState ptank = x.tail<n_tank_states>();
+  Comp::CompressorState comp_deriv;
+  Comp::CompressorState xcomp;
+  Comp::CompressorInput ucomp;
+  double mass_flow = 0;
+  double mass_flow_total = 0;
+  for (int i = 0; i < n_compressors; i++) {
+    xcomp = x.segment<n_comp_states>(i * n_comp_states);
+    ucomp = u.segment<n_comp_inputs>(i * n_comp_inputs);
+    comp_deriv = comps[i].GetDerivative(xcomp, ucomp, ptank(0), mass_flow);
+    dxdt.segment<n_comp_states>(i * n_comp_states) = comp_deriv;
+    mass_flow_total += mass_flow;
+  }
+  dxdt.tail<n_tank_states>() =
+      tank.GetDerivative(ptank, u.tail<n_tank_inputs>(), mass_flow_total);
 
-// ParallelCompressors::SysState ParallelCompressors::GetDerivative(const
-// SysState x, const SysInput u) const {
-// Compressor::CompressorState comp_derivs[n_compressors];
-// for (int i=0; i<n_compressors; i++) {
-// comps[i].u = u.block<n_comp_inputs,1>(i*n_comp_inputs,0);
-// comps[i].pout = x(n_states-1);
-// comps[i].x = x.block<n_comp_states,1>(i*n_comp_states,0);
-// comp_derivs[i] = comps[i].GetDerivative();
-// }
-
-// }
+  return dxdt;
+}

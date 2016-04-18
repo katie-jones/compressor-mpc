@@ -146,28 +146,3 @@ Compressor::FlowConstants::FlowConstants(const FlowConstants &x) {
   AdivL = x.AdivL;
 }
 
-void IntegrateCompressor(Compressor comp, const double t0, const double tf,
-                           const double dt, Compressor::IntegrationCallbackPtr callback,
-                           const double rel_error, const double abs_error) {
-  ControlledStepper stepper =
-      make_controlled(rel_error, abs_error, Compressor::Dopri5Stepper());
-  integrate_const(stepper, comp, comp.x, t0, tf, dt, callback);
-}
-
-// Define norm of Eigen::Array
-namespace boost {
-namespace numeric {
-namespace odeint {
-template <>
-struct vector_space_norm_inf<Compressor::CompressorState> {
-  typedef double result_type;
-  double operator()(Compressor::CompressorState x) const {
-    double absval = 0;
-    for (int i = 0; i < Compressor::n_states; i++) absval += x[i] * x[i];
-    return sqrt(absval);
-  }
-};
-}
-}
-}
-

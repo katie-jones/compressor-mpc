@@ -6,38 +6,75 @@
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
 #include <iostream>
 
-#include "const_sim.h"
-#include "defs.h"
+template <size_t N>
+using Vec = Eigen::Matrix<double, N, 1>;
 
-using namespace std;
-using namespace boost::numeric::odeint;
-using namespace Eigen;
+const double pi = 3.14159265358979323846;
 
 /*
  * Class containing single compressor
  * Overloaded () operator to give state derivative
  */
-class compressor {
-  comp_input u;
-  double t;
-
+class Compressor {
  public:
-  const bool flag;
-  compressor(comp_input u_in, bool flag_in = true) : u(u_in), flag(flag_in) {
-    t = 0.0;
+  const static int n_states = 5;
+  const static int n_inputs = 5;
+
+  struct Coefficients {
+    double J, tau_r, m_in_c, m_out_c, torque_drive_c;
+    Vec<8> C, D;
+    Vec<12> A;
+    Vec<2> m_rec_ss_c, SD_c;
+    Vec<3> T_ss_c;
+    Coefficients(const Coefficients &x);
+    Coefficients();
+  };
+
+  struct FlowConstants {
+    double a, Pin, Pout, V1, V2, AdivL;
+    FlowConstants();
+    FlowConstants(const FlowConstants &x);
+  };
+
+  typedef Eigen::Array<double, n_states, 1> CompressorState;
+  typedef Eigen::Array<double, n_inputs, 1> CompressorInput;
+  typedef void (*IntegrationCallbackPtr)(const CompressorState, const double);
+
+  CompressorInput u;
+  CompressorState x;
+  const Coefficients coeffs;
+  const FlowConstants flow_constants;
+  Compressor(CompressorState x, CompressorInput u,
+             Coefficients coeffs = Coefficients(),
+             FlowConstants flow_constants = FlowConstants())
+      : x(x), u(u), coeffs(coeffs), flow_constants(flow_constants) {}
+
+  void operator()(const CompressorState &x_in, CompressorState &dxdt,
+                  const double /* t */) const {
+  
+    dxdt = GetDerivative(x_in, u, true);
   }
 
-  void operator()(const comp_state &x, comp_state &dxdt, const double /* t */);
+  CompressorState GetDerivative(const CompressorState x,
+                                const CompressorInput u, const bool flag) const;
 
-  void reset(double time) { t = time; }
-  // void do_step(
-  // friend void integrate(compressor comp, comp_state xinit);
+  const static CompressorInput default_input;
+  const static CompressorState default_initial_state;
+
+  friend void IntegrateCompressor(Compressor comp, const double t0,
+                                  const double tf, const double dt,
+                                  IntegrationCallbackPtr callback,
+                                  const double rel_error = 1e-6,
+                                  const double abs_error = 1e-6);
+
+ private:
+  typedef boost::numeric::odeint::runge_kutta_dopri5<
+      CompressorState, double, CompressorState, double,
+      boost::numeric::odeint::vector_space_algebra> Dopri5Stepper;
+  typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
+      ControlledStepper;
 };
 
-// friend void integrate(compressor comp, comp_state xinit) {
-// runge_kutta4<comp_state> stepper;
-// comp_input u;
-// integrate_const(stepper, comp, xinit, 0.0, 10.0, 0.05);
-// }
 
 #endif
+

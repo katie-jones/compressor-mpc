@@ -10,7 +10,6 @@
 
 /*
  * Class containing compressor tank
- * Overloaded () operator to give state derivative
  */
 class Tank {
  public:
@@ -26,10 +25,10 @@ class Tank {
     Params(const Params &x);
   };
 
-  const static int n_states = 1;
-  const static int n_inputs = 1;
-  const static TankInput default_input;
-  const static TankState default_initial_state;
+  constexpr static int n_states = 1;
+  constexpr static int n_inputs = 1;
+  constexpr static TankInput default_input = 0.7;
+  constexpr static TankState default_state = 1.12;
 
   Tank(Params params = Params()) : params(params) {}
 

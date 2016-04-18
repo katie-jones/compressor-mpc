@@ -25,18 +25,26 @@ class ParallelCompressors {
   typedef Vec<n_inputs> SysInput;
   typedef Vec<n_states> SysState;
 
-  const static SysInput default_input;
-  const static SysState default_state;
-
   void operator()(const SysState &x_in, SysState &dxdt,
                   const double /* t */) const {
     dxdt = GetDerivative(x_in, u);
   }
 
-  ParallelCompressors(SysState x = default_state, SysInput u = default_input)
+  ParallelCompressors(SysState x = GetDefaultState(),
+                      SysInput u = GetDefaultInput())
       : x(x), u(u) {}
 
-  SysState GetDerivative(const SysState x, const SysInput u) const;
+  SysState GetDerivative(const SysState x_in, const SysInput u_in) const;
+
+  const static inline SysState GetDefaultState() {
+    return ((SysState() << Comp::GetDefaultState().replicate(n_compressors, 1),
+             Tank::default_state).finished());
+  }
+
+  const static inline SysInput GetDefaultInput() {
+    return ((SysInput() << Comp::GetDefaultInput().replicate(n_compressors, 1),
+             Tank::default_input).finished());
+  }
 
   SysInput u;
   SysState x;
@@ -57,4 +65,3 @@ class ParallelCompressors {
 };
 
 #endif
-

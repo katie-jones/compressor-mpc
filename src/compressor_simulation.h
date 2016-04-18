@@ -32,12 +32,6 @@ class CompressorSimulation : public Comp {
 
   inline CompressorOutput GetOutput() { return Comp::GetOutput(x); }
 
-  static inline CompressorState GetDefaultState() {
-    return ((CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());
-  }
-  static inline CompressorInput GetDefaultInput() {
-    return ((CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
-  }
 
   friend void IntegrateCompressor(CompressorSimulation comp, const double t0,
                                   const double tf, const double dt,

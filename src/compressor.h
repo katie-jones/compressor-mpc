@@ -6,8 +6,14 @@
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
 
 #include "global_constants.h"
-// #include "parallel_compressors.h"
 
+// Forward declaration for friend class
+class ParallelCompressors;
+
+/*
+ * Minimal implementation of single compressor
+ * Only contains parameters as member variables. Input and state must always be specified.
+ */
 class Comp {
  public:
   constexpr static int n_states = 5;
@@ -52,11 +58,18 @@ class Comp {
   
   CompressorOutput GetOutput(const CompressorState x) const;
 
+  const static inline CompressorState GetDefaultState() {
+    return ((CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());
+  }
+  const static inline CompressorInput GetDefaultInput() {
+    return ((CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
+  }
+
  protected:
   const Coefficients coeffs;
   const FlowConstants flow_constants;
 
-  // friend ParallelCompressors;
+  friend ParallelCompressors;
 };
 
 

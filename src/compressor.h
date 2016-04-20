@@ -65,6 +65,7 @@ class Comp {
     return ((CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
   }
 
+
  protected:
   Coefficients coeffs;
   FlowConstants flow_constants;

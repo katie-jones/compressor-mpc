@@ -72,7 +72,7 @@ Comp::CompressorOutput Comp::GetOutput(const CompressorState x) const {
   const double p2 = x(1);
   const double mass_flow = x(2);
   const double surge_distance =
-      -(p2 / p1) / coeffs.SD_c(0) - coeffs.SD_c(1) / coeffs.SD_c(0) - mass_flow;
+      -(p2 / p1) / coeffs.SD_c(0) + coeffs.SD_c(1) / coeffs.SD_c(0) + mass_flow;
   Comp::CompressorOutput y;
   y << p2, surge_distance;
   return y;

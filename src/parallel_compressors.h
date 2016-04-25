@@ -23,8 +23,8 @@ class ParallelCompressors {
   constexpr static int n_inputs =
       n_compressors * Comp::n_inputs + Tank::n_inputs;
 
-  typedef Eigen::Array<double,n_inputs,1> SysInput;
-  typedef Eigen::Array<double,n_states,1> SysState;
+  typedef Eigen::Array<double, n_inputs, 1> SysInput;
+  typedef Eigen::Array<double, n_states, 1> SysState;
 
   typedef void (*IntegrationCallbackPtr)(const SysState, const double);
 
@@ -35,24 +35,21 @@ class ParallelCompressors {
   }
 
   const static inline SysState GetDefaultState() {
-    return ((SysState() << Comp::GetDefaultState().replicate(n_compressors, 1),
+    const Comp::CompressorState x =
+        ((Comp::CompressorState() << 0.916, 1.145, 0.152, 440, 0).finished());
+    return ((SysState() << x.replicate(n_compressors, 1),
              Tank::GetDefaultState()).finished());
   }
 
   const static inline SysInput GetDefaultInput() {
     SysInput uout;
-    uout << Comp::GetDefaultInput().replicate(n_compressors, 1),Tank::GetDefaultInput();
+    const Comp::CompressorInput u =
+        ((Comp::CompressorInput() << 0.304, 0.43, 1.0, 0).finished());
 
-    // return ((SysInput() << Comp::GetDefaultInput().replicate(n_compressors, 1),
-             // Tank::GetDefaultInput()).finished());
-    // return SysInput();
-    return uout;
-    
+    return ((SysInput() << u.replicate(n_compressors, 1),
+             Tank::GetDefaultInput()).finished());
   }
 
-  // ParallelCompressors(SysState x = GetDefaultState(),
-                      // SysInput u = GetDefaultInput())
-      // : x(x), u(u) {}
   ParallelCompressors() : x(GetDefaultState()), u(GetDefaultInput()) {}
 
   ParallelCompressors(Comp comps_in[], Tank tank = Tank(),
@@ -71,17 +68,16 @@ class ParallelCompressors {
 
   SysState GetDerivative(const SysState x_in, const SysInput u_in) const;
 
-
   SysInput u;
   SysState x;
   Comp comps[n_compressors];
   Tank tank;
 
   friend void IntegrateSystem(ParallelCompressors compsys, const double t0,
-                                  const double tf, const double dt,
-                                  IntegrationCallbackPtr callback,
-                                  const double rel_error = 1e-6,
-                                  const double abs_error = 1e-6) {
+                              const double tf, const double dt,
+                              IntegrationCallbackPtr callback,
+                              const double rel_error = 1e-6,
+                              const double abs_error = 1e-6) {
     ControlledStepper stepper =
         make_controlled(rel_error, abs_error, Dopri5Stepper());
     integrate_const(stepper, compsys, compsys.x, t0, tf, dt, callback);
@@ -108,8 +104,9 @@ struct vector_space_norm_inf<ParallelCompressors::SysState> {
   typedef double result_type;
   double operator()(ParallelCompressors::SysState x) const {
     double absval = 0;
-    
-    for (int i = 0; i < ParallelCompressors::n_states; i++) absval += x[i] * x[i];
+
+    for (int i = 0; i < ParallelCompressors::n_states; i++)
+      absval += x[i] * x[i];
     return sqrt(absval);
   }
 };

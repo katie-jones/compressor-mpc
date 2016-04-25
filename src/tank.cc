@@ -1,6 +1,6 @@
 #include "tank.h"
-
 #include <cmath>
+
 #include <boost/math/special_functions/sign.hpp>
 
 using namespace Eigen;
@@ -10,7 +10,7 @@ Tank::TankState Tank::GetDerivative(const TankState x, const TankInput u,
   const double p_d = x(0);
   const double u_tank = u(0);
   const double dp_sqrt2 =
-      10 * sqrt(abs(p_d - params.pout)) * boost::math::sign(p_d - params.pout);
+      10 * std::sqrt(std::abs(p_d - params.pout)) * boost::math::sign(p_d - params.pout);
 
   const Vec<8> M5((Vec<8>() << dp_sqrt2 * pow(u_tank, 3),
                    dp_sqrt2 * u_tank * u_tank, dp_sqrt2 * u_tank, dp_sqrt2,
@@ -20,12 +20,12 @@ Tank::TankState Tank::GetDerivative(const TankState x, const TankInput u,
 
   TankState dxdt;
   dxdt << speed_sound *speed_sound /
-              params.volume *(mass_flow_compressors - m_out);
+              params.volume *(mass_flow_compressors - m_out) * 1e-5;
   return dxdt;
 }
 
 Tank::Params::Params() {
-  pout = 1;
+  pout = 1.0;
   volume = 20 * pi * (0.60 / 2) * (0.60 / 2) * 2 +
            pi * (0.08 / 2) * (0.08 / 2) * 5.940;
   D = (Vec<8>() << -0.0083454, -0.0094965, 0.16826, -0.032215, -0.61199,

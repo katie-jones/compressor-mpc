@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   statefile.open("states.txt");
   sys_states.open("sysstates.txt");
   // IntegrateCompressor(comp,0,10,0.05,Callback);
-  IntegrateSystem(compsys, 0, 0.10, 0.05, Callback2);
+  IntegrateSystem(compsys, 0, 10, 0.05, Callback2);
 
   statefile.close();
   sys_states.close();

@@ -4,7 +4,6 @@
 #include <Eigen/Eigen>
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
-#include <iostream>
 
 #include "global_constants.h"
 
@@ -16,8 +15,8 @@ class Tank {
   constexpr static int n_states = 1;
   constexpr static int n_inputs = 1;
 
-  typedef Eigen::Array<double,n_inputs,1> TankInput;
-  typedef Eigen::Array<double,n_states,1> TankState;
+  typedef Eigen::Array<double, n_inputs, 1> TankInput;
+  typedef Eigen::Array<double, n_states, 1> TankState;
 
   struct Params {
     double pout;
@@ -33,11 +32,14 @@ class Tank {
 
   TankState GetDerivative(const TankState x, const TankInput u,
                           const double mass_flow_compressors) const;
-  static inline TankInput GetDefaultInput() { return ((TankInput() << 0.7).finished()); }
-  static inline TankState GetDefaultState() { return TankState(1.12); }
+  static inline TankInput GetDefaultInput() {
+    return ((TankInput() << 0.7).finished());
+  }
+  static inline TankState GetDefaultState() {
+    return ((TankState() << 1.12).finished());
+  }
 
   const Params params;
-
 };
 
 #endif

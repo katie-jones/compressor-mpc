@@ -18,7 +18,6 @@ ParallelCompressors::SysState ParallelCompressors::GetDerivative(
     dxdt.segment<n_comp_states>(i * n_comp_states) = comp_deriv;
     mass_flow_total += mass_flow;
   }
-
   dxdt.tail<n_tank_states>() =
       tank.GetDerivative(ptank, u.tail<n_tank_inputs>(), mass_flow_total);
 

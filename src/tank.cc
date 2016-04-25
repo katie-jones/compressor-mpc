@@ -18,8 +18,9 @@ Tank::TankState Tank::GetDerivative(const TankState x, const TankInput u,
 
   const double m_out = params.D.transpose() * M5 + params.m_out_c;
 
-  TankState dxdt = TankState(speed_sound * speed_sound / params.volume *
-                   (mass_flow_compressors - m_out));
+  TankState dxdt;
+  dxdt << speed_sound *speed_sound /
+              params.volume *(mass_flow_compressors - m_out);
   return dxdt;
 }
 

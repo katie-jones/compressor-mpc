@@ -16,8 +16,8 @@ class Tank {
   constexpr static int n_states = 1;
   constexpr static int n_inputs = 1;
 
-  typedef Vec<n_inputs> TankInput;
-  typedef Vec<n_states> TankState;
+  typedef Eigen::Array<double,n_inputs,1> TankInput;
+  typedef Eigen::Array<double,n_states,1> TankState;
 
   struct Params {
     double pout;
@@ -28,11 +28,12 @@ class Tank {
     Params(const Params &x);
   };
 
-  Tank(Params params = Params()) : params(params) {}
+  Tank(Params params) : params(params) {}
+  Tank() : params(Params()) {}
 
   TankState GetDerivative(const TankState x, const TankInput u,
                           const double mass_flow_compressors) const;
-  static inline TankInput GetDefaultInput() { return TankInput(0.7); }
+  static inline TankInput GetDefaultInput() { return ((TankInput() << 0.7).finished()); }
   static inline TankState GetDefaultState() { return TankState(1.12); }
 
   const Params params;

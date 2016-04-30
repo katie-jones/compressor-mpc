@@ -1,8 +1,8 @@
 #include "compressor.h"
 
 #include <iostream>
-#include <cmath>
 #include <boost/math/special_functions/sign.hpp>
+#include <cmath>
 
 using namespace Eigen;
 
@@ -174,11 +174,12 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
 double CalculateValveMassFlow(double p_in, double p_out, double u_valve,
                               Vec<8> C, double m_offset) {
   const double dp_sqrt =
-      10 * sqrt(abs(p_in - p_out)) * boost::math::sign(p_in - p_out);
+      10 * std::sqrt(std::abs(p_in - p_out)) * boost::math::sign(p_in - p_out);
 
-  const Vec<8> M3((Vec<8>() << dp_sqrt * pow(u_valve, 3),
+  const Vec<8> M3((Vec<8>() << dp_sqrt * u_valve * u_valve * u_valve,
                    dp_sqrt * u_valve * u_valve, dp_sqrt * u_valve, dp_sqrt,
-                   pow(u_valve, 3), u_valve * u_valve, u_valve, 1).finished());
+                   u_valve * u_valve * u_valve, u_valve * u_valve, u_valve,
+                   1).finished());
 
   return C.dot(M3) + m_offset;
 }
@@ -188,7 +189,7 @@ double CalculateValveDerivative(double p_in, double p_out, double u_valve,
   Vec<4> M;
   M << u_valve *u_valve *u_valve, u_valve *u_valve, u_valve, 1;
   return (-boost::math::sign(p_in - p_out) / 2. * 100 /
-          sqrt(abs(p_in * 100 - p_out * 100))) *
+          sqrt(std::abs(p_in * 100 - p_out * 100))) *
          M.dot(C.head<4>());
 }
 

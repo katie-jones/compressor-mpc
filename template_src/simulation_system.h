@@ -16,7 +16,9 @@
  * time range.
  */
 template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
-class SimulationSystem : public DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs> {
+class SimulationSystem
+    : public virtual DynamicSystem<n_states, n_inputs, n_outputs,
+                                   n_control_inputs> {
  protected:
   typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State State;
   typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input Input;

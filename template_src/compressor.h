@@ -9,7 +9,7 @@ using Vec = Eigen::Matrix<double, N, 1>;
 constexpr double pi = 3.14159265358979323846;
 constexpr double speed_sound = 340.;
 
-class Compressor : public DynamicSystem<5, 6, 2, 2> {
+class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
  public:
   static constexpr int n_states = 5;
   static constexpr int n_inputs = 6;

@@ -20,9 +20,12 @@ class SimulationSystem
     : public virtual DynamicSystem<n_states, n_inputs, n_outputs,
                                    n_control_inputs> {
  protected:
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State State;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input Input;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output Output;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
+                                 n_control_inputs>::State State;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
+                                 n_control_inputs>::Input Input;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
+                                 n_control_inputs>::Output Output;
 
   // Type of stepper used to integrate
   typedef boost::numeric::odeint::runge_kutta_dopri5<
@@ -35,6 +38,8 @@ class SimulationSystem
 
   Input u;
   State x;
+
+  SimulationSystem(State x_in, Input u_in) : x(x_in), u(u_in) {}
 
  public:
   /// Function pointer used for callback when integrating system.
@@ -51,9 +56,10 @@ class SimulationSystem
   void SetInput(Input u_in) {
     for (int i = 0; i < n_inputs; i++) {
       u[i] = std::fmin(
-          std::fmin(std::fmax(std::fmax(u_in[i], this->lower_input_constraint[i]),
-                              u[i] - this->lower_input_rate_constraint[i]),
-                    this->upper_input_constraint[i]),
+          std::fmin(
+              std::fmax(std::fmax(u_in[i], this->lower_input_constraint[i]),
+                        u[i] - this->lower_input_rate_constraint[i]),
+              this->upper_input_constraint[i]),
           u[i] + this->upper_input_rate_constraint[i]);
     }
   }
@@ -70,7 +76,7 @@ class SimulationSystem
    * derivative in the second argument.
    */
   void operator()(const State &x_in, State &dxdt, const double) const {
-    dxdt = GetDerivative(x_in, u);
+    dxdt = this->GetDerivative(x_in, u);
   }
 
   /**
@@ -83,32 +89,15 @@ class SimulationSystem
    * absolute error are with the bounds specified in max_rel_error and
    * max_abs_error respectively.
    */
-  friend void IntegrateSystem(SimulationSystem *sys, const double t0,
-                              const double tf, const double dt,
-                              IntegrationCallbackPtr callback,
-                              const double max_rel_error = 1e-6,
-                              const double max_abs_error = 1e-6) {
+  void Integrate(const double t0, const double tf, const double dt,
+                 IntegrationCallbackPtr callback,
+                 const double max_rel_error = 1e-6,
+                 const double max_abs_error = 1e-6) {
     ControlledStepper stepper =
         make_controlled(max_rel_error, max_abs_error, Dopri5Stepper());
-    integrate_const(stepper, sys, sys->x, t0, tf, dt, callback);
+    boost::numeric::odeint::integrate_const(stepper, std::ref(*this), x, t0, tf,
+                                            dt, callback);
   }
 };
 
-// Define vector_space_norm_inf for the state used in order for odeint to work
-// namespace boost {
-// namespace numeric {
-// namespace odeint {
-// template <>
-// struct vector_space_norm_inf<DynamicSystem::State> {
-  // typedef double result_type;
-  // double operator()(DynamicSystem::State x) const {
-    // double absval = 0;
-
-    // for (int i = 0; i < DynamicSystem::n_states; i++) absval += x[i] * x[i];
-    // return sqrt(absval);
-  // }
-// };
-// }
-// }
-// }
 #endif

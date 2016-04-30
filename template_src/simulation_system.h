@@ -15,12 +15,12 @@
  * derivative. Defines a friend function to integrate the system for a given
  * time range.
  */
-template <int n_states, int n_inputs, int n_outputs>
-class SimulationSystem : public DynamicSystem<n_states, n_inputs, n_outputs> {
+template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
+class SimulationSystem : public DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs> {
  protected:
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs>::State State;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs>::Input Input;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs>::Output Output;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State State;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input Input;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output Output;
 
   // Type of stepper used to integrate
   typedef boost::numeric::odeint::runge_kutta_dopri5<

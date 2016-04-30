@@ -6,8 +6,9 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+add_executable(comptest comp_test.cc)
 add_library(compressor compressor.cc)
-add_library(comp2 compressor2.cc)
+target_link_libraries(comptest compressor)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

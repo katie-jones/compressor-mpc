@@ -32,13 +32,10 @@ Tank::Linearized Tank::GetLinearizedSystem(const State x, const Input u) const {
   const double p_out = u(1);
   const double mass_flow_in = u(2);
 
-  linsys.A << CalculateValveDerivative(p_d, p_out, u_tank, params_.D);
+  linsys.A << CalculateValveDerivative(p_d, p_out, u_tank, params_.D,
+                                       params_.volume);
   linsys.C << 1;
   return linsys;
-
-  // Att = -speed_sound * speed_sound / params_.volume * 1e-5 *
-        // (100/2. / sqrt(abs(p_d * 100 - p_out * 100))) *
-        // (D2_t(1) * udt ^ 3 + D2_t(2) * udt ^ 2 + D2_t(3) * udt + D2_t(4));
 }
 
 Tank::Params::Params() {

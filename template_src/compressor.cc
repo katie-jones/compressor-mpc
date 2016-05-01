@@ -13,8 +13,6 @@ using namespace Eigen;
 using namespace ValveEqs;
 // using namespace Constants;
 
-
-
 Compressor::State Compressor::GetDerivative(const State x, const Input u,
                                             double &m_out) const {
   State dxdt;
@@ -52,10 +50,8 @@ Compressor::State Compressor::GetDerivative(const State x, const Input u,
   const double T_ss_model =
       params_.T_ss_c(0) + params_.T_ss_c(1) * mc + params_.T_ss_c(2);
 
-  dxdt(0) = speed_sound * speed_sound / params_.V1 *
-            (m_in + mr - mc) * 1e-5;
-  dxdt(1) = speed_sound * speed_sound / params_.V2 *
-            (mc - mr - m_out) * 1e-5;
+  dxdt(0) = speed_sound * speed_sound / params_.V1 * (m_in + mr - mc) * 1e-5;
+  dxdt(1) = speed_sound * speed_sound / params_.V2 * (mc - mr - m_out) * 1e-5;
   dxdt(2) = params_.AdivL * (p_ratio * p1 - p2) * 1e5;
   dxdt(3) = (td - T_ss_model) / params_.J;
   dxdt(4) = params_.tau_r * (m_rec_ss - mr);
@@ -92,15 +88,14 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   const double p_out = u(5);
 
   // Partial derivatives of p1
-  linsys.A.row(0) << -speed_sound * speed_sound / params_.V1 * 1e-5 *
-                         CalculateValveDerivative(p_in, p1, u_input, params_.C),
+  linsys.A.row(0) << CalculateValveDerivative(p_in, p1, u_input, params_.C,
+                                              params_.V1),
       0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
       speed_sound * speed_sound / params_.V1 * 1e-5;
 
   // Partial derivatives of p2
   linsys.A.row(1) << 0,
-      -speed_sound * speed_sound / params_.V2 * 1e-5 *
-          CalculateValveDerivative(p2, p_out, u_out, params_.D),
+      CalculateValveDerivative(p2, p_out, u_out, params_.D, params_.V2),
       speed_sound * speed_sound / params_.V2 * 1e-5, 0,
       -speed_sound * speed_sound / params_.V2 * 1e-5;
 
@@ -123,8 +118,7 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   double p_ratio = params_.A.dot(M);
 
   // Partial derivatives of qc
-  linsys.A.row(2) << params_.AdivL * (p_ratio * 1e5),
-      -params_.AdivL * 1e5,
+  linsys.A.row(2) << params_.AdivL * (p_ratio * 1e5), -params_.AdivL * 1e5,
       params_.AdivL * (p1 * 1e5) * params_.A.dot(dM_dmcomp),
       params_.AdivL * (p1 * 1e5) * params_.A.dot(dM_dwcomp), 0;
 
@@ -163,7 +157,6 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
 
   return linsys;
 }
-
 
 Compressor::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;

@@ -2,12 +2,7 @@
 #define COMPRESSOR_H
 
 #include "dynamic_system.h"
-
-template <size_t N>
-using Vec = Eigen::Matrix<double, N, 1>;
-
-constexpr double pi = 3.14159265358979323846;
-constexpr double speed_sound = 340.;
+#include "global.h"
 
 class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
  public:
@@ -16,9 +11,12 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   static constexpr int n_outputs = 2;
   static constexpr int n_control_inputs = 2;
 
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State State;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input Input;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output Output;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+      State;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+      Input;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
+      Output;
 
   /// Coefficients describing dynamics of compressor.
   struct Coefficients {

@@ -1,12 +1,20 @@
 #include <iostream>
+#include <fstream>
 #include "compressor.h"
 #include "simulation_compressor.h"
 #include "tank.h"
 #include "parallel_compressors.h"
+#include "simulation_parallel_compressors.h"
 
 void Callback(Compressor::State x, double t) {
   std::cout << "t: " << t << "\tx: ";
   for (int i = 0; i < 5; i++) std::cout << x[i] << "\t";
+  std::cout << std::endl;
+}
+
+void CallbackSys(ParallelCompressors::State x, double t) {
+  std::cout << "t: " << t << "\tx: ";
+  for (int i = 0; i < ParallelCompressors::n_states; i++) std::cout << x[i] << "\t";
   std::cout << std::endl;
 }
 
@@ -37,6 +45,12 @@ int main(void) {
       parcomp.GetLinearizedSystem(ParallelCompressors::GetDefaultState(),
                                   ParallelCompressors::GetDefaultInput());
   std::cout << plin.A(10,1) << std::endl;
+
+  std::ifstream finaltime("finaltime.txt");
+  double tf;
+  finaltime >> tf;
+  SimulationParallelCompressors compsys = SimulationParallelCompressors();
+  compsys.Integrate(0, tf, 0.05, CallbackSys);
 
   return 0;
 }

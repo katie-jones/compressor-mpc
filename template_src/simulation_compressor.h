@@ -7,12 +7,8 @@
 class SimulationCompressor : public SimulationSystem<5, 6, 2, 2>,
                              public Compressor {
  public:
-  typedef Compressor::State State;
-  typedef Compressor::Input Input;
-  typedef Compressor::Output Output;
-
-  SimulationCompressor(State x_in = GetDefaultState(),
-                       Input u_in = GetDefaultInput())
+  SimulationCompressor(Compressor::State x_in = GetDefaultState(),
+                       Compressor::Input u_in = GetDefaultInput())
       : SimulationSystem<n_states, n_inputs, n_outputs, n_control_inputs>(
             x_in, u_in) {}
 };
@@ -22,9 +18,9 @@ namespace boost {
 namespace numeric {
 namespace odeint {
 template <>
-struct vector_space_norm_inf<SimulationCompressor::State> {
+struct vector_space_norm_inf<Compressor::State> {
   typedef double result_type;
-  double operator()(SimulationCompressor::State x) const {
+  double operator()(Compressor::State x) const {
     double absval = 0;
 
     for (int i = 0; i < SimulationCompressor::n_states; i++)

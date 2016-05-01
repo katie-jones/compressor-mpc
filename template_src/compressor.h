@@ -4,7 +4,11 @@
 #include "dynamic_system.h"
 #include "global.h"
 
+class ParallelCompressors;
+
 class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
+  friend ParallelCompressors;
+
  public:
   static constexpr int n_states = 5;
   static constexpr int n_inputs = 6;
@@ -31,6 +35,15 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
 
   /// Optionally specify pressures, coefficients and flow constants.
   Compressor(Parameters params = Parameters()) : params_(params) {}
+
+  /// Copy constructor
+  Compressor(const Compressor& x) : params_(x.params_) {}
+
+  /// Equals operator
+  Compressor &operator=(const Compressor &x) {
+    params_ = x.params_;
+    return *this;
+  }
 
   virtual ~Compressor() {}
 

@@ -4,7 +4,11 @@
 #include "dynamic_system.h"
 #include "global.h"
 
+class ParallelCompressors;
+
 class Tank : public DynamicSystem<1, 3, 1, 0> {
+  friend ParallelCompressors;
+
  public:
   constexpr static int n_states = 1;
   constexpr static int n_inputs = 3;

@@ -18,26 +18,19 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
       Output;
 
-  /// Coefficients describing dynamics of compressor.
-  struct Coefficients {
+  /// Parameters describing dynamics of compressor.
+  struct Parameters {
     double J, tau_r, m_in_c, m_out_c, torque_drive_c, delta_bar, n_bar;
+    double V1, V2, AdivL;
     Vec<8> C, D;
     Vec<12> A;
     Vec<2> m_rec_ss_c, SD_c;
     Vec<3> T_ss_c;
-    Coefficients();
-  };
-
-  /// Characteristics of fluid flow in compressor.
-  struct FlowConstants {
-    double a, V1, V2, AdivL;
-    FlowConstants();
+    Parameters();
   };
 
   /// Optionally specify pressures, coefficients and flow constants.
-  Compressor(Coefficients coeffs = Coefficients(),
-             FlowConstants flow_constants = FlowConstants())
-      : coeffs_(coeffs), flow_constants_(flow_constants) {}
+  Compressor(Parameters params = Parameters()) : params_(params) {}
 
   virtual ~Compressor() {}
 
@@ -75,8 +68,7 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   virtual Output GetOutput(const State x) const;
 
  protected:
-  Coefficients coeffs_;  // parameters determining dynamics of compressor
-  FlowConstants flow_constants_;  // flow parameters
+  Parameters params_;
 };
 
 #endif

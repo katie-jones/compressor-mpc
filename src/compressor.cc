@@ -1,15 +1,21 @@
 #include "compressor.h"
 
-#include <cmath>
 #include <iostream>
+#include <cmath>
 
-using namespace std;
+#include "global.h"
+#include "valve_eqs.h"
 
-Comp::CompressorState Comp::GetDerivative(const CompressorState x,
-                                          const CompressorInput u,
-                                          const double pout,
-                                          double &m_out) const {
-  CompressorState dxdt;
+constexpr double pi = 3.14159265358979323846;
+constexpr double speed_sound = 340.;
+
+using namespace Eigen;
+using namespace ValveEqs;
+// using namespace Constants;
+
+Compressor::State Compressor::GetDerivative(const State x, const Input u,
+                                            double &m_out) const {
+  State dxdt;
 
   const double p1 = x(0);
   const double p2 = x(1);
@@ -17,33 +23,21 @@ Comp::CompressorState Comp::GetDerivative(const CompressorState x,
   const double wc = x(3);
   const double mr = x(4);
 
-  const double td = u(0) * coeffs.torque_drive_c / wc;
+  const double td = u(0) * params_.torque_drive_c / wc;
   const double u_input = u(1);
   const double u_out = u(2);
   const double u_rec = u(3);
+  const double p_in = u(4);
+  const double p_out = u(5);
 
-  const double dp_sqrt = 10 * sqrt(abs(flow_constants.Pin - p1)) *
-                         boost::math::sign(flow_constants.Pin - p1);
-
-  const Vec<8> M3((Vec<8>() << dp_sqrt * pow(u_input, 3),
-                   dp_sqrt * u_input * u_input, dp_sqrt * u_input, dp_sqrt,
-                   pow(u_input, 3), u_input * u_input, u_input, 1).finished());
-
-  const double m_in = coeffs.C.transpose() * M3 + coeffs.m_in_c;
+  const double m_in =
+      CalculateValveMassFlow(p_in, p1, u_input, params_.C, params_.m_in_c);
+  m_out = CalculateValveMassFlow(p2, p_out, u_out, params_.D, params_.m_out_c);
 
   double m_rec_ss =
-      coeffs.m_rec_ss_c.dot(
+      params_.m_rec_ss_c.dot(
           (Vec<2>() << sqrt(p2 * 1e5 - p1 * 1e5) * u_rec, 1).finished()) *
       (u_rec > 1e-2);
-
-  const double dp_sqrt2 =
-      10 * sqrt(abs(p2 - pout)) * boost::math::sign(p2 - pout);
-
-  const Vec<8> M5((Vec<8>() << dp_sqrt2 * pow(u(2), 3), dp_sqrt2 * u(2) * u(2),
-                   dp_sqrt2 * u(2), dp_sqrt2, pow(u(2), 3), u(2) * u(2), u(2),
-                   1).finished());
-
-  m_out = coeffs.D.transpose() * M5 + coeffs.m_out_c;
 
   const double mc2 = mc * mc;
   const double mc3 = mc * mc2;
@@ -51,52 +45,120 @@ Comp::CompressorState Comp::GetDerivative(const CompressorState x,
   const Vec<12> M((Vec<12>() << wc2 * mc3, wc2 * mc2, wc2 * mc, wc2, wc * mc3,
                    wc * mc2, wc * mc, wc, mc3, mc2, mc, 1).finished());
 
-  const double p_ratio = coeffs.A.transpose() * M;
+  const double p_ratio = params_.A.transpose() * M;
 
   const double T_ss_model =
-      coeffs.T_ss_c(0) + coeffs.T_ss_c(1) * mc + coeffs.T_ss_c(2);
+      params_.T_ss_c(0) + params_.T_ss_c(1) * mc + params_.T_ss_c(2);
 
-  dxdt(0) = flow_constants.a * flow_constants.a / flow_constants.V1 *
-            (m_in + mr - mc) * 1e-5;
-  dxdt(1) = flow_constants.a * flow_constants.a / flow_constants.V2 *
-            (mc - mr - m_out) * 1e-5;
-  dxdt(2) = flow_constants.AdivL * (p_ratio * p1 - p2) * 1e5;
-  dxdt(3) = (td - T_ss_model) / coeffs.J;
-  dxdt(4) = coeffs.tau_r * (m_rec_ss - mr);
+  dxdt(0) = speed_sound * speed_sound / params_.V1 * (m_in + mr - mc) * 1e-5;
+  dxdt(1) = speed_sound * speed_sound / params_.V2 * (mc - mr - m_out) * 1e-5;
+  dxdt(2) = params_.AdivL * (p_ratio * p1 - p2) * 1e5;
+  dxdt(3) = (td - T_ss_model) / params_.J;
+  dxdt(4) = params_.tau_r * (m_rec_ss - mr);
 
   return dxdt;
 }
 
-Comp::CompressorOutput Comp::GetOutput(const CompressorState x) const {
+Compressor::Output Compressor::GetOutput(const State x) const {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
-  const double surge_distance =
-      -(p2 / p1) / coeffs.SD_c(0) + coeffs.SD_c(1) / coeffs.SD_c(0) + mass_flow;
-  Comp::CompressorOutput y;
+  const double surge_distance = -(p2 / p1) / params_.SD_c(0) +
+                                params_.SD_c(1) / params_.SD_c(0) + mass_flow;
+  Compressor::Output y;
   y << p2, surge_distance;
   return y;
 }
 
+Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
+                                                       const Input u) const {
+  Linearized linsys;
 
+  const double p1 = x(0);
+  const double p2 = x(1);
+  const double mc = x(2);
+  const double wc = x(3);
+  const double mr = x(4);
 
+  const double td_in = u(0);
+  const double u_input = u(1);
+  const double u_out = u(2);
+  const double u_rec = u(3);
+  const double p_in = u(4);
+  const double p_out = u(5);
 
+  // Partial derivatives of p1
+  linsys.A.row(0) << CalculateValveDerivative(p_in, p1, u_input, params_.C,
+                                              params_.V1),
+      0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
+      speed_sound * speed_sound / params_.V1 * 1e-5;
 
-Comp::Coefficients::Coefficients(const Comp::Coefficients &x) {
-  J = x.J;
-  tau_r = x.tau_r;
-  m_in_c = x.m_in_c;
-  m_out_c = x.m_out_c;
-  torque_drive_c = x.torque_drive_c;
-  C = x.C;
-  D = x.D;
-  A = x.A;
-  m_rec_ss_c = x.m_rec_ss_c;
-  SD_c = x.SD_c;
-  T_ss_c = x.T_ss_c;
+  // Partial derivatives of p2
+  linsys.A.row(1) << 0,
+      CalculateValveDerivative(p2, p_out, u_out, params_.D, params_.V2),
+      speed_sound * speed_sound / params_.V2 * 1e-5, 0,
+      -speed_sound * speed_sound / params_.V2 * 1e-5;
+
+  // Intermediate calculations
+  const double wc2 = wc * wc;
+  const double wc3 = wc * wc2;
+  const double mc2 = mc * mc;
+  const double mc3 = mc * mc2;
+
+  Vec<12> M, dM_dmcomp, dM_dwcomp;
+
+  dM_dmcomp << 3 * wc2 *mc2, 2 * wc2 *mc, wc2, 0, 3 * wc *mc2, 2 * wc *mc, wc,
+      0, 3 * mc2, 2 * mc, 1, 0;
+  dM_dwcomp << 2 * wc *mc3, 2 * wc *mc2, 2 * wc *mc, 2 * wc, mc3, mc2, mc, 1, 0,
+      0, 0, 0;
+
+  M << wc2 *mc3, wc2 *mc2, wc2 *mc, wc2, wc *mc3, wc *mc2, wc *mc, wc, mc3, mc2,
+      mc, 1;
+
+  double p_ratio = params_.A.dot(M);
+
+  // Partial derivatives of qc
+  linsys.A.row(2) << params_.AdivL * (p_ratio * 1e5), -params_.AdivL * 1e5,
+      params_.AdivL * (p1 * 1e5) * params_.A.dot(dM_dmcomp),
+      params_.AdivL * (p1 * 1e5) * params_.A.dot(dM_dwcomp), 0;
+
+  // Partial derivatives of omegac
+  linsys.A.row(3) << 0, 0, -1.0 / params_.J * params_.T_ss_c(0),
+      -1.0 / params_.J * td_in * params_.torque_drive_c / wc2, 0;
+
+  // Partial derivatives of qr
+  linsys.A.row(4) << -params_.tau_r * (params_.m_rec_ss_c(0) * 1 / 2 * u_rec /
+                                       sqrt(p2 * 1e5 - p1 * 1e5) * 1e5),
+      params_.tau_r * (params_.m_rec_ss_c(0) * 1 / 2 * u_rec /
+                       sqrt(p2 * 1e5 - p1 * 1e5) * 1e5),
+      0, 0, -params_.tau_r;
+
+  // B matrix
+  // Approximate deadzone using exponentials
+  constexpr double x0 = 1e-2;
+  double dmr_ur =
+      params_.tau_r * params_.m_rec_ss_c(0) * sqrt(p2 * 1e5 - p1 * 2e5);
+  if (u_rec < 2 * x0) {
+    double a;
+    if (u_rec >= x0) {
+      a = params_.delta_bar +
+          (1 - params_.delta_bar) * exp(params_.n_bar * (u_rec - x0));
+    } else {
+      a = 2 - (1 - params_.delta_bar) * exp(-params_.n_bar * u_rec);
+    }
+    dmr_ur = a * dmr_ur;
+  }
+
+  linsys.B << 0, 0, 0, 0, 0, 0, 1.0 / params_.J *params_.torque_drive_c / wc, 0,
+      0, dmr_ur;
+
+  linsys.C << 0, 1, 0, 0, 0, 100 * p2 / (params_.SD_c(0) * p1 * p1),
+      -100. / (params_.SD_c(0) * p1), 100, 0, 0;
+
+  return linsys;
 }
 
-Comp::Coefficients::Coefficients() {
+Compressor::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;
   tau_r = 1 / 0.5 + 1;
   A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,
@@ -122,25 +184,14 @@ Comp::Coefficients::Coefficients() {
   SD_c = (Vec<2>() << 5.55, 0.66).finished();
 
   torque_drive_c = 15000;
-}
 
-Comp::FlowConstants::FlowConstants() {
-  a = 340;
-  Pin = 1;
-  Pout = 1;
+  delta_bar = 0.1;
+
+  n_bar = 1e2;
+
   V1 = 2 * pi * (0.60 / 2) * (0.60 / 2) * 2 +
        pi * (0.08 / 2) * (0.08 / 2) * 8.191;
   V2 = 0.5 * V1;
 
   AdivL = pi * (0.08 / 2) * (0.08 / 2) / 3 * 0.1;
 }
-
-Comp::FlowConstants::FlowConstants(const FlowConstants &x) {
-  a = x.a;
-  Pin = x.Pin;
-  Pout = x.Pout;
-  V1 = x.V1;
-  V2 = x.V2;
-  AdivL = x.AdivL;
-}
-

@@ -1,60 +1,51 @@
-#ifndef CHILD_COMPRESSOR_H
-#define CHILD_COMPRESSOR_H
+#ifndef COMPRESSOR_H
+#define COMPRESSOR_H
 
-#include <Eigen/Eigen>
-#include <boost/numeric/odeint.hpp>
-#include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
+#include "dynamic_system.h"
+#include "global.h"
 
-#include "global_constants.h"
-
-// Forward declaration for friend class
 class ParallelCompressors;
 
-/**
- * Minimal implementation of single compressor.
- * Only contains parameters as member variables. Derivative can be calculated
- * but input and state must always be specified.
- */
-class Comp {
+class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
+  friend ParallelCompressors;
+
  public:
-  constexpr static int n_states = 5;   ///< Number of states in model.
-  constexpr static int n_inputs = 4;   ///< Number of inputs to model.
-  constexpr static int n_outputs = 2;  ///< Number of outputs from model.
+  static constexpr int n_states = 5;
+  static constexpr int n_inputs = 6;
+  static constexpr int n_outputs = 2;
+  static constexpr int n_control_inputs = 2;
 
-  /// Type describing state of compressor.
-  typedef Eigen::Array<double, n_states, 1> CompressorState;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+      State;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+      Input;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
+      Output;
 
-  /// Type describing inputs to compressor.
-  typedef Eigen::Array<double, n_inputs, 1> CompressorInput;
-
-  /// Type describing outputs of compressor.
-  typedef Vec<n_outputs> CompressorOutput;
-
-  /// Coefficients describing dynamics of compressor.
-  struct Coefficients {
-    double J, tau_r, m_in_c, m_out_c, torque_drive_c;
+  /// Parameters describing dynamics of compressor.
+  struct Parameters {
+    double J, tau_r, m_in_c, m_out_c, torque_drive_c, delta_bar, n_bar;
+    double V1, V2, AdivL;
     Vec<8> C, D;
     Vec<12> A;
     Vec<2> m_rec_ss_c, SD_c;
     Vec<3> T_ss_c;
-    Coefficients(const Coefficients &x);
-    Coefficients();
+    Parameters();
   };
 
-  /// Characteristics of fluid flow in compressor.
-  struct FlowConstants {
-    double a, Pin, Pout, V1, V2, AdivL;
-    FlowConstants();
-    FlowConstants(const FlowConstants &x);
-  };
+  /// Optionally specify pressures, coefficients and flow constants.
+  Compressor(Parameters params = Parameters()) : params_(params) {}
 
-  /// Initialize compressor with coefficients and flow parameters.
-  Comp(Coefficients coeffs = Coefficients(),
-       FlowConstants flow_constants = FlowConstants())
-      : coeffs(coeffs), flow_constants(flow_constants) {}
+  /// Copy constructor
+  Compressor(const Compressor& x) : params_(x.params_) {}
 
-  /// Copy constructor.
-  Comp(const Comp &x) : coeffs(x.coeffs), flow_constants(x.flow_constants) {}
+  /// Equals operator
+  Compressor &operator=(const Compressor &x) {
+    params_ = x.params_;
+    return *this;
+  }
+
+  virtual ~Compressor() {}
 
   /**
    * Get derivative and mass flow of compressor about given operating point.
@@ -62,39 +53,35 @@ class Comp {
    * outlet pout. Also return mass flow through the compressor in variable
    * m_out.
    */
-  CompressorState GetDerivative(const CompressorState x,
-                                const CompressorInput u, const double pout,
-                                double &m_out) const;
+  State GetDerivative(const State x, const Input u, double &m_out) const;
 
   /**
    * Get derivative of compressor about given operating point.
    * Define a local variable to give as m_out argument to GetDerivative.
    */
-  inline CompressorState GetDerivative(const CompressorState x,
-                                       const CompressorInput u,
-                                       const double pout) const {
+  virtual inline State GetDerivative(const State x, const Input u) const {
     double m_out = 0;
-    return GetDerivative(x, u, pout, m_out);
+    return GetDerivative(x, u, m_out);
   }
 
-  /// Return output values of compressor for given state.
-  CompressorOutput GetOutput(const CompressorState x) const;
-
   /// Return default compressor state.
-  const static inline CompressorState GetDefaultState() {
-    return ((CompressorState() << 0.898, 1.126, 0.15, 440, 0).finished());
+  static const inline State GetDefaultState() {
+    return ((State() << 0.898, 1.126, 0.15, 440, 0).finished());
   }
 
   /// Return default compressor input.
-  const static inline CompressorInput GetDefaultInput() {
-    return ((CompressorInput() << 0.304, 0.405, 0.393, 0).finished());
+  static const inline Input GetDefaultInput() {
+    return ((Input() << 0.304, 0.405, 0.393, 0, 1.0, 1.0).finished());
   }
 
- protected:
-  Coefficients coeffs; // parameters determining dynamics of compressor
-  FlowConstants flow_constants; // flow parameters
+  /// Linearize system about operating point.
+  virtual Linearized GetLinearizedSystem(const State x, const Input u) const;
 
-  friend ParallelCompressors;
+  /// Return system output at given state.
+  virtual Output GetOutput(const State x) const;
+
+ protected:
+  Parameters params_;
 };
 
 #endif

@@ -1,168 +1,82 @@
 #ifndef PARALLEL_COMPRESSORS_H
 #define PARALLEL_COMPRESSORS_H
 
-#include <Eigen/Eigen>
-#include <boost/numeric/odeint.hpp>
-#include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
-#include <iostream>
-
-#include "global_constants.h"
+#include "dynamic_system.h"
 #include "compressor.h"
 #include "tank.h"
-#include "global_constants.h"
 
-/*
- * Class containing system of parallel compressors
- * Overloaded () operator to give state derivative
- */
-class ParallelCompressors {
+class ParallelCompressors : public virtual DynamicSystem<11, 9, 5, 4> {
  public:
-  constexpr static int n_compressors = 2;  ///< Number of compressors in system.
+  constexpr static int n_states = 11;
+  constexpr static int n_inputs = 9;
+  constexpr static int n_outputs = 5;
+  constexpr static int n_control_inputs = 4;
 
-  /// Total number of system states.
-  constexpr static int n_states =
-      n_compressors * Comp::n_states + Tank::n_states;
+  constexpr static int n_compressors = 2;
 
-  /// Total number of system inputs.
-  constexpr static int n_inputs =
-      n_compressors * Comp::n_inputs + Tank::n_inputs;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+      State;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+      Input;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
+      Output;
 
-  /// Type describing a valid input to the system.
-  typedef Eigen::Array<double, n_inputs, 1> SysInput;
-
-  /// Type describing a valid state of the system.
-  typedef Eigen::Array<double, n_states, 1> SysState;
-
-  /// Type of function used as callback for the IntegrateSystem function.
-  typedef void (*IntegrationCallbackPtr)(const SysState, const double);
-
-  /// Gives the default state of the system.
-  const static inline SysState GetDefaultState() {
-    const Comp::CompressorState x =
-        ((Comp::CompressorState() << 0.916, 1.145, 0.152, 440, 0).finished());
-    return ((SysState() << x.replicate(n_compressors, 1),
-             Tank::GetDefaultState()).finished());
+  ParallelCompressors(const double p_in, const double p_out,
+                      const Compressor comps[n_compressors],
+                      const Tank tank = Tank())
+      : p_in_(p_in), p_out_(p_out), tank_(tank) {
+    for (int i = 0; i < n_compressors; i++) {
+      comps_[i] = comps[i];
+    }
   }
 
-  /// Gives the default inputs to the system.
-  const static inline SysInput GetDefaultInput() {
-    SysInput uout;
-    const Comp::CompressorInput u =
-        ((Comp::CompressorInput() << 0.304, 0.43, 1.0, 0).finished());
-
-    return ((SysInput() << u.replicate(n_compressors, 1),
-             Tank::GetDefaultInput()).finished());
+  ParallelCompressors(const double p_in = 1.0, const double p_out = 1.0,
+                      const Compressor comp = Compressor(),
+                      const Tank tank = Tank())
+      : p_in_(p_in), p_out_(p_out), tank_(tank) {
+    for (int i = 0; i < n_compressors; i++) {
+      comps_[i] = comp;
+    }
   }
 
-  /**
-   * Assign initial state and inputs to system.
-   * Use default configurations for the tank and compressors.
-   */
-  ParallelCompressors(SysState x = GetDefaultState(),
-                      SysInput u = GetDefaultInput())
-      : x(x), u(u), tank(Tank()) {
-    for (int i = 0; i < n_compressors; i++) comps[i] = Comp();
+  virtual ~ParallelCompressors() {}
+
+  /// Get derivative of compressor system about given operating point.
+  virtual State GetDerivative(const State x, const Input u) const;
+
+  /// Linearize system about operating point.
+  virtual Linearized GetLinearizedSystem(const State x, const Input u) const;
+
+  /// Return system output at given state.
+  virtual Output GetOutput(const State x) const;
+
+  /// Return default compressor state.
+  static const inline State GetDefaultState() {
+    const Compressor::State x =
+        ((Compressor::State() << 0.916, 1.145, 0.152, 440, 0).finished());
+    return ((State() << x.replicate(n_compressors, 1), 1.12).finished());
   }
 
-  /**
-   * Initialize compressors with pre-defined array.
-   * Each compressor can be unique. Values for the tank, state and inputs can
-   * also be provided.
-   */
-  ParallelCompressors(Comp comps_in[], Tank tank = Tank(),
-                      SysState x = GetDefaultState(),
-                      SysInput u = GetDefaultInput())
-      : x(x), u(u), tank(tank) {
-    for (int i = 0; i < n_compressors; i++) comps[i] = Comp(comps_in[i]);
+  /// Return default compressor input.
+  static const inline Input GetDefaultInput() {
+    Eigen::Array<double, 4, 1> u;
+    u << 0.304, 0.43, 1.0, 0;
+
+    return ((Input() << u.replicate(n_compressors, 1), 0.7).finished());
   }
 
-  /**
-   * Initialize all compressors to be identical.
-   * All compressors have the same coefficients and flow characteristics. Values
-   * for the tank, state and inputs can also be provided.
-   */
-  ParallelCompressors(Comp comp, Tank tank = Tank(),
-                      SysState x = GetDefaultState(),
-                      SysInput u = GetDefaultInput())
-      : x(x), u(u), tank(tank) {
-    for (int i = 0; i < n_compressors; i++) comps[i] = Comp(comp);
-  }
-
-  /**
-   * Calculate the derivative of the system at the provided operating point.
-   * Use the provided x_in and u_in values instead of the member variables.
-   */
-  SysState GetDerivative(const SysState x_in, const SysInput u_in) const;
-
-  /**
-   * Calculate the derivative of the system.
-   * Override the () operator to calculate the derivative using the provided
-   * state x_in and the inputs given in the member variable u. Return the
-   * derivative in the second argument.
-   */
-  void operator()(const SysState &x_in, SysState &dxdt,
-                  const double /* t */) const {
-    dxdt = GetDerivative(x_in, u);
-  }
-
-  SysInput u;                 ///< Current input values to the system.
-  SysState x;                 ///< Current state of the system.
-  Comp comps[n_compressors];  ///< Array of compressors contained in the system.
-  Tank tank;                  ///< Discharge tank at output of system.
-
-  /**
-   * Integrate system compsys from t0 to tf with timestep dt.
-   * Integrate the system compsys from its current state and input values at t0
-   * until time tf, using timestep dt. After each timestep the function provided
-   * in callback is called where for example the system inputs and other
-   * parameters can be changed. The integration method used is a variable-step
-   * Dormand-Prince algorithm which reduces the step size until the relative and
-   * absolute error are with the bounds specified in max_rel_error and
-   * max_abs_error respectively.
-   */
-  friend void IntegrateSystem(ParallelCompressors compsys, const double t0,
-                              const double tf, const double dt,
-                              IntegrationCallbackPtr callback,
-                              const double max_rel_error = 1e-6,
-                              const double max_abs_error = 1e-6) {
-    ControlledStepper stepper =
-        make_controlled(max_rel_error, max_abs_error, Dopri5Stepper());
-    integrate_const(stepper, compsys, compsys.x, t0, tf, dt, callback);
-  }
-
- private:
-  constexpr static int n_comp_states = Comp::n_states;
-  constexpr static int n_tank_states = Tank::n_states;
-  constexpr static int n_comp_inputs = Comp::n_inputs;
-  constexpr static int n_tank_inputs = Tank::n_inputs;
-
-  // Type of stepper used to integrate
-  typedef boost::numeric::odeint::runge_kutta_dopri5<
-      SysState, double, SysState, double,
-      boost::numeric::odeint::vector_space_algebra> Dopri5Stepper;
-
-  // Type of stepper used for variable step size integration
-  typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
-      ControlledStepper;
-};
-
-// Define vector_space_norm_inf for the state used in order for odeint to work
-namespace boost {
-namespace numeric {
-namespace odeint {
-template <>
-struct vector_space_norm_inf<ParallelCompressors::SysState> {
-  typedef double result_type;
-  double operator()(ParallelCompressors::SysState x) const {
-    double absval = 0;
-
-    for (int i = 0; i < ParallelCompressors::n_states; i++)
-      absval += x[i] * x[i];
-    return sqrt(absval);
+ protected:
+  Compressor comps_[n_compressors];
+  Tank tank_;
+  const double p_in_;
+  const double p_out_;
+  constexpr static int n_comp_inputs = 4;
+  inline Compressor::Input GetCompressorInput(Input u_in, int i,
+                                              State x) const {
+    Compressor::Input u;
+    u << u_in.segment<n_comp_inputs>(i * n_comp_inputs), p_in_, x.tail<1>();
+    return u;
   }
 };
-}
-}
-}
 
 #endif

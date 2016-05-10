@@ -155,6 +155,8 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   linsys.C << 0, 1, 0, 0, 0, 100 * p2 / (params_.SD_c(0) * p1 * p1),
       -100. / (params_.SD_c(0) * p1), 100, 0, 0;
 
+  linsys.f = GetDerivative(x,u);
+
   return linsys;
 }
 

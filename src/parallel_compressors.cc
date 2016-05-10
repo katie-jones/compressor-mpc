@@ -80,6 +80,8 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
       n_compressors * Cp::n_outputs, n_compressors * Cp::n_states) =
       tank_linsys.C;
 
+  linsys.f = GetDerivative(x, u);
+
   return linsys;
 }
 
@@ -92,4 +94,5 @@ ParallelCompressors::Output ParallelCompressors::GetOutput(
             x.segment<Compressor::n_states>(i * Compressor::n_states));
   }
   y.tail<Tank::n_outputs>() = tank_.GetOutput(x.tail<Tank::n_outputs>());
+  return y;
 }

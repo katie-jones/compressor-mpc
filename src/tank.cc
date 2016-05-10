@@ -35,6 +35,7 @@ Tank::Linearized Tank::GetLinearizedSystem(const State x, const Input u) const {
   linsys.A << CalculateValveDerivative(p_d, p_out, u_tank, params_.D,
                                        params_.volume);
   linsys.C << 1;
+  linsys.f = GetDerivative(x, u);
   return linsys;
 }
 

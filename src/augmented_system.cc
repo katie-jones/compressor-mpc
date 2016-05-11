@@ -61,11 +61,61 @@ AugmentedSystem<System, n_disturbance_states,
   }
 
   sys_out.C.template leftCols<System::n_states>() = sys_discrete.C;
-  sys_out.C.template block<System::n_outputs, n_disturbance_states>(0,
-      System::n_states + n_disturbance_states) =
+  sys_out.C.template block<System::n_outputs, n_disturbance_states>(
+      0, System::n_states + n_disturbance_states) =
       Eigen::Matrix<double, System::n_outputs,
                     n_disturbance_states>::Identity();
 
   return sys_out;
 }
+
+template <class System, int n_disturbance_states, int n_delay_states>
+void AugmentedSystem<System, n_disturbance_states,
+                     n_delay_states>::ObserveAPosteriori(Output &y_new) {
+  dx_aug_.template head<System::n_states + n_disturbance_states>() =
+      dx_aug_.template head<System::n_states + n_disturbance_states>() +
+      M_ *
+          (y_new - y_old_ -
+           (Output)(auglinsys_.C.template leftCols<System::n_states +
+                                                   n_disturbance_states>() *
+                    (dx_aug_.template head<System::n_states +
+                                           n_disturbance_states>()))).matrix();
+
+  x_aug_.template head<System::n_states>() =
+      x_aug_.template head<System::n_states>() +
+      dx_aug_.template head<System::n_states>();
+
+  y_old_ = y_new;
+}
+
+template <class System, int n_disturbance_states, int n_delay_states>
+void AugmentedSystem<System, n_disturbance_states,
+                     n_delay_states>::ObserveAPriori(ControlInput &u_new) {
+  LinearizedSystem linsys = sys_.GetLinearizedSystem(
+      x_aug_.template head<System::n_states>(), GetPlantInput(u_new));
+  auglinsys_ = LinearizeAndAugment(linsys);
+
+  AugmentedState dx0 = AugmentedState::Zero();
+  ControlInput du0;
+  dx0.template tail<n_disturbance_states + n_delay_states>() =
+      dx_aug_.template tail<n_disturbance_states + n_delay_states>();
+
+  int n_cumulative_delay = 0;
+  for (int i = 0; i < System::n_control_inputs; i++) {
+    if (n_delay_[i] == 0) {
+      du0(i) = u_new(i) - u_old_(i);
+    } else {
+      du0(i) = u_new(i);
+      dx0(System::n_states + n_disturbance_states + n_cumulative_delay) -=
+          u_old_(i);
+      n_cumulative_delay += n_delay_[i];
+    }
+  }
+
+  dx_aug_ =
+      auglinsys_.B * du0.matrix() + auglinsys_.A * dx0.matrix() + auglinsys_.f;
+
+  u_old_ = u_new;
+}
+
 #include "augmented_system_list.h"

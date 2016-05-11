@@ -22,6 +22,7 @@ class AugmentedSystem {
   typedef typename System::State State;
   typedef typename System::Output Output;
   typedef typename System::Input Input;
+  typedef Eigen::Matrix<double, System::n_outputs, 1> OutputMatrixType;
   typedef Eigen::Matrix<double, System::n_control_inputs, 1> ControlInput;
   typedef Eigen::Matrix<double, System::n_states + n_disturbance_states +
                                     n_delay_states,
@@ -50,6 +51,14 @@ class AugmentedSystem {
           u(control_input_index_[i]) - offset(control_input_index_[i]);
     }
     return u_control;
+  }
+
+  Input GetPlantInput(const ControlInput &u_control, const Input &offset = Input::Zero()) {
+    Input u = offset;
+    for (int i=0; i<System::n_control_inputs; i++) {
+      u(control_input_index_[i]) += u_control(i);
+    }
+    return u;
   }
 
  public:
@@ -91,10 +100,8 @@ class AugmentedSystem {
     u_old_ = GetControlInput(u_init);
   }
 
-  void ObserveAPriori(ControlInput u_new) {}
-  void ObserveAPosteriori(Output y_new) {
-    // dx_aug_ = dx_aug_ + M_ * (y_new - y_old_ - auglinsys_.C * dx_aug_);
-  }
+  void ObserveAPriori(ControlInput &u_new);
+  void ObserveAPosteriori(Output &y_new);
 };
 
 #endif

@@ -39,11 +39,11 @@ AugmentedSystem<System, n_disturbance_states,
   sys_out.A.template block<System::n_states, System::n_states>(0, 0) =
       sys_discrete.A;
   sys_out.A.template block<n_disturbance_states, n_disturbance_states>(
-      System::n_states + n_delay_states, System::n_states + n_delay_states) =
+      System::n_states, System::n_states) =
       Eigen::Matrix<double, n_disturbance_states,
                     n_disturbance_states>::Identity();
 
-  int index_delay_states = System::n_states;
+  int index_delay_states = System::n_states + n_disturbance_states;
 
   for (int i = 0; i < System::n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
@@ -61,7 +61,8 @@ AugmentedSystem<System, n_disturbance_states,
   }
 
   sys_out.C.template leftCols<System::n_states>() = sys_discrete.C;
-  sys_out.C.template rightCols<n_disturbance_states>() =
+  sys_out.C.template block<System::n_outputs, n_disturbance_states>(0,
+      System::n_states + n_disturbance_states) =
       Eigen::Matrix<double, System::n_outputs,
                     n_disturbance_states>::Identity();
 

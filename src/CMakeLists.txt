@@ -10,7 +10,8 @@ add_executable(comptest comp_test.cc)
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
 add_library(parcomp parallel_compressors.cc)
-target_link_libraries(comptest compressor tank parcomp)
+add_library(augsys augmented_system.cc)
+target_link_libraries(comptest compressor tank parcomp augsys)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 

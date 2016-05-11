@@ -11,6 +11,11 @@ class MpcController {
   typedef Eigen::Matrix<double, n_control_inputs, 1> Input;
   typedef Eigen::Matrix<double, n_outputs, 1> Output;
 
+  PlantInput GetNextInput(Output y);
+
+  void SetReference(Output y_ref) { y_ref_ = y_ref; }
+  Output GetReference() {return y_ref;}
+
  protected:
   DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs> *p_sys_;
   int p_;
@@ -27,7 +32,7 @@ class MpcController {
   const Eigen::Matrix<double, n_states, n_outputs> M_;
   const Eigen::Matrix<double, n_control_inputs, n_control_inputs> u_weight_;
   const Eigen::Matrix<double, n_outputs, n_outputs> y_weight_;
-  const static Eigen::Matrix<double, 2 * m * n_control_inputs,
+  const Eigen::Matrix<double, 2 * m * n_control_inputs,
                              m * n_control_inputs> Ain_;
 
   struct Prediction {

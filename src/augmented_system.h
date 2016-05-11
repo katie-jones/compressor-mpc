@@ -52,7 +52,6 @@ class AugmentedSystem {
     return u_control;
   }
 
-
  public:
   AugmentedSystem(const System &sys, const double Ts, const State &x_init,
                   const ObserverMatrix &M,
@@ -67,15 +66,17 @@ class AugmentedSystem {
                 Eigen::MatrixXd::Zero(n_delay_states + n_disturbance_states, 1))
                    .finished()),
         dx_aug_(dx_init),
-        u_old_(GetControlInput(u_init)),
         y_old_(y_init),
         M_(M),
         n_delay_(n_delay),
-        control_input_index_(control_input_index) {}
+        control_input_index_(control_input_index) {
+    u_old_ = GetControlInput(u_init);
+  }
 
   AugmentedSystem(const System &sys, const double Ts,
                   const AugmentedState &x_init, const ObserverMatrix &M,
                   std::array<int, System::n_control_inputs> n_delay,
+                  std::array<int, System::n_control_inputs> control_input_index,
                   const Input &u_init = Input(),
                   const Output &y_init = Output(),
                   const AugmentedState &dx_init = AugmentedState())
@@ -83,10 +84,12 @@ class AugmentedSystem {
         Ts_(Ts),
         x_aug_(x_init),
         dx_aug_(dx_init),
-        u_old_(GetControlInput(u_init)),
         y_old_(y_init),
         M_(M),
-        n_delay_(n_delay) {}
+        n_delay_(n_delay),
+        control_input_index_(control_input_index) {
+    u_old_ = GetControlInput(u_init);
+  }
 
   void ObserveAPriori(ControlInput u_new) {}
   void ObserveAPosteriori(Output y_new) {

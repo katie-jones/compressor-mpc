@@ -58,7 +58,7 @@ int main(void) {
   compsys.Integrate(0, tf, 0.05, CallbackSys);
 
   std::array<int, 2> n_delay = {0, 3};
-  std::array<int, 2> control_input_index = {0, 4};
+  std::array<int, 2> control_input_index = {0, 3};
 
   AugSys augsys =
       AugSys(x, 0.05, Compressor::GetDefaultState(), AugSys::ObserverMatrix(),

@@ -39,7 +39,7 @@ AugmentedSystem<System, n_disturbance_states,
       n_states, n_states) = Eigen::Matrix<double, n_disturbance_states,
                                           n_disturbance_states>::Identity();
 
-  int index_delay_states = n_states + n_disturbance_states;
+  int index_delay_states = n_obs_states;
 
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
@@ -56,8 +56,7 @@ AugmentedSystem<System, n_disturbance_states,
   }
 
   sys_out.C.template leftCols<n_states>() = sys_discrete.C;
-  sys_out.C.template block<n_outputs, n_disturbance_states>(
-      0, n_states + n_disturbance_states) =
+  sys_out.C.template block<n_outputs, n_disturbance_states>(0, n_obs_states) =
       Eigen::Matrix<double, n_outputs, n_disturbance_states>::Identity();
 
   return sys_out;
@@ -66,14 +65,12 @@ AugmentedSystem<System, n_disturbance_states,
 template <class System, int n_disturbance_states, int n_delay_states>
 void AugmentedSystem<System, n_disturbance_states,
                      n_delay_states>::ObserveAPosteriori(Output &y_new) {
-  dx_aug_.template head<n_states + n_disturbance_states>() =
-      dx_aug_.template head<n_states + n_disturbance_states>() +
+  dx_aug_.template head<n_obs_states>() =
+      dx_aug_.template head<n_obs_states>() +
       M_ *
           (y_new - y_old_ -
-           (Output)(auglinsys_.C
-                        .template leftCols<n_states + n_disturbance_states>() *
-                    (dx_aug_.template head<n_states + n_disturbance_states>())))
-              .matrix();
+           (Output)(auglinsys_.C.template leftCols<n_obs_states>() *
+                    (dx_aug_.template head<n_obs_states>()))).matrix();
 
   x_aug_.template head<n_states>() =
       x_aug_.template head<n_states>() + dx_aug_.template head<n_states>();
@@ -90,8 +87,7 @@ void AugmentedSystem<System, n_disturbance_states,
 
   AugmentedState dx0 = AugmentedState::Zero();
   ControlInput du0;
-  dx0.template tail<n_disturbance_states + n_delay_states>() =
-      dx_aug_.template tail<n_disturbance_states + n_delay_states>();
+  dx0.template tail<n_aug_states>() = dx_aug_.template tail<n_aug_states>();
 
   int n_cumulative_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) {
@@ -99,7 +95,7 @@ void AugmentedSystem<System, n_disturbance_states,
       du0(i) = u_new(i) - u_old_(i);
     } else {
       du0(i) = u_new(i);
-      dx0(n_states + n_disturbance_states + n_cumulative_delay) -= u_old_(i);
+      dx0(n_obs_states + n_cumulative_delay) -= u_old_(i);
       n_cumulative_delay += n_delay_[i];
     }
   }

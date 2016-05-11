@@ -7,30 +7,31 @@
 
 template <class System, int n_disturbance_states, int n_delay_states>
 class AugmentedSystem {
- protected:
+ private:
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_states = System::n_states;
 
- public:
-  typedef Eigen::Matrix<double, n_states + n_disturbance_states, n_outputs>
-      ObserverMatrix;
+  static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
+  static constexpr int n_obs_states = n_states + n_disturbance_states;
+  static constexpr int n_total_states = n_aug_states + n_states;
 
-  using AugmentedLinearizedSystem =
-      typename DynamicSystem<n_states + n_disturbance_states + n_delay_states,
-                             n_inputs, n_outputs, n_control_inputs>::Linearized;
-
- protected:
   typedef typename System::Linearized LinearizedSystem;
   typedef typename System::State State;
   typedef typename System::Output Output;
   typedef typename System::Input Input;
   typedef Eigen::Matrix<double, n_control_inputs, 1> ControlInput;
-  typedef Eigen::Matrix<double,
-                        n_states + n_disturbance_states + n_delay_states,
-                        1> AugmentedState;
+  typedef Eigen::Matrix<double, n_total_states, 1> AugmentedState;
+  using AugmentedLinearizedSystem =
+      typename DynamicSystem<n_total_states, n_inputs, n_outputs,
+                             n_control_inputs>::Linearized;
 
+ public:
+  typedef Eigen::Matrix<double, n_obs_states, n_outputs>
+      ObserverMatrix;
+
+ private:
   System sys_;
   const double Ts_;
   AugmentedState x_aug_;
@@ -68,35 +69,32 @@ class AugmentedSystem {
  public:
   AugmentedSystem(const System &sys, const double Ts, const State &x_init,
                   const ObserverMatrix &M,
-                  std::array<int, n_control_inputs> n_delay,
-                  std::array<int, n_control_inputs> control_input_index,
-                  const Input &u_init = Input(),
-                  const Output &y_init = Output(),
-                  const AugmentedState &dx_init = AugmentedState())
-      : sys_(sys),
-        Ts_(Ts),
-        x_aug_((AugmentedState() << x_init,
-                Eigen::MatrixXd::Zero(n_delay_states + n_disturbance_states, 1))
-                   .finished()),
-        dx_aug_(dx_init),
-        y_old_(y_init),
-        M_(M),
-        n_delay_(n_delay),
-        control_input_index_(control_input_index) {
-    u_old_ = GetControlInput(u_init);
-  }
+                  const std::array<int, n_control_inputs> &n_delay,
+                  const std::array<int, n_control_inputs> &control_input_index,
+                  const Input &u_init = Input::Zero(),
+                  const Input &u_offset = Input::Zero(),
+                  const Output &y_init = Output::Zero(),
+                  const AugmentedState &dx_init = AugmentedState::Zero())
+      : AugmentedSystem(
+            sys, Ts,
+            (AugmentedState() << x_init,
+             Eigen::Matrix<double, n_aug_states, 1>::Zero()).finished(),
+            M, n_delay, control_input_index, u_init, u_offset, y_init,
+            dx_init) {}
 
   AugmentedSystem(const System &sys, const double Ts,
                   const AugmentedState &x_init, const ObserverMatrix &M,
-                  std::array<int, n_control_inputs> n_delay,
-                  std::array<int, n_control_inputs> control_input_index,
-                  const Input &u_init = Input(),
-                  const Output &y_init = Output(),
-                  const AugmentedState &dx_init = AugmentedState())
+                  const std::array<int, n_control_inputs> &n_delay,
+                  const std::array<int, n_control_inputs> &control_input_index,
+                  const Input &u_init = Input::Zero(),
+                  const Input &u_offset = Input::Zero(),
+                  const Output &y_init = Output::Zero(),
+                  const AugmentedState &dx_init = AugmentedState::Zero())
       : sys_(sys),
         Ts_(Ts),
         x_aug_(x_init),
         dx_aug_(dx_init),
+        u_offset_(u_offset),
         y_old_(y_init),
         M_(M),
         n_delay_(n_delay),

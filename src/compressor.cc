@@ -1,7 +1,7 @@
 #include "compressor.h"
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 
 #include "global.h"
 #include "valve_eqs.h"
@@ -137,7 +137,7 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   // Approximate deadzone using exponentials
   constexpr double x0 = 1e-2;
   double dmr_ur =
-      params_.tau_r * params_.m_rec_ss_c(0) * sqrt(p2 * 1e5 - p1 * 2e5);
+      params_.tau_r * params_.m_rec_ss_c(0) * sqrt(p2 * 1e5 - p1 * 1e5);
   if (u_rec < 2 * x0) {
     double a;
     if (u_rec >= x0) {

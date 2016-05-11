@@ -2,6 +2,8 @@
 #define DYNAMIC_SYSTEM_H
 
 #include <Eigen/Eigen>
+#include <iostream>
+#include <iomanip>
 
 // class Observer;
 
@@ -33,6 +35,29 @@ class DynamicSystem {
     Eigen::Matrix<double, n_outputs, n_states, Eigen::RowMajor> C;
     Eigen::Matrix<double, n_outputs, n_control_inputs, Eigen::RowMajor> D;
     Eigen::Matrix<double, n_states, 1> f;
+    friend std::ostream& operator<<(std::ostream& os,
+                                    const Linearized& linsys) {
+      print_matrix(os, linsys.A, "A");
+      print_matrix(os, linsys.B, "B");
+      print_matrix(os, linsys.C, "C");
+      return os;
+    }
+
+   private:
+    template <typename Derived>
+    static std::ostream& print_matrix(std::ostream& os,
+                                      const Eigen::MatrixBase<Derived>& x,
+                                      const std::string name) {
+      os << name << " = " << std::endl;
+      for (int i = 0; i < x.rows(); i++) {
+        for (int j = 0; j < x.cols(); j++) {
+          os << std::setprecision(3) << std::setw(10) << x(i, j) << " ";
+        }
+        os << std::endl;
+      }
+      os << std::endl;
+      return os;
+    }
   };
 
   virtual ~DynamicSystem() {}

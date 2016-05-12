@@ -5,7 +5,7 @@ template <class System, int n_disturbance_states, int n_delay_states>
 typename AugmentedSystem<System, n_disturbance_states,
                          n_delay_states>::LinearizedSystem
 AugmentedSystem<System, n_disturbance_states, n_delay_states>::DiscretizeRK4(
-    LinearizedSystem &sys_continuous) {
+    const LinearizedSystem &sys_continuous) {
   LinearizedSystem sys_discrete;
   Eigen::Matrix<double, n_states, n_states> A2, A3, Acommon;
 
@@ -27,7 +27,7 @@ template <class System, int n_disturbance_states, int n_delay_states>
 typename AugmentedSystem<System, n_disturbance_states,
                          n_delay_states>::AugmentedLinearizedSystem
 AugmentedSystem<System, n_disturbance_states,
-                n_delay_states>::LinearizeAndAugment(LinearizedSystem &
+                n_delay_states>::LinearizeAndAugment(const LinearizedSystem &
                                                          sys_continuous) {
   AugmentedLinearizedSystem sys_out;
   sys_out.A.setZero();

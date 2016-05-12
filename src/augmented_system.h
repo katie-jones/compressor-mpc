@@ -7,7 +7,7 @@
 
 template <class System, int n_disturbance_states, int n_delay_states>
 class AugmentedSystem {
- private:
+ public:
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
@@ -28,8 +28,7 @@ class AugmentedSystem {
                              n_control_inputs>::Linearized;
 
  public:
-  typedef Eigen::Matrix<double, n_obs_states, n_outputs>
-      ObserverMatrix;
+  typedef Eigen::Matrix<double, n_obs_states, n_outputs> ObserverMatrix;
 
  private:
   System sys_;
@@ -44,9 +43,9 @@ class AugmentedSystem {
   std::array<int, n_control_inputs> n_delay_;
   std::array<int, n_control_inputs> control_input_index_;
 
-  LinearizedSystem DiscretizeRK4(LinearizedSystem &sys_continuous);
+  LinearizedSystem DiscretizeRK4(const LinearizedSystem &sys_continuous);
   AugmentedLinearizedSystem LinearizeAndAugment(
-      LinearizedSystem &sys_continuous);
+      const LinearizedSystem &sys_continuous);
 
   ControlInput GetControlInput(Input u, Input offset = Input::Zero()) {
     ControlInput u_control;
@@ -80,7 +79,10 @@ class AugmentedSystem {
             (AugmentedState() << x_init,
              Eigen::Matrix<double, n_aug_states, 1>::Zero()).finished(),
             M, n_delay, control_input_index, u_init, u_offset, y_init,
-            dx_init) {}
+            dx_init) {
+    auglinsys_ =
+        LinearizeAndAugment((sys_.GetLinearizedSystem(x_init, u_init)));
+  }
 
   AugmentedSystem(const System &sys, const double Ts,
                   const AugmentedState &x_init, const ObserverMatrix &M,
@@ -100,10 +102,13 @@ class AugmentedSystem {
         n_delay_(n_delay),
         control_input_index_(control_input_index) {
     u_old_ = GetControlInput(u_init);
+    auglinsys_ = LinearizeAndAugment(
+        sys_.GetLinearizedSystem(x_init.template head<n_states>(), u_init));
   }
 
   void ObserveAPriori(ControlInput &u_new);
   void ObserveAPosteriori(Output &y_new);
+  AugmentedLinearizedSystem GetLinearization() const { return auglinsys_; }
 };
 
 #endif

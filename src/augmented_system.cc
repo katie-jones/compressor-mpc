@@ -31,6 +31,9 @@ AugmentedSystem<System, n_disturbance_states,
                                                          sys_continuous) {
   AugmentedLinearizedSystem sys_out;
   sys_out.A.setZero();
+  sys_out.B.setZero();
+  sys_out.C.setZero();
+  sys_out.f.setZero();
 
   LinearizedSystem sys_discrete = DiscretizeRK4(sys_continuous);
 
@@ -56,8 +59,10 @@ AugmentedSystem<System, n_disturbance_states,
   }
 
   sys_out.C.template leftCols<n_states>() = sys_discrete.C;
-  sys_out.C.template block<n_outputs, n_disturbance_states>(0, n_obs_states) =
+  sys_out.C.template block<n_outputs, n_disturbance_states>(0, n_states) =
       Eigen::Matrix<double, n_outputs, n_disturbance_states>::Identity();
+
+  sys_out.f.template head<n_states>() = sys_discrete.f;
 
   return sys_out;
 }

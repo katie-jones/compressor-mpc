@@ -5,14 +5,10 @@
 #include "tank.h"
 #include "parallel_compressors.h"
 #include "simulation_parallel_compressors.h"
-#include "augmented_system.h"
 #include "mpc_controller.h"
 
-extern template class AugmentedSystem<Compressor, 2, 3>;
-using AugSys = AugmentedSystem<Compressor, 2, 3>;
-
-extern template class MpcController<AugSys,5,2>;
-using Controller = MpcController<AugSys,5,2>;
+// extern template class MpcController<Compressor, 2, 3,5,2>;
+// using Controller = MpcController<Compressor, 2, 3,5,2>;
 
 void Callback(Compressor::State x, double t) {
   std::cout << "t: " << t << "\tx: ";
@@ -67,11 +63,8 @@ int main(void) {
   std::array<int, 2> n_delay = {0, 3};
   std::array<int, 2> control_input_index = {0, 3};
 
-  AugSys augsys =
-      AugSys(x, 0.05, Compressor::GetDefaultState(), AugSys::ObserverMatrix(),
-             n_delay, control_input_index);
-  Controller ctrl(augsys);
-  Controller::Prediction pred = ctrl.GetPredictionMatrices();
+  // Controller ctrl(augsys);
+  // Controller::Prediction pred = ctrl.GetPredictionMatrices();
 
 
   return 0;

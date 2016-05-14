@@ -109,6 +109,7 @@ class AugmentedSystem {
   void ObserveAPriori(ControlInput &u_new);
   void ObserveAPosteriori(Output &y_new);
   AugmentedLinearizedSystem GetLinearization() const { return auglinsys_; }
+  inline AugmentedState GetDeltaState() const { return dx_aug_; }
 };
 
 #endif

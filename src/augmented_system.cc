@@ -55,6 +55,7 @@ AugmentedSystem<System, n_disturbance_states,
                                size_block, size_block) =
           Eigen::MatrixXd::Identity(size_block, size_block);
       index_delay_states += n_delay_[i];
+      sys_out.B(index_delay_states - 1, i) = 1;
     }
   }
 

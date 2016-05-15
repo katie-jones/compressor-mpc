@@ -53,7 +53,7 @@ class MpcController {
   typedef Eigen::Matrix<double, n_control_inputs, n_control_inputs> UWeightType;
 
   /// Matrix of output weight terms
-  typedef Eigen::Matrix<double, n_outputs, n_outputs> YWeightType;
+  typedef Eigen::Matrix<double, p * n_outputs, p * n_outputs> YWeightType;
 
   /// Observer of dynamic system
   typedef Eigen::Matrix<double, n_obs_states, n_outputs> ObserverMatrix;

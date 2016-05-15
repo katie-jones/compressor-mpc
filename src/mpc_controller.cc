@@ -106,7 +106,6 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
   print_matrix(std::cout, auglinsys_.B, "B");
   print_matrix(std::cout, auglinsys_.C, "C");
   print_matrix(std::cout, auglinsys_.f, "f");
-
 }
 
 /*
@@ -118,8 +117,30 @@ const typename MpcController<System, n_delay_states, n_disturbance_states, p,
                              m>::QP
 MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
     const {
-      QP qp;
+  QP qp;
   const Prediction pred = GeneratePrediction();
+  const OutputPrediction dy_ref = y_ref_ - y_old_.template replicate<p, 1>();
+
+  AugmentedState delta_x0 = dx_aug_;
+  static_cast<State>(delta_x0.template head<n_states>()).setZero();
+
+  int index_delay_states = n_obs_states;
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] != 0) {
+      for (int j = 0; j < n_delay_[i]; j++) {
+        delta_x0(index_delay_states + j) -= u_old_[i];
+      }
+      index_delay_states += n_delay_[i];
+    }
+  }
+
+  qp.H = pred.Su.transpose() * y_weight_ * pred.Su;
+
+  qp.f = auglinsys_.f.template head<n_states>().transpose() *
+         pred.Sf.transpose() * y_weight_ * pred.Su;
+  qp.f -= dy_ref.transpose() * y_weight_ * pred.Su;
+  qp.f += delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
+
   return qp;
 }
 
@@ -141,7 +162,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
   pred.Sx.setZero();
   pred.Sf.setZero();
 
-  pred.Sf.template topRows<n_outputs>() = auglinsys_.C.template leftCols<n_states>();
+  pred.Sf.template topRows<n_outputs>() =
+      auglinsys_.C.template leftCols<n_states>();
 
   for (int i = 0; i < p; i++) {
     if (i > 0) {
@@ -161,7 +183,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
           ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
     }
     c_times_a *= auglinsys_.A;
-    pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) = c_times_a;
+    pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) =
+        c_times_a;
   }
 
   print_matrix(std::cout, pred.Su, "Su");
@@ -218,10 +241,10 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
               m>::GetControlInput(const Input& u) const {
   ControlInput u_control;
   for (int i = 0; i < n_control_inputs; i++) {
-    u_control(i) = u(control_input_index_[i]) - u_offset_(control_input_index_[i]);
+    u_control(i) =
+        u(control_input_index_[i]) - u_offset_(control_input_index_[i]);
   }
   return u_control;
 }
-
 
 #include "mpc_controller_list.h"

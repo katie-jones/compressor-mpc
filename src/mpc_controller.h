@@ -87,7 +87,8 @@ class MpcController {
 
   // Structure containing QP problem to solve
   struct QP {
-    Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs> H;
+    Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
+                  Eigen::RowMajor> H;
     Eigen::Matrix<double, m * n_control_inputs, 1> f;
   };
 

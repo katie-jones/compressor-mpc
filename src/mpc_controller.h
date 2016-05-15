@@ -3,6 +3,8 @@
 
 #include <Eigen/Eigen>
 #include "dynamic_system.h"
+#include "qpOASES.hpp"
+
 
 /**
  * MPC Controller for a dynamic system.
@@ -139,6 +141,7 @@ class MpcController {
       Ain_;  // matrix used for rate constraints
   // index such that ControlInput[i] -> Input[control_input_index_[i]]
   const std::array<int, n_control_inputs> control_input_index_;
+  qpOASES::SQProblem qp_problem_;  // qp problem to be solved using qpoase"
 };
 
 #endif

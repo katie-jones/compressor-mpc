@@ -248,11 +248,53 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 }
 
 /*
+ * Solve QP and return optimal input to apply
+ */
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m>
+const typename MpcController<System, n_delay_states, n_disturbance_states, p,
+                             m>::Input
+MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
+    const Output& y) {
+  ObserveAPosteriori(y);
+
+  return Input::Zero();
+}
+
+/*
+ * Initialize initial states and QP
+ */
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m>
+void MpcController<System, n_delay_states, n_disturbance_states, p,
+                   m>::SetInitialState(const State& x_init,
+                                       const ControlInput& u_init,
+                                       const AugmentedState& dx_init) {
+  x_aug_.template head<n_states>() = x_init;
+  u_old_ = u_init;
+  y_old_ = sys_.GetOutput(x_init);
+  dx_aug_ = dx_init;
+  x_aug_.template tail<n_aug_states>() = dx_init.template tail<n_aug_states>();
+  LinearizeAndAugment();
+  const QP qp = GenerateQP();
+
+  int n_wsr = n_wsr_max;
+
+  qp_problem_.init(
+      qp.H.data(), qp.f.data(), Ain_.data(), u_constraints_.lower_bound.data(),
+      u_constraints_.upper_bound.data(), u_constraints_.upper_rate_bound.data(),
+      u_constraints_.lower_rate_bound.data(), n_wsr, NULL);
+}
+
+/*
  * Default values for input constraints
  */
 template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 MpcController<System, n_delay_states, n_disturbance_states, p,
-                       m>::InputConstraints::InputConstraints() : upper_bound(ControlInput::Constant(std::nan(""))), lower_bound(ControlInput::Constant(-std::nan(""))), use_rate_constraints(false) {}
+              m>::InputConstraints::InputConstraints()
+    : upper_bound(ControlInput::Constant(std::nan(""))),
+      lower_bound(ControlInput::Constant(-std::nan(""))),
+      use_rate_constraints(false) {}
 
 #include "mpc_controller_list.h"

@@ -28,6 +28,8 @@ class MpcController {
   static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;
 
+  static constexpr int n_wsr_max = 10;  // max working set recalculations
+
  public:
   /// Number of states in augmented system
   static constexpr int n_total_states = n_aug_states + n_states;
@@ -86,28 +88,17 @@ class MpcController {
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
+        qp_problem_(
+            qpOASES::SQProblem(m * n_control_inputs, 2 * m * n_control_inputs)),
         y_weight_(y_weight) {}
 
-  /// Initialize the state, input and optionally state derivative of the system.
+  /**
+   * Initialize the state, input and optionally state derivative of the system.
+   * The QP problem is also initialized so further solutions can be obtained
+   * using the hotstart method.
+   */
   void SetInitialState(const State& x_init, const ControlInput& u_init,
-                       const State& dx_init = State()) {
-    x_aug_.template head<n_states>() = x_init;
-    u_old_ = u_init;
-    y_old_ = sys_.GetOutput(x_init);
-    dx_aug_.template head<n_states>() = dx_init;
-  }
-
-  /// Initialize the augmented state, input and optionally state derivative of
-  /// the system.
-  void SetInitialState(const AugmentedState& x_init, const ControlInput& u_init,
-                       const State& dx_init = State()) {
-    x_aug_ = x_init;
-    u_old_ = u_init;
-    y_old_ = sys_.GetOutput(x_init.template head<n_states>());
-    dx_aug_.template head<n_states>() = dx_init;
-    dx_aug_.template tail<n_aug_states>() =
-        x_init.template tail<n_aug_states>();
-  }
+                       const AugmentedState& dx_init = AugmentedState::Zero());
 
   /**
    * Compute the next input to apply to the system.

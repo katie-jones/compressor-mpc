@@ -102,10 +102,6 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
   sys_out.f.template head<n_states>() = sys_discrete.f;
 
   auglinsys_ = sys_out;
-  print_matrix(std::cout, auglinsys_.A, "A");
-  print_matrix(std::cout, auglinsys_.B, "B");
-  print_matrix(std::cout, auglinsys_.C, "C");
-  print_matrix(std::cout, auglinsys_.f, "f");
 }
 
 /*
@@ -209,9 +205,6 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
         c_times_a;
   }
 
-  print_matrix(std::cout, pred.Su, "Su");
-  print_matrix(std::cout, pred.Sf, "Sf");
-  print_matrix(std::cout, pred.Sx, "Sx");
 
   return pred;
 }

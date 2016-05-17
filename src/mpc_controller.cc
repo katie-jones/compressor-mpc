@@ -250,7 +250,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
 template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::ObserveAPriori(const ControlInput& u_in) {
+                   m>::ObserveAPriori(const ControlInput& du_in) {
   ControlInput du;
   AugmentedState dx = dx_aug_;
 
@@ -259,16 +259,15 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
 
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
-      du(i) = u_in(i) - u_old_(i);
+      du(i) = du_in(i);
     } else {
-      du(i) = u_in(i);
+      du(i) = u_old_(i) + du_in(i);
       dx(index_delay_states) -= u_old_(i);
       index_delay_states += n_delay_[i];
     }
   }
 
   dx_aug_ = auglinsys_.B * du + auglinsys_.A * dx + auglinsys_.f;
-  u_old_ = u_in;
 }
 
 /*
@@ -319,7 +318,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
   const ControlInput usol = SolveQP(qp);
   ObserveAPriori(usol);
 
-  return GetPlantInput(usol);
+  u_old_ += usol;
+  return GetPlantInput(u_old_);
 }
 
 /*

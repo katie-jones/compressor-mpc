@@ -66,7 +66,7 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
 
   /// Return default compressor state.
   static const inline State GetDefaultState() {
-    return ((State() << 0.898, 1.126, 0.15, 440, 0).finished());
+    return ((State() << 0.898, 1.126, 0.15, 439.5, 0).finished());
   }
 
   /// Return default compressor input.

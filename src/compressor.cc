@@ -123,7 +123,7 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
       params_.AdivL * (p1 * 1e5) * params_.A.dot(dM_dwcomp), 0;
 
   // Partial derivatives of omegac
-  linsys.A.row(3) << 0, 0, -1.0 / params_.J * params_.T_ss_c(0),
+  linsys.A.row(3) << 0, 0, -1.0 / params_.J * params_.T_ss_c(1),
       -1.0 / params_.J * td_in * params_.torque_drive_c / wc2, 0;
 
   // Partial derivatives of qr
@@ -155,14 +155,14 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   linsys.C << 0, 1, 0, 0, 0, 100 * p2 / (params_.SD_c(0) * p1 * p1),
       -100. / (params_.SD_c(0) * p1), 100, 0, 0;
 
-  linsys.f = GetDerivative(x,u);
+  linsys.f = GetDerivative(x, u);
 
   return linsys;
 }
 
 Compressor::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;
-  tau_r = 1 / 0.5 + 1;
+  tau_r = 1 / 0.5;
   A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,
        3.57321648097597e-05, -9.1783572200945e-07, -0.252701086129365,
        0.136885752773673, -0.02642368327081, 0.00161012740365743,
@@ -191,8 +191,8 @@ Compressor::Parameters::Parameters() {
 
   n_bar = 1e2;
 
-  V1 = 2 * pi * (0.60 / 2) * (0.60 / 2) * 2 +
-       pi * (0.08 / 2) * (0.08 / 2) * 8.191;
+  V1 = 2 * pi * (0.60 / 2.0) * (0.60 / 2.0) * 2 +
+       pi * (0.08 / 2.0) * (0.08 / 2.0) * 8.191;
   V2 = 0.5 * V1;
 
   AdivL = pi * (0.08 / 2) * (0.08 / 2) / 3 * 0.1;

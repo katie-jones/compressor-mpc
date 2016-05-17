@@ -226,7 +226,26 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
 template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::ObserveAPriori(const ControlInput& u_in) {}
+                   m>::ObserveAPriori(const ControlInput& u_in) {
+  ControlInput du;
+  AugmentedState dx = dx_aug_;
+
+  dx.template head<n_states>().setZero();
+  int index_delay_states = n_obs_states;
+
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] == 0) {
+      du(i) = u_in(i) - u_old_(i);
+    } else {
+      du(i) = u_in(i);
+      dx(index_delay_states) -= u_old_(i);
+      index_delay_states += n_delay_[i];
+    }
+  }
+
+  dx_aug_ = auglinsys_.B * du + auglinsys_.A * dx + auglinsys_.f;
+  u_old_ = u_in;
+}
 
 /*
  * Calculate a plant input based on control input and offset

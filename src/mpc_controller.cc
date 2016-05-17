@@ -87,8 +87,8 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
       sys_out.A.template block<n_states, 1>(0, index_delay_states) =
           sys_discrete.B.col(i);
       const int size_block = n_delay_[i] - 1;
-      sys_out.A.template block(index_delay_states, index_delay_states + 1,
-                               size_block, size_block) =
+      sys_out.A.block(index_delay_states, index_delay_states + 1, size_block,
+                      size_block) =
           Eigen::MatrixXd::Identity(size_block, size_block);
       index_delay_states += n_delay_[i];
       sys_out.B(index_delay_states - 1, i) = 1;

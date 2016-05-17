@@ -247,4 +247,12 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
   return u_control;
 }
 
+/*
+ * Default values for input constraints
+ */
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m>
+MpcController<System, n_delay_states, n_disturbance_states, p,
+                       m>::InputConstraints::InputConstraints() : upper_bound(ControlInput::Constant(std::nan(""))), lower_bound(ControlInput::Constant(-std::nan(""))), use_rate_constraints(false) {}
+
 #include "mpc_controller_list.h"

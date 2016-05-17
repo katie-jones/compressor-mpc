@@ -24,44 +24,54 @@ void CallbackSys(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
-  Compressor x;
+  // Compressor x;
 
-  Compressor::State xin = Compressor::GetDefaultState();
-  Compressor::Linearized linsys =
-      x.GetLinearizedSystem(xin, Compressor::GetDefaultInput());
+  // Compressor::State xin = Compressor::GetDefaultState();
+  // Compressor::Linearized linsys =
+      // x.GetLinearizedSystem(xin, Compressor::GetDefaultInput());
 
-  std::cout << xin(0) << std::endl;
-  std::cout << linsys.A(0, 0) << std::endl;
-  std::cout << linsys.B(3, 1) << std::endl;
+  // std::cout << xin(0) << std::endl;
+  // std::cout << linsys.A(0, 0) << std::endl;
+  // std::cout << linsys.B(3, 1) << std::endl;
 
-  SimulationCompressor y;
-  y.Integrate(0, 1, 0.05, &Callback);
+  // SimulationCompressor y;
+  // y.Integrate(0, 1, 0.05, &Callback);
 
-  Tank z;
-  Tank::State xt;
-  xt << 1.12;
-  Tank::Input yt;
-  yt << 0.7, 1, 0.3;
-  Tank::Linearized zlin = z.GetLinearizedSystem(xt, yt);
-  // std::cout << zlin.A(0) << std::endl;
+  // Tank z;
+  // Tank::State xt;
+  // xt << 1.12;
+  // Tank::Input yt;
+  // yt << 0.7, 1, 0.3;
+  // Tank::Linearized zlin = z.GetLinearizedSystem(xt, yt);
+  // // std::cout << zlin.A(0) << std::endl;
 
-  ParallelCompressors parcomp = ParallelCompressors();
-  ParallelCompressors::Linearized plin =
-      parcomp.GetLinearizedSystem(ParallelCompressors::GetDefaultState(),
-                                  ParallelCompressors::GetDefaultInput());
-  std::cout << plin.A(10, 1) << std::endl;
+  // ParallelCompressors parcomp = ParallelCompressors();
+  // ParallelCompressors::Linearized plin =
+      // parcomp.GetLinearizedSystem(ParallelCompressors::GetDefaultState(),
+                                  // ParallelCompressors::GetDefaultInput());
+  // std::cout << plin.A(10, 1) << std::endl;
 
-  std::ifstream finaltime("finaltime.txt");
-  double tf;
-  finaltime >> tf;
-  SimulationParallelCompressors compsys = SimulationParallelCompressors();
-  compsys.Integrate(0, tf, 0.05, CallbackSys);
-
-
+  // std::ifstream finaltime("finaltime.txt");
+  // double tf;
+  // finaltime >> tf;
+  // SimulationParallelCompressors compsys = SimulationParallelCompressors();
+  // compsys.Integrate(0, tf, 0.05, CallbackSys);
 
 
-  std::array<int, 2> n_delay = {0, 3};
-  std::array<int, 2> control_input_index = {0, 3};
+
+
+  // std::array<int, 2> n_delay = {0, 3};
+  // std::array<int, 2> control_input_index = {0, 3};
+
+  // std::array<double, 2*2*2*3*3> A = MpcController<Compressor, 4, 2, 20, 3>::GetConstraintMatrix();
+
+  // std::cout << "A = " << std::endl;
+  // for (int i=0; i<2*3*2; i++) {
+    // for (int j=0; j<2*3; j++) {
+      // std::cout << A[j+6*i] << "\t";
+    // }
+    // std::cout << std::endl;
+  // }
 
   // Controller ctrl(augsys);
   // Controller::Prediction pred = ctrl.GetPredictionMatrices();

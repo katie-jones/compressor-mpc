@@ -134,12 +134,27 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
     }
   }
 
-  qp.H = pred.Su.transpose() * y_weight_ * pred.Su;
+  Eigen::MatrixXd y_weight_full(p * n_outputs, p * n_outputs);
+  y_weight_full.setZero();
+  for (int i = 0; i < p; i++) {
+    y_weight_full.template block<n_outputs, n_outputs>(
+        i * n_outputs, i * n_outputs) = y_weight_;
+  }
+
+  Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs>
+      u_weight_full;
+  u_weight_full.setZero();
+  for (int i = 0; i < m; i++) {
+    u_weight_full.template block<n_control_inputs, n_control_inputs>(
+        i * n_control_inputs, i * n_control_inputs) = u_weight_;
+  }
+
+  qp.H = pred.Su.transpose() * y_weight_full * pred.Su + u_weight_full;
 
   qp.f = auglinsys_.f.template head<n_states>().transpose() *
-         pred.Sf.transpose() * y_weight_ * pred.Su;
-  qp.f -= dy_ref.transpose() * y_weight_ * pred.Su;
-  qp.f += delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
+         pred.Sf.transpose() * y_weight_full * pred.Su;
+  qp.f -= dy_ref.transpose() * y_weight_full * pred.Su;
+  qp.f += delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
 
   return qp;
 }

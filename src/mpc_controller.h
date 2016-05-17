@@ -3,6 +3,7 @@
 
 #include <Eigen/Eigen>
 #include "dynamic_system.h"
+#include "mpc_exceptions.h"
 #include "qpOASES.hpp"
 
 /**
@@ -89,8 +90,14 @@ class MpcController {
         u_constraints_(constraints),
         u_weight_(u_weight),
         qp_problem_(
-            qpOASES::SQProblem(m * n_control_inputs, 2 * m * n_control_inputs)),
-        y_weight_(y_weight) {}
+            qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
+        y_weight_(y_weight) {
+    int sum_delay = 0;
+    for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
+    if (sum_delay != n_delay_states) {
+      throw delay_states_wrong();
+    }
+  }
 
   /**
    * Initialize the state, input and optionally state derivative of the system.
@@ -163,21 +170,17 @@ class MpcController {
   const ControlInput GetControlInput(const Input& u) const;
 
   // output rate constraint matrix
-  static const inline std::array<double, 2 * m * n_control_inputs * m *
-                                             n_control_inputs>
+  static const inline std::array<double,
+                                 m * n_control_inputs * m * n_control_inputs>
   GetConstraintMatrix() {
-    std::array<double, 2 * m * n_control_inputs * m * n_control_inputs> A;
-    for (int i = 0; i < 2 * m * m * n_control_inputs * n_control_inputs; i++)
+    std::array<double, m * n_control_inputs * m * n_control_inputs> A;
+    for (int i = 0; i < m * m * n_control_inputs * n_control_inputs; i++)
       A[i] = 0;
 
     for (int i = 0; i < m * n_control_inputs; i++) {
       A[i + m * n_control_inputs * i] = 1;
-      A[i + m * n_control_inputs * i +
-        m * n_control_inputs * m * n_control_inputs] = -1;
       if (i % (m * n_control_inputs) >= n_control_inputs) {
         A[i - n_control_inputs + m * n_control_inputs * i] = -1;
-        A[i - n_control_inputs + n_control_inputs * i +
-          m * n_control_inputs * m * n_control_inputs] = 1;
       }
     }
     return A;
@@ -197,7 +200,7 @@ class MpcController {
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input
   const InputConstraints u_constraints_;  // input constraints of system
-  const std::array<double, 2 * m * n_control_inputs * m * n_control_inputs>
+  const std::array<double, m * n_control_inputs * m * n_control_inputs>
       Ain_;  // matrix used for rate constraints
   // index such that ControlInput[i] -> Input[control_input_index_[i]]
   const ControlInputIndex control_input_index_;

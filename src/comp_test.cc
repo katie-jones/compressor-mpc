@@ -8,15 +8,19 @@
 #include "mpc_controller.h"
 #include "print_matrix.h"
 
-extern template class MpcController<Compressor, 2, 2, 5, 2>;
-using Controller = MpcController<Compressor, 2, 2, 5, 2>;
-
 namespace Control {
 constexpr int n_delay_states = 2;
 constexpr int n_disturbance_states = 2;
-constexpr int p = 5;
+constexpr int p = 100;
 constexpr int m = 2;
 }
+
+extern template class MpcController<Compressor, Control::n_delay_states,
+                                    Control::n_disturbance_states, Control::p,
+                                    Control::m>;
+using Controller =
+    MpcController<Compressor, Control::n_delay_states,
+                  Control::n_disturbance_states, Control::p, Control::m>;
 
 void Callback(Compressor::State x, double t) {
   std::cout << "t: " << t << "\tx: ";
@@ -83,8 +87,7 @@ int main(void) {
   // Controller::Prediction pred = ctrl.GetPredictionMatrices();
   const Controller::ObserverMatrix M =
       (Controller::ObserverMatrix()
-           << Eigen::Matrix<double, x.n_states,
-                            x.n_control_inputs>::Zero(),
+           << Eigen::Matrix<double, x.n_states, x.n_control_inputs>::Zero(),
        Eigen::Matrix<double, Control::n_delay_states,
                      Control::n_delay_states>::Identity()).finished();
   const Controller::ControlInputIndex delay = {0, 2};
@@ -95,8 +98,10 @@ int main(void) {
   constraints.upper_bound << 0.3, 1;
   constraints.lower_rate_bound << -0.1, -0.1;
   constraints.upper_rate_bound << 0.1, 1;
+  constraints.use_rate_constraints = true;
 
-  Controller ctrl(x, M, 0.05, delay, index);
+  Controller ctrl(x, M, 0.05, delay, index, Controller::UWeightType::Identity(),
+                  Controller::YWeightType::Identity(), constraints);
   ctrl.SetInitialState(x.GetDefaultState(), Controller::ControlInput::Zero());
   Compressor::Input u = ctrl.GetNextInput(Compressor::Output::Zero());
   print_matrix(std::cout, u.matrix(), "u");

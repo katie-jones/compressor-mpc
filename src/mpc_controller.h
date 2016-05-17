@@ -2,6 +2,7 @@
 #define MPC_CONTROLLER_H
 
 #include <Eigen/Eigen>
+#include <Eigen/SparseCore>
 #include "dynamic_system.h"
 #include "mpc_exceptions.h"
 #include "qpOASES.hpp"

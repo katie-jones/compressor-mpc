@@ -202,8 +202,22 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
 const typename MpcController<System, n_delay_states, n_disturbance_states, p,
                              m>::ControlInput
 MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
-    const QP& qp) const {
-  return ControlInput();
+    const QP& qp) {
+  int n_wsr = n_wsr_max;
+
+  qpOASES::returnValue status = qp_problem_.hotstart(
+      qp.H.data(), qp.f.data(), Ain_.data(), u_constraints_.lower_bound.data(),
+      u_constraints_.upper_bound.data(), u_constraints_.upper_rate_bound.data(),
+      u_constraints_.lower_rate_bound.data(), n_wsr, NULL);
+
+  if (status != qpOASES::SUCCESSFUL_RETURN) {
+    // QP not solved, return zeros
+    return ControlInput::Zero();
+  }
+
+  ControlInput u_solution;
+  qp_problem_.getPrimalSolution(u_solution.data());
+  return u_solution;
 }
 
 /*

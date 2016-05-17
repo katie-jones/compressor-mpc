@@ -151,7 +151,7 @@ class MpcController {
   const QP GenerateQP() const;
 
   // use QPoases to solve QP
-  const ControlInput SolveQP(const QP& qp) const;
+  const ControlInput SolveQP(const QP& qp);
 
   // Generate state prediction
   void ObserveAPriori(const ControlInput& u_in);

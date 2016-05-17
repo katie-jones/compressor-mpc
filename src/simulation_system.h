@@ -53,16 +53,7 @@ class SimulationSystem
    * If one or more of the entries in u_in violates the system constraints, the
    * maximum/minimum value that respects the constraints is used.
    */
-  void SetInput(Input u_in) {
-    for (int i = 0; i < n_inputs; i++) {
-      u[i] = std::fmin(
-          std::fmin(
-              std::fmax(std::fmax(u_in[i], this->lower_input_constraint[i]),
-                        u[i] - this->lower_input_rate_constraint[i]),
-              this->upper_input_constraint[i]),
-          u[i] + this->upper_input_rate_constraint[i]);
-    }
-  }
+  void SetInput(Input u_in) { u = u_in; }
 
   void SetState(State x_in) { x = x_in; }
 

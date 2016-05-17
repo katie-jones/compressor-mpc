@@ -120,6 +120,13 @@ class MpcController {
 
   /// Get the reference output trajectory
   OutputPrediction GetReference() const { return y_ref_; }
+  
+  /// output plant input based on control input and offset
+  const Input GetPlantInput(const ControlInput& u_control) const;
+
+  /// output control input based on plant input and offset
+  const ControlInput GetControlInput(const Input& u) const;
+
 
  protected:
   // Augmented linearized system
@@ -163,12 +170,6 @@ class MpcController {
 
   // Generate state prediction
   void ObserveAPriori(const ControlInput& u_in);
-
-  // output plant input based on control input and offset
-  const Input GetPlantInput(const ControlInput& u_control) const;
-
-  // output control input based on plant input and offset
-  const ControlInput GetControlInput(const Input& u) const;
 
   // output rate constraint matrix
   static const inline std::array<double,

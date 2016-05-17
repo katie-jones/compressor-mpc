@@ -299,8 +299,12 @@ const typename MpcController<System, n_delay_states, n_disturbance_states, p,
 MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
     const Output& y) {
   ObserveAPosteriori(y);
+  LinearizeAndAugment();
+  const QP qp = GenerateQP();
+  const ControlInput usol = SolveQP(qp);
+  ObserveAPriori(usol);
 
-  return Input::Zero();
+  return GetPlantInput(usol);
 }
 
 /*

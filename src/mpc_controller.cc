@@ -44,13 +44,14 @@ const typename System::Linearized MpcController<
   A3 = A2 * sys_continuous.A;
   Acommon = Ts * Eigen::Matrix<double, n_states, n_states>::Identity() +
             Ts * Ts / 2.0 * sys_continuous.A + Ts * Ts * Ts / 6.0 * A2 +
-            Ts * Ts * Ts / 24.0 * A3;
+            Ts * Ts * Ts * Ts / 24.0 * A3;
 
   sys_discrete.A = Eigen::Matrix<double, n_states, n_states>::Identity() +
                    Acommon * sys_continuous.A;
   sys_discrete.B = Acommon * sys_continuous.B;
   sys_discrete.C = sys_continuous.C;
   sys_discrete.f = Acommon * sys_continuous.f;
+
   return sys_discrete;
 }
 
@@ -204,7 +205,6 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
     pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) =
         c_times_a;
   }
-
 
   return pred;
 }

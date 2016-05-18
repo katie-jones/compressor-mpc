@@ -39,6 +39,7 @@ class DynamicSystem {
       print_matrix(os, linsys.A, "A");
       print_matrix(os, linsys.B, "B");
       print_matrix(os, linsys.C, "C");
+      print_matrix(os, linsys.f, "f");
       return os;
     }
 

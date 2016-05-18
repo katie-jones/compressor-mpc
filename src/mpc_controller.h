@@ -127,6 +127,9 @@ class MpcController {
   /// output control input based on plant input and offset
   const ControlInput GetControlInput(const Input& u) const;
 
+  /// Output current state estimate
+  const State GetStateEstimate() const { return x_aug_.template head<n_states>(); }
+
 
  protected:
   // Augmented linearized system

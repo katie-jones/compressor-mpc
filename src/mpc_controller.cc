@@ -153,9 +153,9 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
   qp.H = pred.Su.transpose() * y_weight_full * pred.Su + u_weight_full;
 
   qp.f = auglinsys_.f.template head<n_states>().transpose() *
-         pred.Sf.transpose() * y_weight_full * pred.Su;
-  qp.f -= dy_ref.transpose() * y_weight_full * pred.Su;
-  qp.f += delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
+             pred.Sf.transpose() * y_weight_full * pred.Su -
+         dy_ref.transpose() * y_weight_full * pred.Su +
+         delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
 
   return qp;
 }
@@ -219,9 +219,9 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
 
   // Replicate constraints for number of moves
   const Eigen::Matrix<double, m * n_control_inputs, 1> lb =
-      u_constraints_.lower_bound.template replicate<m, 1>();
+      (u_constraints_.lower_bound - u_old_).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ub =
-      u_constraints_.upper_bound.template replicate<m, 1>();
+      (u_constraints_.upper_bound - u_old_).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> lbA =
       u_constraints_.lower_rate_bound.template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ubA =

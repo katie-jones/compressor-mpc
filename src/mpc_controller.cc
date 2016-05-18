@@ -1,6 +1,4 @@
 #include "mpc_controller.h"
-#include "print_matrix.h"
-#include <iostream>
 
 /*
  * Observe system given new output values from plant
@@ -116,7 +114,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
     const {
   QP qp;
   const Prediction pred = GeneratePrediction();
-  const OutputPrediction dy_ref = y_ref_ - y_old_.template replicate<p, 1>();
+  const OutputPrediction dy_ref = y_old_.template replicate<p, 1>() - y_ref_;
 
   AugmentedState delta_x0 = dx_aug_;
   static_cast<State>(delta_x0.template head<n_states>()).setZero();
@@ -136,7 +134,6 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
       Eigen::Matrix<double, p * n_control_inputs, 1>::Constant(
           n_control_inputs);
   y_weight_full.reserve(reserve_values);
-
   for (int i = 0; i < p; i++) {
     for (int j = 0; j < n_outputs * n_outputs; j++) {
       y_weight_full.insert(i * n_outputs + j % n_outputs,

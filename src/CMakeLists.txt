@@ -17,7 +17,7 @@ ADD_LIBRARY(qpOASESextras ${SRC} ${EXTRAS_SRC})
 
 
 
-add_executable(comptest comp_test.cc)
+add_executable(comptest linearized_test.cc)
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
 add_library(parcomp parallel_compressors.cc)

@@ -63,8 +63,8 @@ Compressor::Output Compressor::GetOutput(const State x) const {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
-  const double surge_distance = -(p2 / p1) / params_.SD_c(0) +
-                                params_.SD_c(1) / params_.SD_c(0) + mass_flow;
+  const double surge_distance = -params_.SD_multiplier * ((p2 / p1) / params_.SD_c(0) +
+                                params_.SD_c(1) / params_.SD_c(0) + mass_flow);
   Compressor::Output y;
   y << p2, surge_distance;
   return y;
@@ -184,6 +184,7 @@ Compressor::Parameters::Parameters() {
   T_ss_c = (Vec<3>() << 2.5543945754982, 47.4222669576423, 0.6218).finished();
 
   SD_c = (Vec<2>() << 5.55, 0.66).finished();
+  SD_multiplier = 100;
 
   torque_drive_c = 15000;
 

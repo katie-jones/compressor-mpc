@@ -25,7 +25,7 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   /// Parameters describing dynamics of compressor.
   struct Parameters {
     double J, tau_r, m_in_c, m_out_c, torque_drive_c, delta_bar, n_bar;
-    double V1, V2, AdivL;
+    double V1, V2, AdivL, SD_multiplier;
     Vec<8> C, D;
     Vec<12> A;
     Vec<2> m_rec_ss_c, SD_c;

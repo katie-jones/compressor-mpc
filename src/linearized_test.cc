@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <boost/timer/timer.hpp>
 #include "compressor.h"
 #include "simulation_compressor.h"
 #include "tank.h"
@@ -28,6 +29,8 @@ Controller *p_controller;
 std::ofstream output_file;
 
 void Callback(Compressor::State x, double t) {
+  boost::timer::cpu_timer mpc_timer;
+  mpc_timer.start();
   output_file << "t: " << t << "\tx: ";
   for (int i = 0; i < 5; i++) output_file << x[i] << "\t";
   output_file << std::endl;
@@ -41,8 +44,10 @@ void Callback(Compressor::State x, double t) {
   Controller::Input u = p_controller->GetNextInput(p_compressor->GetOutput(x));
   p_sim_compressor->SetInput(u);
   print_matrix(std::cout, u, "u");
-
-  Controller::ControlInput uctrl = p_controller->GetControlInput(u);
+  boost::timer::cpu_times elapsed = mpc_timer.elapsed();
+  boost::timer::nanosecond_type const elapsed_ns(elapsed.system + elapsed.user);
+  std::cout << " CPU TIME: " << elapsed_ns
+            << " WALLCLOCK TIME: " << elapsed.wall << std::endl;
 }
 
 int main(void) {
@@ -93,11 +98,16 @@ int main(void) {
   ctrl.SetInitialState(compressor.GetDefaultState(),
                        Controller::ControlInput::Zero());
 
-  sim_comp.Integrate(0, 2, sampling_time, &Callback);
-  // Compressor::Input u_disturbance = u_default;
-  // u_disturbance(1) -= 0.1;
-  // sim_comp.SetInput(u_disturbance);
-  // sim_comp.Integrate(10+sampling_time, 100, sampling_time, &Callback);
+  boost::timer::cpu_timer integrate_timer;
+  sim_comp.Integrate(0, 100, sampling_time, &Callback);
+  const boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
+  const boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
+                                                       int_elapsed.user);
+  std::cout << "CPU time: " << elapsed_ns << std::endl;
+  Compressor::Input u_disturbance = u_default;
+  u_disturbance(1) -= 0.3;
+  sim_comp.SetOffset(u_disturbance);
+  sim_comp.Integrate(100+sampling_time, 300, sampling_time, &Callback);
 
   output_file.close();
 

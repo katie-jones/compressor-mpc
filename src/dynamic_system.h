@@ -25,6 +25,9 @@ class DynamicSystem {
 
   /// Type describing system output.
   typedef Eigen::Matrix<double, n_outputs, 1> Output;
+  
+  /// Type describing system control input.
+  typedef Eigen::Matrix<double, n_control_inputs, 1> ControlInput;
 
  public:
   /// Linearized form of dynamic system.

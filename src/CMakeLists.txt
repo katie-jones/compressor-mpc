@@ -20,6 +20,7 @@ set(BOOST_ROOT "/mnt/shared/system/usr/local/include/boost_1_60_0")
 find_package(Boost REQUIRED timer)
 
 add_executable(comptest linearized_test.cc)
+add_executable(timetest delay_test.cc)
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
 add_library(parcomp parallel_compressors.cc)

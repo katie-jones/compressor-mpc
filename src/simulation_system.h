@@ -19,6 +19,10 @@ template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
 class SimulationSystem
     : public virtual DynamicSystem<n_states, n_inputs, n_outputs,
                                    n_control_inputs> {
+ public:
+  /// Vector of indices for a ControlInput
+  typedef std::array<int, n_control_inputs> ControlInputIndex;
+
  protected:
   typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
                                  n_control_inputs>::State State;
@@ -26,6 +30,8 @@ class SimulationSystem
                                  n_control_inputs>::Input Input;
   typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
                                  n_control_inputs>::Output Output;
+  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
+                                 n_control_inputs>::ControlInput ControlInput;
 
   // Type of stepper used to integrate
   typedef boost::numeric::odeint::runge_kutta_dopri5<
@@ -36,29 +42,48 @@ class SimulationSystem
   typedef boost::numeric::odeint::controlled_runge_kutta<Dopri5Stepper>
       ControlledStepper;
 
-  Input u;
-  State x;
+  State x_;
+  Input u_offset_;
+  Input u_;
 
-  SimulationSystem(State x_in, Input u_in) : x(x_in), u(u_in) {}
+  // index such that ControlInput[i] -> Input[control_input_index_[i]]
+  const ControlInputIndex control_input_index_;
+
+  SimulationSystem(Input u_offset, ControlInputIndex input_index,State x_in, 
+                   ControlInput u_init = ControlInput::Zero())
+      : x_(x_in),
+        u_offset_(u_offset),
+        control_input_index_(input_index),
+        u_(GetPlantInput(u_init)) {}
 
  public:
   /// Function pointer used for callback when integrating system.
   typedef void (*IntegrationCallbackPtr)(const State, const double);
 
-  Input GetCurrentInput() { return u; }
-  State GetCurrentState() { return x; }
+  ControlInput GetCurrentInput() { return u_; }
+  State GetCurrentState() { return x_; }
 
-  /**
-   * Update input values, considering constraints.
-   * If one or more of the entries in u_in violates the system constraints, the
-   * maximum/minimum value that respects the constraints is used.
-   */
-  void SetInput(Input u_in) { u = u_in; }
+  /// Update input offset.
+  void SetOffset(const Input& u_in) { u_offset_ = u_in; }
 
-  void SetState(State x_in) { x = x_in; }
+  /// Set input from controller.
+  void SetInput(const ControlInput u) { u_ = GetPlantInput(u); }
+  // void SetInput(const Input &u) { u_ = u; }
+
+  /// Update current state
+  void SetState(State x_in) { x_ = x_in; }
 
   /// Return output at current system state x
-  inline Output GetOutput() { return GetOutput(x); }
+  Output GetOutput() const { return GetOutput(x_); }
+
+  /// output plant input based on control input and offset
+  const Input GetPlantInput(const ControlInput& u_control) const {
+    Input u = u_offset_;
+    for (int i = 0; i < n_control_inputs; i++) {
+      u(control_input_index_[i]) += u_control(i);
+    }
+    return u;
+  }
 
   /**
    * Calculate the derivative of the system.
@@ -66,8 +91,8 @@ class SimulationSystem
    * state x_in and the inputs given in the member variable u. Return the
    * derivative in the second argument.
    */
-  void operator()(const State &x_in, State &dxdt, const double) const {
-    dxdt = this->GetDerivative(x_in, u);
+  void operator()(const State& x_in, State& dxdt, const double) const {
+    dxdt = this->GetDerivative(x_in, u_);
   }
 
   /**
@@ -86,8 +111,8 @@ class SimulationSystem
                  const double max_abs_error = 1e-6) {
     ControlledStepper stepper =
         make_controlled(max_rel_error, max_abs_error, Dopri5Stepper());
-    boost::numeric::odeint::integrate_const(stepper, std::ref(*this), x, t0, tf,
-                                            dt, callback);
+    boost::numeric::odeint::integrate_const(stepper, std::ref(*this), x_, t0,
+                                            tf, dt, callback);
   }
 };
 

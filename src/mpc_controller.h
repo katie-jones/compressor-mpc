@@ -113,7 +113,7 @@ class MpcController {
    * Linearizes the system about current state estimate and finds the optimal
    * input value by solving a QP it generates using the MPC formulation.
    */
-  const Input GetNextInput(const Output& y);
+  const ControlInput GetNextInput(const Output& y);
 
   /// Set the reference output trajectory
   void SetReference(const OutputPrediction& y_ref) { y_ref_ = y_ref; }

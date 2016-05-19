@@ -306,7 +306,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::Input
+                             m>::ControlInput
 MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
     const Output& y) {
   ObserveAPosteriori(y);
@@ -316,7 +316,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
   ObserveAPriori(usol);
 
   u_old_ += usol;
-  return GetPlantInput(u_old_);
+  return u_old_;
 }
 
 /*

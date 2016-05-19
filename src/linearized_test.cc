@@ -29,8 +29,8 @@ Controller *p_controller;
 std::ofstream output_file;
 
 void Callback(Compressor::State x, double t) {
-  boost::timer::cpu_timer mpc_timer;
-  mpc_timer.start();
+  // boost::timer::cpu_timer mpc_timer;
+  // mpc_timer.start();
   output_file << "t: " << t << "\tx: ";
   for (int i = 0; i < 5; i++) output_file << x[i] << "\t";
   output_file << std::endl;
@@ -41,13 +41,13 @@ void Callback(Compressor::State x, double t) {
   Controller::Output y = p_compressor->GetOutput(x);
   
   // Get and apply next input
-  Controller::Input u = p_controller->GetNextInput(p_compressor->GetOutput(x));
+  Controller::ControlInput u = p_controller->GetNextInput(p_compressor->GetOutput(x));
   p_sim_compressor->SetInput(u);
-  print_matrix(std::cout, u, "u");
-  boost::timer::cpu_times elapsed = mpc_timer.elapsed();
-  boost::timer::nanosecond_type const elapsed_ns(elapsed.system + elapsed.user);
-  std::cout << " CPU TIME: " << elapsed_ns
-            << " WALLCLOCK TIME: " << elapsed.wall << std::endl;
+  print_matrix(output_file, u, "u");
+  // boost::timer::cpu_times elapsed = mpc_timer.elapsed();
+  // boost::timer::nanosecond_type const elapsed_ns(elapsed.system + elapsed.user);
+  // std::cout << " CPU TIME: " << elapsed_ns
+            // << " WALLCLOCK TIME: " << elapsed.wall << std::endl;
 }
 
 int main(void) {
@@ -105,9 +105,9 @@ int main(void) {
                                                        int_elapsed.user);
   std::cout << "CPU time: " << elapsed_ns << std::endl;
   Compressor::Input u_disturbance = u_default;
-  u_disturbance(1) -= 0.3;
+  u_disturbance(2) -= 0.1;
   sim_comp.SetOffset(u_disturbance);
-  sim_comp.Integrate(100+sampling_time, 300, sampling_time, &Callback);
+  sim_comp.Integrate(100+sampling_time, 1000, sampling_time, &Callback);
 
   output_file.close();
 

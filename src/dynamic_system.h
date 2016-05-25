@@ -4,7 +4,6 @@
 #include <Eigen/Eigen>
 #include "print_matrix.h"
 
-// class Observer;
 
 /**
  * Abstract class describing a dynamic system.
@@ -14,7 +13,6 @@
  */
 template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
 class DynamicSystem {
-  // friend Observer;
 
  protected:
   /// Type describing system state.

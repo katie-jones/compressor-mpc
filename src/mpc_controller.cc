@@ -114,7 +114,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
     const {
   QP qp;
   const Prediction pred = GeneratePrediction();
-  const OutputPrediction dy_ref = y_old_.template replicate<p, 1>() - y_ref_;
+  const OutputPrediction dy_ref = y_ref_ - y_old_.template replicate<p, 1>();
 
   AugmentedState delta_x0 = dx_aug_;
   static_cast<State>(delta_x0.template head<n_states>()).setZero();

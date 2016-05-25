@@ -11,7 +11,6 @@ constexpr double speed_sound = 340.;
 
 using namespace Eigen;
 using namespace ValveEqs;
-// using namespace Constants;
 
 Compressor::State Compressor::GetDerivative(const State x, const Input u,
                                             double &m_out) const {
@@ -32,6 +31,7 @@ Compressor::State Compressor::GetDerivative(const State x, const Input u,
 
   const double m_in =
       CalculateValveMassFlow(p_in, p1, u_input, params_.C, params_.m_in_c);
+
   m_out = CalculateValveMassFlow(p2, p_out, u_out, params_.D, params_.m_out_c);
 
   double m_rec_ss =
@@ -63,7 +63,7 @@ Compressor::Output Compressor::GetOutput(const State x) const {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
-  const double surge_distance = -params_.SD_multiplier * ((p2 / p1) / params_.SD_c(0) +
+  const double surge_distance = params_.SD_multiplier * (-(p2 / p1) / params_.SD_c(0) +
                                 params_.SD_c(1) / params_.SD_c(0) + mass_flow);
   Compressor::Output y;
   y << p2, surge_distance;

@@ -5,11 +5,11 @@
 #include "compressor.h"
 #include "tank.h"
 
-class ParallelCompressors : public virtual DynamicSystem<11, 9, 5, 4> {
+class ParallelCompressors : public virtual DynamicSystem<11, 9, 4, 4> {
  public:
   constexpr static int n_states = 11;
   constexpr static int n_inputs = 9;
-  constexpr static int n_outputs = 5;
+  constexpr static int n_outputs = 4;
   constexpr static int n_control_inputs = 4;
 
   constexpr static int n_compressors = 2;

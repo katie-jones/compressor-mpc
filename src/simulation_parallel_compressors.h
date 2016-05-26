@@ -4,7 +4,7 @@
 #include "parallel_compressors.h"
 #include "simulation_system.h"
 
-class SimulationParallelCompressors : public SimulationSystem<11, 9, 5, 4>,
+class SimulationParallelCompressors : public SimulationSystem<11, 9, 4, 4>,
                                       public ParallelCompressors {
   typedef SimulationSystem<11, 9, 4, 4>::ControlInputIndex ControlInputIndex;
   static const ControlInputIndex GetDefaultInputIndex() { return {0, 3, 4, 7}; }

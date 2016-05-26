@@ -130,9 +130,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
   }
 
   Eigen::SparseMatrix<double> y_weight_full(p * n_outputs, p * n_outputs);
-  const Eigen::Matrix<double, p * n_control_inputs, 1> reserve_values =
-      Eigen::Matrix<double, p * n_control_inputs, 1>::Constant(
-          n_control_inputs);
+  const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
+      Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
   y_weight_full.reserve(reserve_values);
   for (int i = 0; i < p; i++) {
     for (int j = 0; j < n_outputs * n_outputs; j++) {

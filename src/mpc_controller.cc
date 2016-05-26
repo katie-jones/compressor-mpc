@@ -169,13 +169,14 @@ const typename MpcController<System, n_delay_states, n_disturbance_states, p,
 MpcController<System, n_delay_states, n_disturbance_states, p,
               m>::GeneratePrediction() const {
   Prediction pred;
+
+  pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_total_states);
+  pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
+  pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
+
   Eigen::Matrix<double, n_outputs, n_total_states> c_times_a = auglinsys_.C;
   Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
-
-  pred.Su.setZero();
-  pred.Sx.setZero();
-  pred.Sf.setZero();
 
   pred.Sf.template topRows<n_outputs>() =
       auglinsys_.C.template leftCols<n_states>();

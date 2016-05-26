@@ -120,7 +120,7 @@ class MpcController {
 
   /// Get the reference output trajectory
   OutputPrediction GetReference() const { return y_ref_; }
-  
+
   /// output plant input based on control input and offset
   const Input GetPlantInput(const ControlInput& u_control) const;
 
@@ -128,8 +128,9 @@ class MpcController {
   const ControlInput GetControlInput(const Input& u) const;
 
   /// Output current state estimate
-  const State GetStateEstimate() const { return x_aug_.template head<n_states>(); }
-
+  const State GetStateEstimate() const {
+    return x_aug_.template head<n_states>();
+  }
 
  protected:
   // Augmented linearized system
@@ -139,10 +140,7 @@ class MpcController {
 
   // Structure containing prediction matrices of augmented system
   struct Prediction {
-    Eigen::Matrix<double, p * n_outputs, n_total_states, Eigen::RowMajor> Sx;
-    Eigen::Matrix<double, p * n_outputs, m * n_control_inputs, Eigen::RowMajor>
-        Su;
-    Eigen::Matrix<double, p * n_outputs, n_states, Eigen::RowMajor> Sf;
+    Eigen::MatrixXd Sx, Sf, Su;
   };
 
   // Structure containing QP problem to solve

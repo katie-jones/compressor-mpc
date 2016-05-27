@@ -14,7 +14,7 @@ inline double CalculateValveDerivative(double p_in, double p_out,
   Vec<4> M;
   M << u_valve *u_valve *u_valve, u_valve *u_valve, u_valve, 1;
   return speed_sound * speed_sound / volume * 1e-5 * 
-         (-boost::math::sign(p_in - p_out) / 2. * 100 /
+         (boost::math::sign(p_in - p_out) / 2. * 100 /
           sqrt(std::abs(p_in * 100 - p_out * 100))) *
          M.dot(C.head<4>());
 }

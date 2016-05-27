@@ -78,7 +78,7 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
 
     // Tank derivative wrt tank pressure
     linsys.A(n_compressors * Cp::n_states, n_compressors * Cp::n_states) +=
-        CalculateValveDerivative(x(i * Cp::n_states + 1), x(n_states - 1),
+        -CalculateValveDerivative(x(i * Cp::n_states + 1), x(n_states - 1),
                                  u(i * n_comp_inputs + 2), comps_[i].params_.D,
                                  tank_.params_.volume);
   }

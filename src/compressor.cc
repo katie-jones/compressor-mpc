@@ -88,14 +88,14 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   const double p_out = u(5);
 
   // Partial derivatives of p1
-  linsys.A.row(0) << CalculateValveDerivative(p_in, p1, u_input, params_.C,
+  linsys.A.row(0) << -CalculateValveDerivative(p_in, p1, u_input, params_.C,
                                               params_.V1),
       0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
       speed_sound * speed_sound / params_.V1 * 1e-5;
 
   // Partial derivatives of p2
   linsys.A.row(1) << 0,
-      CalculateValveDerivative(p2, p_out, u_out, params_.D, params_.V2),
+      -CalculateValveDerivative(p2, p_out, u_out, params_.D, params_.V2),
       speed_sound * speed_sound / params_.V2 * 1e-5, 0,
       -speed_sound * speed_sound / params_.V2 * 1e-5;
 

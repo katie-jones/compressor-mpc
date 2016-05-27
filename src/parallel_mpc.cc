@@ -29,31 +29,24 @@ Controller *p_controller;
 std::ofstream output_file;
 
 void Callback(ParallelCompressors::State x, double t) {
-  // Update state
 
   output_file << t << std::endl;
-  for (int i = 0; i < ParallelCompressors::n_states; i++)
-    output_file << x[i] << "\t";
-  output_file << std::endl;
+  output_file << x.transpose() << std::endl;
 
   Controller::Output yref =
       p_controller->GetReference()
           .template head<ParallelCompressors::n_outputs>();
   Controller::Output y = p_compressor->GetOutput(x);
 
-  for (int i = 0; i < ParallelCompressors::n_outputs; i++)
-    output_file << yref(i) - y(i) << "\t";
-  output_file << std::endl;
+  output_file << y.transpose() << std::endl;
 
   // Get and apply next input
-  // Controller::ControlInput u =
-      // p_controller->GetNextInput(p_compressor->GetOutput(x));
-  // p_sim_compressor->SetInput(u);
+  Controller::ControlInput u =
+      p_controller->GetNextInput(p_compressor->GetOutput(x));
+  p_sim_compressor->SetInput(u);
 
-  // for (int i = 0; i < ParallelCompressors::n_control_inputs; i++)
-    // output_file << u(i) << "\t";
-  // output_file << std::endl
-              // << std::endl;
+  output_file << u.transpose() << std::endl
+              << std::endl;
 }
 
 int main(void) {
@@ -84,18 +77,14 @@ int main(void) {
   const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
                                                0, Control::n_delay_states / 2};
 
-  // index of controlled states
+  // index of controlled inputs
   const Controller::ControlInputIndex index = {0, 3, 4, 7};
 
-  const Controller::UWeightType uwt =
-      (Controller::UWeightType() << 2e4, 0, 0, 0, 0, 2e5, 0, 0, 0, 0, 2e4, 0, 0,
-       0, 0, 2e5).finished();
-  // (Controller::YWeightType() << 0.1, 0, -0.1, 0, 0, 0, 1, 0, 0, 0, -0.1, 0,
-  // 0.1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 5e2).finished();
+  Controller::UWeightType uwt = Controller::UWeightType::Zero();
+  uwt.diagonal() << 2e4, 2e5, 2e4, 2e5;
+
   Controller::YWeightType ywt = Controller::YWeightType::Zero();
   ywt.diagonal() << 1, 1, 0.1, 5e2;
-      // (Eigen::Diagonal<double, compressor.n_outputs>() << 1, 1, 0.1, 5e2)
-          // .finished();
 
   const Controller::Input offset = u_default;
 

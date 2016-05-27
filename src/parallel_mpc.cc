@@ -1,11 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <boost/timer/timer.hpp>
-#include "compressor.h"
-#include "simulation_compressor.h"
-#include "tank.h"
 #include "parallel_compressors.h"
-#include "simulation_parallel_compressors.h"
+#include "simulation_system.h"
 #include "mpc_controller.h"
 #include "print_matrix.h"
 
@@ -16,20 +13,37 @@ constexpr int p = 100;
 constexpr int m = 2;
 }
 
+// Define vector_space_norm_inf for the state used in order for odeint to work
+namespace boost {
+namespace numeric {
+namespace odeint {
+template <>
+struct vector_space_norm_inf<ParallelCompressors::State> {
+  typedef double result_type;
+  double operator()(ParallelCompressors::State x) const {
+    double absval = 0;
+    for (int i = 0; i < x.size(); i++) absval += x[i] * x[i];
+    return sqrt(absval);
+  }
+};
+}
+}
+}
+
 extern template class MpcController<
     ParallelCompressors, Control::n_delay_states, Control::n_disturbance_states,
     Control::p, Control::m>;
 using Controller =
     MpcController<ParallelCompressors, Control::n_delay_states,
                   Control::n_disturbance_states, Control::p, Control::m>;
+using SimSystem = SimulationSystem<ParallelCompressors>;
 
-SimulationParallelCompressors *p_sim_compressor;
+SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 Controller *p_controller;
 std::ofstream output_file;
 
 void Callback(ParallelCompressors::State x, double t) {
-
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
 
@@ -53,17 +67,18 @@ int main(void) {
   output_file.open("output.txt");
 
   ParallelCompressors compressor;
-  SimulationParallelCompressors sim_comp;
   p_compressor = &compressor;
-  p_sim_compressor = &sim_comp;
 
   ParallelCompressors::Input u_default = ParallelCompressors::GetDefaultInput();
   ParallelCompressors::State x_init =
       (ParallelCompressors::State() << 0.915654, 1.14501, 0.151568, 439.989, 0,
        0.915654, 1.14501, 0.151568, 439.989, 0, 1.12016).finished();
 
-  sim_comp.SetOffset(u_default);
-  sim_comp.SetState(x_init);
+  // index of controlled inputs
+  const Controller::ControlInputIndex index = {0, 3, 4, 7};
+
+  SimSystem sim_comp(p_compressor, u_default, index, x_init);
+  p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
 
@@ -76,9 +91,6 @@ int main(void) {
 
   const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
                                                0, Control::n_delay_states / 2};
-
-  // index of controlled inputs
-  const Controller::ControlInputIndex index = {0, 3, 4, 7};
 
   Controller::UWeightType uwt = Controller::UWeightType::Zero();
   uwt.diagonal() << 2e4, 2e5, 2e4, 2e5;

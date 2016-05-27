@@ -4,7 +4,6 @@
 #include <Eigen/Eigen>
 #include "print_matrix.h"
 
-
 /**
  * Abstract class describing a dynamic system.
  * Template with parameters: n_states (number of states), n_inputs (number of
@@ -13,8 +12,7 @@
  */
 template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
 class DynamicSystem {
-
- protected:
+ public:
   /// Type describing system state.
   typedef Eigen::Array<double, n_states, 1> State;
 
@@ -23,11 +21,10 @@ class DynamicSystem {
 
   /// Type describing system output.
   typedef Eigen::Matrix<double, n_outputs, 1> Output;
-  
+
   /// Type describing system control input.
   typedef Eigen::Matrix<double, n_control_inputs, 1> ControlInput;
 
- public:
   /// Linearized form of dynamic system.
   struct Linearized {
     Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> A;
@@ -43,8 +40,6 @@ class DynamicSystem {
       print_matrix(os, linsys.f, "f");
       return os;
     }
-
-   private:
   };
 
   virtual ~DynamicSystem() {}

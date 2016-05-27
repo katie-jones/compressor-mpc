@@ -15,24 +15,21 @@
  * derivative. Defines a friend function to integrate the system for a given
  * time range.
  */
-template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
-class SimulationSystem
-    : public virtual DynamicSystem<n_states, n_inputs, n_outputs,
-                                   n_control_inputs> {
+template <class System>
+class SimulationSystem {
+ private:
+  System* p_sys_;
+
+  typedef typename System::State State;
+  typedef typename System::Input Input;
+  typedef typename System::Output Output;
+  typedef typename System::ControlInput ControlInput;
+
  public:
   /// Vector of indices for a ControlInput
-  typedef std::array<int, n_control_inputs> ControlInputIndex;
+  typedef std::array<int, System::n_control_inputs> ControlInputIndex;
 
  protected:
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
-                                 n_control_inputs>::State State;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
-                                 n_control_inputs>::Input Input;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
-                                 n_control_inputs>::Output Output;
-  typedef typename DynamicSystem<n_states, n_inputs, n_outputs,
-                                 n_control_inputs>::ControlInput ControlInput;
-
   // Type of stepper used to integrate
   typedef boost::numeric::odeint::runge_kutta_dopri5<
       State, double, State, double,
@@ -49,16 +46,17 @@ class SimulationSystem
   // index such that ControlInput[i] -> Input[control_input_index_[i]]
   const ControlInputIndex control_input_index_;
 
-  SimulationSystem(Input u_offset, ControlInputIndex input_index,State x_in, 
-                   ControlInput u_init = ControlInput::Zero())
-      : x_(x_in),
-        u_offset_(u_offset),
-        control_input_index_(input_index),
-        u_(GetPlantInput(u_init)) {}
-
  public:
   /// Function pointer used for callback when integrating system.
   typedef void (*IntegrationCallbackPtr)(const State, const double);
+
+  SimulationSystem(System* p_sys, Input u_offset, ControlInputIndex input_index,
+                   State x_in, ControlInput u_init = ControlInput::Zero())
+      : p_sys_(p_sys),
+        x_(x_in),
+        u_offset_(u_offset),
+        control_input_index_(input_index),
+        u_(GetPlantInput(u_init)) {}
 
   ControlInput GetCurrentInput() { return u_; }
   State GetCurrentState() { return x_; }
@@ -79,7 +77,7 @@ class SimulationSystem
   /// output plant input based on control input and offset
   const Input GetPlantInput(const ControlInput& u_control) const {
     Input u = u_offset_;
-    for (int i = 0; i < n_control_inputs; i++) {
+    for (int i = 0; i < System::n_control_inputs; i++) {
       u(control_input_index_[i]) += u_control(i);
     }
     return u;
@@ -92,7 +90,7 @@ class SimulationSystem
    * derivative in the second argument.
    */
   void operator()(const State& x_in, State& dxdt, const double) const {
-    dxdt = this->GetDerivative(x_in, u_);
+    dxdt = p_sys_->GetDerivative(x_in, u_);
   }
 
   /**

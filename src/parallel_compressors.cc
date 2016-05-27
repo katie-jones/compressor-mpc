@@ -94,7 +94,7 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
 
   // Tank pressure
   linsys.C.block<Tank::n_outputs, Tank::n_states>(
-      n_outputs - Tank::n_outputs - 1, n_compressors * Cp::n_states) =
+      n_outputs - Tank::n_outputs, n_compressors * Cp::n_states) =
       tank_linsys.C;
 
   linsys.f = GetDerivative(x, u);
@@ -111,11 +111,8 @@ ParallelCompressors::Output ParallelCompressors::GetOutput(
   for (int i = 0; i < n_compressors; i++) {
     y_comp = comps_[i].GetOutput(
         x.segment<Compressor::n_states>(i * Compressor::n_states));
-    // y.segment<Compressor::n_outputs>(i * Compressor::n_outputs) =
-    // comps_[i].GetOutput(
-    // x.segment<Compressor::n_states>(i * Compressor::n_states));
     pressures[i] = y_comp(0);
-    surge_distances[i] = y_comp[1];
+    surge_distances[i] = y_comp(1);
   }
   y.template head<n_compressors>() = surge_distances;
   y(n_compressors) = pressures(0) - pressures(1);

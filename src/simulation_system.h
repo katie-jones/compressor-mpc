@@ -5,31 +5,27 @@
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/odeint/algebra/vector_space_algebra.hpp>
 
-#include "dynamic_system.h"
+#include "time_delay.h"
 
 /**
- * Abstract class describing a dynamic system used for simulation.
- * Template with parameters: n_states (number of states), n_inputs (number of
- * inputs), n_outputs (number of outputs). Includes the current system state and
+ * Class describing a dynamic system used for simulation.
+ * Includes the current system state and
  * inputs as member variables. Overrides the () operator to define the
- * derivative. Defines a friend function to integrate the system for a given
+ * derivative. Defines a function to integrate the system for a given
  * time range.
  */
-template <class System>
+template <class System, int n_delay_states>
 class SimulationSystem {
- private:
-  System* p_sys_;
+ public:
+  /// Vector of indices for a ControlInput
+  typedef std::array<int, System::n_control_inputs> ControlInputIndex;
 
+ private:
   typedef typename System::State State;
   typedef typename System::Input Input;
   typedef typename System::Output Output;
   typedef typename System::ControlInput ControlInput;
 
- public:
-  /// Vector of indices for a ControlInput
-  typedef std::array<int, System::n_control_inputs> ControlInputIndex;
-
- protected:
   // Type of stepper used to integrate
   typedef boost::numeric::odeint::runge_kutta_dopri5<
       State, double, State, double,
@@ -42,20 +38,27 @@ class SimulationSystem {
   State x_;
   Input u_offset_;
   Input u_;
+  System* p_sys_;  // system to simulate
+  TimeDelay<System::n_control_inputs, n_delay_states> delayed_inputs_;
 
   // index such that ControlInput[i] -> Input[control_input_index_[i]]
   const ControlInputIndex control_input_index_;
+  const ControlInputIndex n_delay_;  // time delays of each input
 
  public:
   /// Function pointer used for callback when integrating system.
   typedef void (*IntegrationCallbackPtr)(const State, const double);
 
   SimulationSystem(System* p_sys, Input u_offset, ControlInputIndex input_index,
-                   State x_in, ControlInput u_init = ControlInput::Zero())
+                   ControlInputIndex n_delay, State x_in,
+                   ControlInput u_init = ControlInput::Zero())
       : p_sys_(p_sys),
         x_(x_in),
         u_offset_(u_offset),
         control_input_index_(input_index),
+        n_delay_(n_delay),
+        delayed_inputs_(
+            TimeDelay<System::n_control_inputs, n_delay_states>(n_delay)),
         u_(GetPlantInput(u_init)) {}
 
   ControlInput GetCurrentInput() { return u_; }
@@ -65,8 +68,9 @@ class SimulationSystem {
   void SetOffset(const Input& u_in) { u_offset_ = u_in; }
 
   /// Set input from controller.
-  void SetInput(const ControlInput u) { u_ = GetPlantInput(u); }
-  // void SetInput(const Input &u) { u_ = u; }
+  void SetInput(const ControlInput u) {
+    u_ = GetPlantInput(delayed_inputs_.GetDelayedInput(u));
+  }
 
   /// Update current state
   void SetState(State x_in) { x_ = x_in; }

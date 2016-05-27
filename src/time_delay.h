@@ -10,7 +10,7 @@ class TimeDelay {
  public:
   typedef Eigen::Matrix<double, n_inputs, 1> Input;
 
-  TimeDelay(const int n_delay[n_inputs]) {
+  TimeDelay(const std::array<int, n_inputs> n_delay) {
     // check if n_delay_states is correct
     int sum_delay = 0;
     for (int i = 0; i < n_inputs; i++) sum_delay += n_delay[i];

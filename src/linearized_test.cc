@@ -31,7 +31,6 @@ struct vector_space_norm_inf<Compressor::State> {
 }
 }
 
-
 extern template class MpcController<Compressor, Control::n_delay_states,
                                     Control::n_disturbance_states, Control::p,
                                     Control::m>;
@@ -39,7 +38,7 @@ using Controller =
     MpcController<Compressor, Control::n_delay_states,
                   Control::n_disturbance_states, Control::p, Control::m>;
 
-SimulationSystem<Compressor> *p_sim_compressor;
+SimulationSystem<Compressor, Control::n_delay_states> *p_sim_compressor;
 Compressor *p_compressor;
 Controller *p_controller;
 std::ofstream output_file;
@@ -78,11 +77,16 @@ int main(void) {
   Compressor::Input u_default = Compressor::GetDefaultInput();
   Compressor::State x_init = (Compressor::State() << 0.898978, 1.12501,
                               0.151226, 440.679, 0).finished();
-  
+
   // index of controlled states
   const Controller::ControlInputIndex index = {0, 3};
 
-  SimulationSystem<Compressor> sim_comp(p_compressor, u_default, index, x_init);
+  // delay states per input
+  const Controller::ControlInputIndex delay = {0, Control::n_delay_states};
+
+  SimulationSystem<Compressor, Control::n_delay_states> sim_comp(
+      p_compressor, u_default, index, delay, x_init);
+
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
@@ -93,9 +97,6 @@ int main(void) {
                             compressor.n_control_inputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
                      Control::n_disturbance_states>::Identity()).finished();
-
-  const Controller::ControlInputIndex delay = {0, Control::n_delay_states};
-
 
   const Controller::UWeightType uwt =
       (Controller::UWeightType() << 100, 0, 0, 1e4).finished();

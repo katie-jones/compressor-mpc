@@ -36,7 +36,8 @@ extern template class MpcController<
 using Controller =
     MpcController<ParallelCompressors, Control::n_delay_states,
                   Control::n_disturbance_states, Control::p, Control::m>;
-using SimSystem = SimulationSystem<ParallelCompressors>;
+using SimSystem =
+    SimulationSystem<ParallelCompressors, Control::n_delay_states>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -76,8 +77,10 @@ int main(void) {
 
   // index of controlled inputs
   const Controller::ControlInputIndex index = {0, 3, 4, 7};
+  const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
+                                               0, Control::n_delay_states / 2};
 
-  SimSystem sim_comp(p_compressor, u_default, index, x_init);
+  SimSystem sim_comp(p_compressor, u_default, index, delay, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
@@ -88,9 +91,6 @@ int main(void) {
                             compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
-
-  const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
-                                               0, Control::n_delay_states / 2};
 
   Controller::UWeightType uwt = Controller::UWeightType::Zero();
   uwt.diagonal() << 2e4, 2e5, 2e4, 2e5;

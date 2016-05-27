@@ -50,8 +50,6 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
         i * Cp::n_states, i * Cp::n_control_inputs) = comps_linsys[i].B;
 
     // C part of compressor i
-    // linsys.C.block<Cp::n_outputs, Cp::n_states>(
-    // i * Cp::n_outputs, i * Cp::n_states) = comps_linsys[i].C;
     linsys.C.block<1, Cp::n_states>(i, i * Cp::n_states) =
         comps_linsys[i].C.row(1);  // surge distances
 
@@ -77,15 +75,19 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
                                  u(i * n_comp_inputs + 2), comps_[i].params_.D,
                                  comps_[i].params_.V2),
         0, 0, 0;
+
+    // Tank derivative wrt tank pressure
+    linsys.A(n_compressors * Cp::n_states, n_compressors * Cp::n_states) +=
+        CalculateValveDerivative(x(i * Cp::n_states + 1), x(n_states - 1),
+                                 u(i * n_comp_inputs + 2), comps_[i].params_.D,
+                                 tank_.params_.volume);
   }
 
+  // Final component of tank derivative 
   Tank::Linearized tank_linsys = tank_.GetLinearizedSystem(
       x.tail<Tank::n_states>(),
       (Tank::Input() << u(n_inputs - 1), p_out_, mass_flow_total).finished());
-
-  linsys.A.block<Tank::n_states, Tank::n_states>(n_compressors * Cp::n_states,
-                                                 n_compressors * Cp::n_states) =
-      tank_linsys.A;
+  linsys.A.bottomRightCorner<Tank::n_states, Tank::n_states>() += tank_linsys.A;
 
   // Delta pressure
   linsys.C.row(n_compressors) << comps_linsys[0].C.row(0),

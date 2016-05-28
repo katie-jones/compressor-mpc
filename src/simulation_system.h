@@ -119,4 +119,20 @@ class SimulationSystem {
   }
 };
 
+namespace boost {
+namespace numeric {
+namespace odeint {
+template <int n>
+struct vector_space_norm_inf<Eigen::Array<double, n, 1>> {
+  typedef double result_type;
+  double operator()(Eigen::Array<double, n, 1> x) const {
+    double absval = 0;
+    for (int i = 0; i < x.size(); i++) absval += x[i] * x[i];
+    return sqrt(absval);
+  }
+};
+}
+}
+}
+
 #endif

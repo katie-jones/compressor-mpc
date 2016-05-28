@@ -63,8 +63,9 @@ Compressor::Output Compressor::GetOutput(const State x) const {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
-  const double surge_distance = params_.SD_multiplier * (-(p2 / p1) / params_.SD_c(0) +
-                                params_.SD_c(1) / params_.SD_c(0) + mass_flow);
+  const double surge_distance =
+      params_.SD_multiplier * (-(p2 / p1) / params_.SD_c(0) +
+                               params_.SD_c(1) / params_.SD_c(0) + mass_flow);
   Compressor::Output y;
   y << p2, surge_distance;
   return y;
@@ -89,7 +90,7 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
 
   // Partial derivatives of p1
   linsys.A.row(0) << -CalculateValveDerivative(p_in, p1, u_input, params_.C,
-                                              params_.V1),
+                                               params_.V1),
       0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
       speed_sound * speed_sound / params_.V1 * 1e-5;
 
@@ -135,9 +136,10 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
 
   // B matrix
   // Approximate deadzone using exponentials
-  constexpr double x0 = 1e-2;
   double dmr_ur =
       params_.tau_r * params_.m_rec_ss_c(0) * sqrt(p2 * 1e5 - p1 * 1e5);
+
+  constexpr double x0 = 1e-2;
   if (u_rec < 2 * x0) {
     double a;
     if (u_rec >= x0) {

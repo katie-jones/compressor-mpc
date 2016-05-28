@@ -58,8 +58,9 @@ class SimulationSystem {
         control_input_index_(input_index),
         n_delay_(n_delay),
         delayed_inputs_(
-            TimeDelay<System::n_control_inputs, n_delay_states>(n_delay)),
-        u_(GetPlantInput(u_init)) {}
+            TimeDelay<System::n_control_inputs, n_delay_states>(n_delay)) {
+    u_ = GetPlantInput(u_init);
+  }
 
   ControlInput GetCurrentInput() { return u_; }
   State GetCurrentState() { return x_; }

@@ -16,7 +16,6 @@ find_package(Boost REQUIRED timer)
 
 add_executable(comptest linearized_test.cc)
 add_executable(parmpc parallel_mpc.cc)
-# add_executable(timetest delay_test.cc)
 
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)

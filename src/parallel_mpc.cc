@@ -13,26 +13,10 @@ constexpr int p = 100;
 constexpr int m = 2;
 }
 
-// Define vector_space_norm_inf for the state used in order for odeint to work
-namespace boost {
-namespace numeric {
-namespace odeint {
-template <>
-struct vector_space_norm_inf<ParallelCompressors::State> {
-  typedef double result_type;
-  double operator()(ParallelCompressors::State x) const {
-    double absval = 0;
-    for (int i = 0; i < x.size(); i++) absval += x[i] * x[i];
-    return sqrt(absval);
-  }
-};
-}
-}
-}
-
 extern template class MpcController<
     ParallelCompressors, Control::n_delay_states, Control::n_disturbance_states,
     Control::p, Control::m>;
+
 using Controller =
     MpcController<ParallelCompressors, Control::n_delay_states,
                   Control::n_disturbance_states, Control::p, Control::m>;
@@ -71,9 +55,7 @@ int main(void) {
   p_compressor = &compressor;
 
   ParallelCompressors::Input u_default = ParallelCompressors::GetDefaultInput();
-  ParallelCompressors::State x_init =
-      (ParallelCompressors::State() << 0.915654, 1.14501, 0.151568, 439.989, 0,
-       0.915654, 1.14501, 0.151568, 439.989, 0, 1.12016).finished();
+  ParallelCompressors::State x_init = ParallelCompressors::GetDefaultState();
 
   // index of controlled inputs
   const Controller::ControlInputIndex index = {0, 3, 4, 7};
@@ -92,16 +74,28 @@ int main(void) {
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  Controller::UWeightType uwt = Controller::UWeightType::Zero();
-  uwt.diagonal() << 2e4, 2e5, 2e4, 2e5;
+  Controller::UWeightType uwt;
+  Controller::YWeightType ywt;
 
-  Controller::YWeightType ywt = Controller::YWeightType::Zero();
-  ywt.diagonal() << 1, 1, 0.1, 5e2;
+  std::ifstream weight_file;
+  weight_file.open("uweight");
+  for (int i = 0; i < uwt.rows(); i++) {
+    weight_file >> uwt(i, i);
+  }
+  weight_file.close();
+
+  weight_file.open("yweight");
+  for (int i = 0; i < ywt.rows(); i++) {
+    weight_file >> ywt(i, i);
+  }
+  weight_file.close();
 
   const Controller::Input offset = u_default;
 
   const Controller::OutputPrediction y_ref =
-      compressor.GetOutput(x_init).replicate<Control::p, 1>();
+      (Controller::Output() << 4.5, 4.5, 0, 1.12)
+          .finished()
+          .replicate<Control::p, 1>();
 
   // Input constraints
   Controller::InputConstraints constraints;
@@ -121,19 +115,24 @@ int main(void) {
 
   // Integrate system and time it
   boost::timer::cpu_timer integrate_timer;
-  sim_comp.Integrate(0, 200, sampling_time, &Callback);
-  const boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
-  const boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
-                                                 int_elapsed.user);
+  sim_comp.Integrate(0, 50, sampling_time, &Callback);
+  integrate_timer.stop();
 
   // Apply disturbance
-  // ParallelCompressors::Input u_disturbance = u_default;
-  // u_disturbance(2) -= 0.1;
-  // sim_comp.SetOffset(u_disturbance);
-  // sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+  ParallelCompressors::Input u_disturbance = u_default;
+  u_disturbance(8) -= 0.3;
 
+  sim_comp.SetOffset(u_disturbance);
+  integrate_timer.resume();
+  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+  integrate_timer.stop();
+  boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
+  boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
+                                           int_elapsed.user);
   output_file.close();
   std::cout << "CPU time: " << elapsed_ns << std::endl;
+  std::cout << "Wall time: " << int_elapsed.wall << std::endl
+            << std::endl;
 
   return 0;
 }

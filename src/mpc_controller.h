@@ -139,6 +139,11 @@ class MpcController {
       typename DynamicSystem<n_total_states, n_inputs, n_outputs,
                              n_control_inputs>::Linearized;
 
+  // Structure containing prediction matrices of augmented system
+  struct Prediction {
+    Eigen::MatrixXd Sx, Sf, Su;
+  };
+
   struct AugmentedLinearizedSystemTwo {
     struct AComposite;
 
@@ -147,9 +152,9 @@ class MpcController {
     };
 
     struct AComposite {
-      Eigen::Matrix<double, n_states, n_states> Aorig;
-      Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
-      Eigen::SparseMatrix<bool> Aaug;
+      Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> Aorig;
+      Eigen::Matrix<double, n_states, n_delay_states, Eigen::RowMajor> Adelay;
+      Eigen::SparseMatrix<bool, Eigen::RowMajor> Aaug;
       ControlInputIndex cumulative_delay;
 
       AComposite(const ControlInputIndex& n_delay);
@@ -157,15 +162,12 @@ class MpcController {
     };
 
     AComposite A;
-    Eigen::Matrix<double, n_total_states, n_control_inputs> B;
-    Eigen::Matrix<double, n_outputs, n_obs_states> C;
+    Eigen::Matrix<double, n_total_states, n_control_inputs, Eigen::RowMajor> B;
+    Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
     State f;
-    AugmentedLinearizedSystemTwo(const ControlInputIndex& n_delay);
-  };
-
-  // Structure containing prediction matrices of augmented system
-  struct Prediction {
-    Eigen::MatrixXd Sx, Sf, Su;
+    ControlInputIndex n_delay;
+    AugmentedLinearizedSystemTwo(const ControlInputIndex& n_delay_in);
+    void Update(const typename System::Linearized& sys_discrete);
   };
 
   // Structure containing QP problem to solve
@@ -224,7 +226,6 @@ class MpcController {
   const Input u_offset_;                    // offset applied to control input
   const ObserverMatrix M_;                  // observer matrix used
   AugmentedLinearizedSystemTwo auglinsys_;  // current augmented linearization
-  // AugmentedLinearizedSystemTwo augtwo_;
   const UWeightType u_weight_;            // input weights
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input
@@ -245,7 +246,7 @@ struct scalar_product_traits<double, bool> {
 };
 
 template <>
-struct scalar_product_traits<bool,double> {
+struct scalar_product_traits<bool, double> {
   enum { Defined = 1 };
   typedef double ReturnType;
 };

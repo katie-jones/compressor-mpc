@@ -66,18 +66,8 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
                                              GetPlantInput(u_old_)),
                     sampling_time_);
 
-  auglinsys_.A.Aorig = sys_discrete.A;
-
-  for (int i = 0; i < n_control_inputs; i++) {
-    if (n_delay_[i] == 0) {
-      auglinsys_.B.template block<n_states, 1>(0, i) = sys_discrete.B.col(i);
-    } else {
-      auglinsys_.A.Adelay.col(i) = sys_discrete.B.col(i);
-    }
-  }
-
-  auglinsys_.C.template leftCols<n_states>() = sys_discrete.C;
-  auglinsys_.f = sys_discrete.f;
+  // Insert new values into augmented system
+  auglinsys_.Update(sys_discrete);
 }
 
 /*
@@ -153,7 +143,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 
   typename AugmentedLinearizedSystemTwo::Ctype c_times_a;
   c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
-  c_times_a.template rightCols<n_delay_state>().setZero();
+  c_times_a.template rightCols<n_delay_states>().setZero();
 
   Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;

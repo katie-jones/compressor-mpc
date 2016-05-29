@@ -90,7 +90,7 @@ class MpcController {
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
-        auglinsys_(AugmentedLinearizedSystemTwo(input_delay)),
+        auglinsys_(AugmentedLinearizedSystem(input_delay)),
         qp_problem_(
             qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
         y_weight_(y_weight) {
@@ -134,21 +134,20 @@ class MpcController {
   }
 
  protected:
-  // Augmented linearized system
-  using AugmentedLinearizedSystem =
-      typename DynamicSystem<n_total_states, n_inputs, n_outputs,
-                             n_control_inputs>::Linearized;
 
   // Structure containing prediction matrices of augmented system
   struct Prediction {
     Eigen::MatrixXd Sx, Sf, Su;
   };
 
-  struct AugmentedLinearizedSystemTwo {
+  struct AugmentedLinearizedSystem {
     struct AComposite;
+    struct BComposite;
 
     struct Ctype : public Eigen::Matrix<double, n_outputs, n_total_states> {
       inline Ctype& operator*=(const AComposite& a);
+      inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
+      operator*(const BComposite& b);
     };
 
     struct AComposite {
@@ -161,11 +160,19 @@ class MpcController {
       inline AugmentedState operator*(const AugmentedState& x) const;
     };
 
+    struct BComposite {
+      Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Borig;
+      Eigen::SparseMatrix<bool, Eigen::RowMajor> Baug;
+
+      BComposite(const ControlInputIndex& n_delay);
+      inline AugmentedState operator*(const ControlInput& u) const;
+    };
+
     AComposite A;
-    Eigen::Matrix<double, n_total_states, n_control_inputs, Eigen::RowMajor> B;
+    BComposite B;
     Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
     State f;
-    AugmentedLinearizedSystemTwo(const ControlInputIndex& n_delay_in);
+    AugmentedLinearizedSystem(const ControlInputIndex& n_delay_in);
     void Update(const typename System::Linearized& sys_discrete);
   };
 
@@ -224,7 +231,7 @@ class MpcController {
   Output y_old_;                            // past output
   const Input u_offset_;                    // offset applied to control input
   const ObserverMatrix M_;                  // observer matrix used
-  AugmentedLinearizedSystemTwo auglinsys_;  // current augmented linearization
+  AugmentedLinearizedSystem auglinsys_;  // current augmented linearization
   const UWeightType u_weight_;              // input weights
   const YWeightType y_weight_;              // output weights
   const ControlInputIndex n_delay_;         // delay states per input

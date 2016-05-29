@@ -141,7 +141,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
   pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
   pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
 
-  typename AugmentedLinearizedSystemTwo::Ctype c_times_a;
+  typename AugmentedLinearizedSystem::Ctype c_times_a;
   c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
   c_times_a.template rightCols<n_delay_states>().setZero();
 

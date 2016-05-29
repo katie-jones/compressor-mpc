@@ -90,6 +90,7 @@ class MpcController {
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
+        auglinsys_(AugmentedLinearizedSystemTwo(input_delay)),
         qp_problem_(
             qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
         y_weight_(y_weight) {
@@ -137,6 +138,30 @@ class MpcController {
   using AugmentedLinearizedSystem =
       typename DynamicSystem<n_total_states, n_inputs, n_outputs,
                              n_control_inputs>::Linearized;
+
+  struct AugmentedLinearizedSystemTwo {
+    struct AComposite;
+
+    struct Ctype : public Eigen::Matrix<double, n_outputs, n_total_states> {
+      inline Ctype& operator*=(const AComposite& a);
+    };
+
+    struct AComposite {
+      Eigen::Matrix<double, n_states, n_states> Aorig;
+      Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
+      Eigen::SparseMatrix<bool> Aaug;
+      ControlInputIndex cumulative_delay;
+
+      AComposite(const ControlInputIndex& n_delay);
+      inline AugmentedState operator*(const AugmentedState& x) const;
+    };
+
+    AComposite A;
+    Eigen::Matrix<double, n_total_states, n_control_inputs> B;
+    Eigen::Matrix<double, n_outputs, n_obs_states> C;
+    State f;
+    AugmentedLinearizedSystemTwo(const ControlInputIndex& n_delay);
+  };
 
   // Structure containing prediction matrices of augmented system
   struct Prediction {
@@ -189,16 +214,17 @@ class MpcController {
     return A;
   }
 
-  const System sys_;                      // dynamic system
-  OutputPrediction y_ref_;                // reference trajectory
-  const double sampling_time_;            // sample time
-  AugmentedState x_aug_;                  // augmented state
-  AugmentedState dx_aug_;                 // differential augmented state
-  ControlInput u_old_;                    // past input
-  Output y_old_;                          // past output
-  const Input u_offset_;                  // offset applied to control input
-  const ObserverMatrix M_;                // observer matrix used
-  AugmentedLinearizedSystem auglinsys_;   // current augmented linearization
+  const System sys_;                        // dynamic system
+  OutputPrediction y_ref_;                  // reference trajectory
+  const double sampling_time_;              // sample time
+  AugmentedState x_aug_;                    // augmented state
+  AugmentedState dx_aug_;                   // differential augmented state
+  ControlInput u_old_;                      // past input
+  Output y_old_;                            // past output
+  const Input u_offset_;                    // offset applied to control input
+  const ObserverMatrix M_;                  // observer matrix used
+  AugmentedLinearizedSystemTwo auglinsys_;  // current augmented linearization
+  // AugmentedLinearizedSystemTwo augtwo_;
   const UWeightType u_weight_;            // input weights
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input
@@ -209,5 +235,21 @@ class MpcController {
   const ControlInputIndex control_input_index_;
   qpOASES::SQProblem qp_problem_;  // qp problem to be solved using qpoases
 };
+
+namespace Eigen {
+namespace internal {
+template <>
+struct scalar_product_traits<double, bool> {
+  enum { Defined = 1 };
+  typedef double ReturnType;
+};
+
+template <>
+struct scalar_product_traits<bool,double> {
+  enum { Defined = 1 };
+  typedef double ReturnType;
+};
+}
+}
 
 #endif

@@ -21,9 +21,10 @@ add_library(compressor compressor.cc)
 add_library(tank tank.cc)
 add_library(parcomp parallel_compressors.cc)
 add_library(mpc_controller mpc_controller.cc)
+add_library(auglinsys aug_lin_sys.cc)
 
 target_link_libraries(parcomp compressor tank)
-target_link_libraries(mpc_controller qpOASES parcomp)
+target_link_libraries(mpc_controller qpOASES parcomp auglinsys)
 target_link_libraries(comptest compressor mpc_controller)
 target_link_libraries(parmpc parcomp mpc_controller)
 

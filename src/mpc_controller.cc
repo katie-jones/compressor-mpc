@@ -12,8 +12,8 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
       dx_aug_.template head<n_obs_states>() +
       M_ *
           (y_in - y_old_ -
-           (Output)(auglinsys_.C.template leftCols<n_obs_states>() *
-                    (dx_aug_.template head<n_obs_states>()))).matrix();
+           (Output)(auglinsys_.C * (dx_aug_.template head<n_obs_states>())))
+              .matrix();
 
   // add change in normal states
   x_aug_.template head<n_states>() =
@@ -66,41 +66,18 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
                                              GetPlantInput(u_old_)),
                     sampling_time_);
 
-  AugmentedLinearizedSystem sys_out;
-  sys_out.A.setZero();
-  sys_out.B.setZero();
-  sys_out.C.setZero();
-  sys_out.f.setZero();
-
-  sys_out.A.template topLeftCorner<n_states, n_states>() = sys_discrete.A;
-  sys_out.A.template block<n_disturbance_states, n_disturbance_states>(
-      n_states, n_states) = Eigen::Matrix<double, n_disturbance_states,
-                                          n_disturbance_states>::Identity();
-
-  int index_delay_states = n_obs_states;
+  auglinsys_.A.Aorig = sys_discrete.A;
 
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
-      sys_out.B.template block<n_states, 1>(0, i) = sys_discrete.B.col(i);
+      auglinsys_.B.template block<n_states, 1>(0, i) = sys_discrete.B.col(i);
     } else {
-      sys_out.A.template block<n_states, 1>(0, index_delay_states) =
-          sys_discrete.B.col(i);
-      const int size_block = n_delay_[i] - 1;
-      sys_out.A.block(index_delay_states, index_delay_states + 1, size_block,
-                      size_block) =
-          Eigen::MatrixXd::Identity(size_block, size_block);
-      index_delay_states += n_delay_[i];
-      sys_out.B(index_delay_states - 1, i) = 1;
+      auglinsys_.A.Adelay.col(i) = sys_discrete.B.col(i);
     }
   }
 
-  sys_out.C.template leftCols<n_states>() = sys_discrete.C;
-  sys_out.C.template block<n_outputs, n_disturbance_states>(0, n_states) =
-      Eigen::Matrix<double, n_outputs, n_disturbance_states>::Identity();
-
-  sys_out.f.template head<n_states>() = sys_discrete.f;
-
-  auglinsys_ = sys_out;
+  auglinsys_.C.template leftCols<n_states>() = sys_discrete.C;
+  auglinsys_.f = sys_discrete.f;
 }
 
 /*
@@ -151,10 +128,10 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
 
   qp.H = pred.Su.transpose() * y_weight_full * pred.Su + u_weight_full;
 
-  qp.f = auglinsys_.f.template head<n_states>().transpose() *
-             pred.Sf.transpose() * y_weight_full * pred.Su -
-         dy_ref.transpose() * y_weight_full * pred.Su +
-         delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
+  qp.f =
+      auglinsys_.f.transpose() * pred.Sf.transpose() * y_weight_full * pred.Su -
+      dy_ref.transpose() * y_weight_full * pred.Su +
+      delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
 
   return qp;
 }
@@ -174,7 +151,10 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
   pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
   pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
 
-  Eigen::Matrix<double, n_outputs, n_total_states> c_times_a = auglinsys_.C;
+  typename AugmentedLinearizedSystemTwo::Ctype c_times_a;
+  c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
+  c_times_a.template rightCols<n_delay_state>().setZero();
+
   Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
 
@@ -264,7 +244,8 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
     }
   }
 
-  dx_aug_ = auglinsys_.B * du + auglinsys_.A * dx + auglinsys_.f;
+  dx_aug_ = auglinsys_.B * du + auglinsys_.A * dx;
+  dx_aug_.template head<n_states>() += auglinsys_.f;
 }
 
 /*
@@ -361,5 +342,5 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
     : upper_bound(ControlInput::Constant(std::nan(""))),
       lower_bound(ControlInput::Constant(-std::nan(""))),
       use_rate_constraints(false) {}
-
+#include "aug_lin_sys.cc"
 #include "mpc_controller_list.h"

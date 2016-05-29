@@ -153,9 +153,9 @@ class MpcController {
 
     struct AComposite {
       Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> Aorig;
-      Eigen::Matrix<double, n_states, n_delay_states, Eigen::RowMajor> Adelay;
+      Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Adelay;
       Eigen::SparseMatrix<bool, Eigen::RowMajor> Aaug;
-      ControlInputIndex cumulative_delay;
+      ControlInputIndex n_delay;
 
       AComposite(const ControlInputIndex& n_delay);
       inline AugmentedState operator*(const AugmentedState& x) const;
@@ -165,7 +165,6 @@ class MpcController {
     Eigen::Matrix<double, n_total_states, n_control_inputs, Eigen::RowMajor> B;
     Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
     State f;
-    ControlInputIndex n_delay;
     AugmentedLinearizedSystemTwo(const ControlInputIndex& n_delay_in);
     void Update(const typename System::Linearized& sys_discrete);
   };
@@ -226,10 +225,10 @@ class MpcController {
   const Input u_offset_;                    // offset applied to control input
   const ObserverMatrix M_;                  // observer matrix used
   AugmentedLinearizedSystemTwo auglinsys_;  // current augmented linearization
-  const UWeightType u_weight_;            // input weights
-  const YWeightType y_weight_;            // output weights
-  const ControlInputIndex n_delay_;       // delay states per input
-  const InputConstraints u_constraints_;  // input constraints of system
+  const UWeightType u_weight_;              // input weights
+  const YWeightType y_weight_;              // output weights
+  const ControlInputIndex n_delay_;         // delay states per input
+  const InputConstraints u_constraints_;    // input constraints of system
   const std::array<double, m * n_control_inputs * m * n_control_inputs>
       Ain_;  // matrix used for rate constraints
   // index such that ControlInput[i] -> Input[control_input_index_[i]]

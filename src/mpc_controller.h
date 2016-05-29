@@ -129,18 +129,16 @@ class MpcController {
   const ControlInput GetControlInput(const Input& u) const;
 
   /// Output current state estimate
-  const State GetStateEstimate() const {
-    return x_aug_.template head<n_states>();
-  }
+  const AugmentedState GetStateEstimate() const { return x_aug_; }
 
  protected:
-
   // Structure containing prediction matrices of augmented system
   struct Prediction {
     Eigen::MatrixXd Sx, Sf, Su;
   };
 
-  struct AugmentedLinearizedSystem {
+  class AugmentedLinearizedSystem {
+    friend MpcController<System, n_delay_states, n_disturbance_states, p, m>;
     struct AComposite;
     struct BComposite;
 
@@ -172,6 +170,8 @@ class MpcController {
     BComposite B;
     Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
     State f;
+
+   public:
     AugmentedLinearizedSystem(const ControlInputIndex& n_delay_in);
     void Update(const typename System::Linearized& sys_discrete);
   };
@@ -222,20 +222,20 @@ class MpcController {
     return A;
   }
 
-  const System sys_;                        // dynamic system
-  OutputPrediction y_ref_;                  // reference trajectory
-  const double sampling_time_;              // sample time
-  AugmentedState x_aug_;                    // augmented state
-  AugmentedState dx_aug_;                   // differential augmented state
-  ControlInput u_old_;                      // past input
-  Output y_old_;                            // past output
-  const Input u_offset_;                    // offset applied to control input
-  const ObserverMatrix M_;                  // observer matrix used
-  AugmentedLinearizedSystem auglinsys_;  // current augmented linearization
-  const UWeightType u_weight_;              // input weights
-  const YWeightType y_weight_;              // output weights
-  const ControlInputIndex n_delay_;         // delay states per input
-  const InputConstraints u_constraints_;    // input constraints of system
+  const System sys_;                      // dynamic system
+  OutputPrediction y_ref_;                // reference trajectory
+  const double sampling_time_;            // sample time
+  AugmentedState x_aug_;                  // augmented state
+  AugmentedState dx_aug_;                 // differential augmented state
+  ControlInput u_old_;                    // past input
+  Output y_old_;                          // past output
+  const Input u_offset_;                  // offset applied to control input
+  const ObserverMatrix M_;                // observer matrix used
+  AugmentedLinearizedSystem auglinsys_;   // current augmented linearization
+  const UWeightType u_weight_;            // input weights
+  const YWeightType y_weight_;            // output weights
+  const ControlInputIndex n_delay_;       // delay states per input
+  const InputConstraints u_constraints_;  // input constraints of system
   const std::array<double, m * n_control_inputs * m * n_control_inputs>
       Ain_;  // matrix used for rate constraints
   // index such that ControlInput[i] -> Input[control_input_index_[i]]

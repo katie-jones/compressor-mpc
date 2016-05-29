@@ -318,6 +318,7 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
       u_constraints_.upper_rate_bound.template replicate<m, 1>();
   int n_wsr = n_wsr_max;
 
+  qp_problem_.setPrintLevel(qpOASES::PrintLevel::PL_LOW);  // only print errors
   qp_problem_.init(qp.H.data(), qp.f.data(), Ain_.data(), lb.data(), ub.data(),
                    lbA.data(), ubA.data(), n_wsr, NULL);
 }

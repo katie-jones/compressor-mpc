@@ -12,10 +12,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
         const Observer<System, n_delay_states, n_disturbance_states>& observer,
         const ControlInputIndex& input_delay,
         const ControlInputIndex& control_input_index,
-        const UWeightType& u_weight,
-        const YWeightType& y_weight,
-        const InputConstraints& constraints,
-        const Input& u_offset)
+        const UWeightType& u_weight, const YWeightType& y_weight,
+        const InputConstraints& constraints, const Input& u_offset)
     : auglinsys_(sys),
       observer_(observer),
       u_offset_(u_offset),
@@ -23,16 +21,32 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
       n_delay_(input_delay),
       control_input_index_(control_input_index),
       u_constraints_(constraints),
-      u_weight_(u_weight),
       qp_problem_(
-          qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
-      y_weight_(y_weight) {
+          qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)) {
   int sum_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
   if (sum_delay != n_delay_states) {
     throw delay_states_wrong();
   }
   observer_.InitializeSystem(&auglinsys_);
+
+  y_weight_ = Eigen::SparseMatrix<double>(p * n_outputs, p * n_outputs);
+  const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
+      Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
+  y_weight_.reserve(reserve_values);
+  for (int i = 0; i < p; i++) {
+    for (int j = 0; j < n_outputs * n_outputs; j++) {
+      y_weight_.insert(i * n_outputs + j % n_outputs,
+                           i * n_outputs + j / n_outputs) =
+          y_weight(j % n_outputs, j / n_outputs);
+    }
+  }
+
+  u_weight_.setZero();
+  for (int i = 0; i < m; i++) {
+    u_weight_.template block<n_control_inputs, n_control_inputs>(
+        i * n_control_inputs, i * n_control_inputs) = u_weight;
+  }
 }
 
 /*
@@ -66,32 +80,12 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
     }
   }
 
-  Eigen::SparseMatrix<double> y_weight_full(p * n_outputs, p * n_outputs);
-  const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
-      Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
-  y_weight_full.reserve(reserve_values);
-  for (int i = 0; i < p; i++) {
-    for (int j = 0; j < n_outputs * n_outputs; j++) {
-      y_weight_full.insert(i * n_outputs + j % n_outputs,
-                           i * n_outputs + j / n_outputs) =
-          y_weight_(j % n_outputs, j / n_outputs);
-    }
-  }
-
-  Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs>
-      u_weight_full;
-  u_weight_full.setZero();
-  for (int i = 0; i < m; i++) {
-    u_weight_full.template block<n_control_inputs, n_control_inputs>(
-        i * n_control_inputs, i * n_control_inputs) = u_weight_;
-  }
-
-  qp.H = pred.Su.transpose() * y_weight_full * pred.Su + u_weight_full;
+  qp.H = pred.Su.transpose() * y_weight_ * pred.Su + u_weight_;
 
   qp.f =
-      auglinsys_.f.transpose() * pred.Sf.transpose() * y_weight_full * pred.Su -
-      dy_ref.transpose() * y_weight_full * pred.Su +
-      delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
+      auglinsys_.f.transpose() * pred.Sf.transpose() * y_weight_ * pred.Su -
+      dy_ref.transpose() * y_weight_ * pred.Su +
+      delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
 
   return qp;
 }

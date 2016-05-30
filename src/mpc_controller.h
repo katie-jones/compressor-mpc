@@ -157,8 +157,9 @@ class MpcController {
   const Input u_offset_;    // offset applied to control input
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;                         // current augmented linearization
-  const UWeightType u_weight_;            // input weights
-  const YWeightType y_weight_;            // output weights
+  Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs>
+      u_weight_;
+  Eigen::SparseMatrix<double> y_weight_;
   const ControlInputIndex n_delay_;       // delay states per input
   const InputConstraints u_constraints_;  // input constraints of system
   const std::array<double, m * n_control_inputs * m * n_control_inputs>

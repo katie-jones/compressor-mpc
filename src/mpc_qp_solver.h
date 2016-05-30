@@ -64,7 +64,7 @@ class MpcQpSolver {
   };
 
   // generate QP matrices based on linearization
-  const QP GenerateQP(const Prediction& pred) const;
+  const QP GenerateQP() const;
 
   // use QPoases to solve QP
   const ControlInput SolveQP(const QP& qp);

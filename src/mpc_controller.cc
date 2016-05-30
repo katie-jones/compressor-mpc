@@ -58,8 +58,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
   x_ += observer_.ObserveAPosteriori(y);
   y_old_ = y;
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  const QP qp = this->GenerateQP(pred);
+  const QP qp = this->GenerateQP();
   const ControlInput usol = this->SolveQP(qp);
   observer_.ObserveAPriori(usol);
 
@@ -82,8 +81,7 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
   y_old_ = y_init;
 
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  const QP qp = this->GenerateQP(pred);
+  const QP qp = this->GenerateQP();
 
   // Replicate constraints for number of moves
   const Eigen::Matrix<double, m * n_control_inputs, 1> lb =

@@ -51,8 +51,9 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
 const typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
                            m>::QP
 MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP(
-    const Prediction& pred) const {
+    ) const {
   QP qp;
+  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
   const OutputPrediction dy_ref =
       *p_y_ref_ - observer_.GetPreviousOutput().template replicate<p, 1>();
 

@@ -5,7 +5,12 @@
 #include <Eigen/SparseCore>
 
 template <class System, int n_delay_states, int n_disturbance_states>
+class Observer;
+
+template <class System, int n_delay_states, int n_disturbance_states>
 class AugmentedLinearizedSystem {
+  friend Observer<System, n_delay_states, n_disturbance_states>;
+
  public:
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
@@ -68,24 +73,28 @@ class AugmentedLinearizedSystem {
     Eigen::MatrixXd Sx, Sf, Su;
   };
 
+  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
+                            const ControlInputIndex& n_delay_in);
+  void Update(const State x, const Input& u);
+
+  const Prediction GeneratePrediction(const int p, const int m) const;
+
+  const AComposite GetA() const { return A; }
+  const BComposite GetB() const { return B; }
+  const State GetF() const { return f; }
+
+ protected:
+  // Discretize system using runge-kutta 4 method
+  static const typename System::Linearized DiscretizeRK4(
+      const typename System::Linearized& sys_continuous, const double Ts);
+
+ private:
   AComposite A;
   BComposite B;
   Eigen::Matrix<double, n_outputs, n_obs_states> C;
   State f;
   System sys_;
   double sampling_time_;
-
-  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
-                            const ControlInputIndex& n_delay_in);
-  void Update(const State x, const Input& u);
-
-  // Discretize system using runge-kutta 4 method
-  static const typename System::Linearized DiscretizeRK4(
-      const typename System::Linearized& sys_continuous, const double Ts);
-  const Prediction GeneratePrediction(const int p, const int m) const;
-
-  const AComposite GetA() const { return A; }
-  const BComposite GetB() const { return B; }
 };
 
 /*

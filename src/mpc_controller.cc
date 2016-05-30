@@ -83,7 +83,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
   qp.H = pred.Su.transpose() * y_weight_ * pred.Su + u_weight_;
 
   qp.f =
-      auglinsys_.f.transpose() * pred.Sf.transpose() * y_weight_ * pred.Su -
+      auglinsys_.GetF().transpose() * pred.Sf.transpose() * y_weight_ * pred.Su -
       dy_ref.transpose() * y_weight_ * pred.Su +
       delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
 

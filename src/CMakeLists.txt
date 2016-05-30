@@ -14,7 +14,7 @@ LINK_DIRECTORIES(${QPOASES_ROOT}/bin)
 set(BOOST_ROOT "/mnt/shared/system/usr/local/include/boost_1_60_0")
 find_package(Boost REQUIRED timer)
 
-add_executable(comptest linearized_test.cc)
+# add_executable(comptest linearized_test.cc)
 add_executable(parmpc parallel_mpc.cc)
 
 add_library(compressor compressor.cc)
@@ -24,13 +24,13 @@ add_library(mpc_controller mpc_controller.cc)
 add_library(auglinsys aug_lin_sys.cc)
 
 target_link_libraries(parcomp compressor tank)
-target_link_libraries(mpc_controller qpOASES parcomp auglinsys)
-target_link_libraries(comptest compressor mpc_controller)
+target_link_libraries(mpc_controller qpOASES auglinsys)
+# target_link_libraries(comptest compressor mpc_controller)
 target_link_libraries(parmpc parcomp mpc_controller)
 
 if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})
-   target_link_libraries(comptest ${Boost_LIBRARIES})
+   # target_link_libraries(comptest ${Boost_LIBRARIES})
    target_link_libraries(parmpc ${Boost_LIBRARIES})
 endif()
 

@@ -1,30 +1,25 @@
-#include "mpc_controller.h"
+#include "aug_lin_sys.h"
 
 /*
  * Default values for linearization
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::
-    AugmentedLinearizedSystem::AugmentedLinearizedSystem(
-        const ControlInputIndex& n_delay)
+template <class System, int n_delay_states, int n_disturbance_states>
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    AugmentedLinearizedSystem(const ControlInputIndex& n_delay)
     : A(AComposite(n_delay)),
       B(BComposite(n_delay)),
       C(Eigen::MatrixXd::Zero(n_outputs, n_obs_states)),
       f(System::State::Zero()) {
   C.template rightCols<n_disturbance_states>() =
       Eigen::Matrix<double, n_outputs, n_disturbance_states>::Identity();
-
 }
 
 /*
  * Initialize AComposite
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::
-    AugmentedLinearizedSystem::AComposite::AComposite(
-        const ControlInputIndex& n_delay_in)
+template <class System, int n_delay_states, int n_disturbance_states>
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    AComposite::AComposite(const ControlInputIndex& n_delay_in)
     : Aaug(Eigen::SparseMatrix<bool>(n_aug_states, n_aug_states)),
       Aorig(Eigen::Matrix<double, n_states, n_states>::Zero()),
       Adelay(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()),
@@ -54,12 +49,11 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
 /*
  * Operator C *= A
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                              m>::AugmentedLinearizedSystem::Ctype&
-    MpcController<System, n_delay_states, n_disturbance_states, p,
-                  m>::AugmentedLinearizedSystem::Ctype::
+template <class System, int n_delay_states, int n_disturbance_states>
+inline typename AugmentedLinearizedSystem<System, n_delay_states,
+                                          n_disturbance_states>::Ctype&
+    AugmentedLinearizedSystem<System, n_delay_states,
+                              n_disturbance_states>::Ctype::
     operator*=(const AComposite& a) {
   this->template leftCols<n_states>() *= a.Aorig;
   this->template rightCols<n_aug_states>() *= a.Aaug;
@@ -79,11 +73,10 @@ inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Operator output = C * B
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
+template <class System, int n_delay_states, int n_disturbance_states>
 inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
-    MpcController<System, n_delay_states, n_disturbance_states, p,
-                  m>::AugmentedLinearizedSystem::Ctype::
+    AugmentedLinearizedSystem<System, n_delay_states,
+                              n_disturbance_states>::Ctype::
     operator*(const BComposite& b) {
   Eigen::Matrix<double, n_outputs, n_control_inputs> output =
       this->template leftCols<n_states>() * b.Borig;
@@ -95,12 +88,11 @@ inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
 /*
  * Operator x_out = A*x
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                              m>::AugmentedState
-    MpcController<System, n_delay_states, n_disturbance_states, p,
-                  m>::AugmentedLinearizedSystem::AComposite::
+template <class System, int n_delay_states, int n_disturbance_states>
+inline typename AugmentedLinearizedSystem<System, n_delay_states,
+                                          n_disturbance_states>::AugmentedState
+    AugmentedLinearizedSystem<System, n_delay_states,
+                              n_disturbance_states>::AComposite::
     operator*(const AugmentedState& x) const {
   AugmentedState x_out;
   x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
@@ -120,11 +112,9 @@ inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Update augmented system with new linearization values
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-void MpcController<System, n_delay_states, n_disturbance_states, p, m>::
-    AugmentedLinearizedSystem::Update(
-        const typename System::Linearized& sys_discrete) {
+template <class System, int n_delay_states, int n_disturbance_states>
+void AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    Update(const typename System::Linearized& sys_discrete) {
   A.Aorig = sys_discrete.A;
   for (int i = 0; i < n_control_inputs; i++) {
     if (A.n_delay[i] == 0) {
@@ -141,11 +131,9 @@ void MpcController<System, n_delay_states, n_disturbance_states, p, m>::
 /*
  * Initialize BComposite
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::
-    AugmentedLinearizedSystem::BComposite::BComposite(
-        const ControlInputIndex& n_delay)
+template <class System, int n_delay_states, int n_disturbance_states>
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    BComposite::BComposite(const ControlInputIndex& n_delay)
     : Baug(Eigen::SparseMatrix<bool>(n_delay_states, n_control_inputs)),
       Borig(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()) {
   Eigen::Matrix<double, n_control_inputs, 1> reserve_b;
@@ -164,12 +152,11 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
 /*
  * Operator x_out = B*u
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                              m>::AugmentedState
-    MpcController<System, n_delay_states, n_disturbance_states, p,
-                  m>::AugmentedLinearizedSystem::BComposite::
+template <class System, int n_delay_states, int n_disturbance_states>
+typename AugmentedLinearizedSystem<System, n_delay_states,
+                                   n_disturbance_states>::AugmentedState
+    AugmentedLinearizedSystem<System, n_delay_states,
+                              n_disturbance_states>::BComposite::
     operator*(const ControlInput& u) const {
   AugmentedState x_out;
   x_out.template tail<n_delay_states>() = Baug * u;
@@ -177,16 +164,5 @@ inline typename MpcController<System, n_delay_states, n_disturbance_states, p,
 
   return x_out;
 }
-/*
- * Generate prediction matrices
- */
-// template <class System, int n_delay_states, int n_disturbance_states, int p,
-// int m>
-// inline typename MpcController<System, n_delay_states, n_disturbance_states,
-// p,
-// m>::Prediction
-// MpcController<System, n_delay_states, n_disturbance_states, p, m>::
-// AugmentedLinearizedSystem::GetPrediction() const {
-// }
 
-#include "mpc_controller_list.h"
+#include "aug_lin_sys_list.h"

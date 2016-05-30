@@ -1,5 +1,6 @@
 #include "mpc_controller.h"
 
+
 /*
  * Observe system given new output values from plant
  */
@@ -141,7 +142,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
   pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
   pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
 
-  typename AugmentedLinearizedSystem::Ctype c_times_a;
+  typename AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::Ctype c_times_a;
   c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
   c_times_a.template rightCols<n_delay_states>().setZero();
 
@@ -333,5 +334,5 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
     : upper_bound(ControlInput::Constant(std::nan(""))),
       lower_bound(ControlInput::Constant(-std::nan(""))),
       use_rate_constraints(false) {}
-#include "aug_lin_sys.cc"
+
 #include "mpc_controller_list.h"

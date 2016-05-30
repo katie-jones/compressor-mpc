@@ -4,6 +4,7 @@
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
 #include "dynamic_system.h"
+#include "aug_lin_sys.h"
 #include "mpc_exceptions.h"
 #include "qpOASES.hpp"
 
@@ -90,7 +91,7 @@ class MpcController {
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
-        auglinsys_(AugmentedLinearizedSystem(input_delay)),
+        auglinsys_(AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>(input_delay)),
         qp_problem_(
             qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
         y_weight_(y_weight) {
@@ -114,7 +115,7 @@ class MpcController {
    * Linearizes the system about current state estimate and finds the optimal
    * input value by solving a QP it generates using the MPC formulation.
    */
-  const ControlInput GetNextInput(const Output& y);
+  virtual const ControlInput GetNextInput(const Output& y);
 
   /// Set the reference output trajectory
   void SetReference(const OutputPrediction& y_ref) { y_ref_ = y_ref; }
@@ -135,45 +136,6 @@ class MpcController {
   // Structure containing prediction matrices of augmented system
   struct Prediction {
     Eigen::MatrixXd Sx, Sf, Su;
-  };
-
-  class AugmentedLinearizedSystem {
-    friend MpcController<System, n_delay_states, n_disturbance_states, p, m>;
-    struct AComposite;
-    struct BComposite;
-
-    struct Ctype : public Eigen::Matrix<double, n_outputs, n_total_states> {
-      inline Ctype& operator*=(const AComposite& a);
-      inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
-      operator*(const BComposite& b);
-    };
-
-    struct AComposite {
-      Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> Aorig;
-      Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Adelay;
-      Eigen::SparseMatrix<bool, Eigen::RowMajor> Aaug;
-      ControlInputIndex n_delay;
-
-      AComposite(const ControlInputIndex& n_delay);
-      inline AugmentedState operator*(const AugmentedState& x) const;
-    };
-
-    struct BComposite {
-      Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Borig;
-      Eigen::SparseMatrix<bool, Eigen::RowMajor> Baug;
-
-      BComposite(const ControlInputIndex& n_delay);
-      inline AugmentedState operator*(const ControlInput& u) const;
-    };
-
-    AComposite A;
-    BComposite B;
-    Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
-    State f;
-
-   public:
-    AugmentedLinearizedSystem(const ControlInputIndex& n_delay_in);
-    void Update(const typename System::Linearized& sys_discrete);
   };
 
   // Structure containing QP problem to solve
@@ -222,16 +184,17 @@ class MpcController {
     return A;
   }
 
-  const System sys_;                      // dynamic system
-  OutputPrediction y_ref_;                // reference trajectory
-  const double sampling_time_;            // sample time
-  AugmentedState x_aug_;                  // augmented state
-  AugmentedState dx_aug_;                 // differential augmented state
-  ControlInput u_old_;                    // past input
-  Output y_old_;                          // past output
-  const Input u_offset_;                  // offset applied to control input
-  const ObserverMatrix M_;                // observer matrix used
-  AugmentedLinearizedSystem auglinsys_;   // current augmented linearization
+  const System sys_;            // dynamic system
+  OutputPrediction y_ref_;      // reference trajectory
+  const double sampling_time_;  // sample time
+  AugmentedState x_aug_;        // augmented state
+  AugmentedState dx_aug_;       // differential augmented state
+  ControlInput u_old_;          // past input
+  Output y_old_;                // past output
+  const Input u_offset_;        // offset applied to control input
+  const ObserverMatrix M_;      // observer matrix used
+  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
+      auglinsys_;                         // current augmented linearization
   const UWeightType u_weight_;            // input weights
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input
@@ -242,21 +205,5 @@ class MpcController {
   const ControlInputIndex control_input_index_;
   qpOASES::SQProblem qp_problem_;  // qp problem to be solved using qpoases
 };
-
-namespace Eigen {
-namespace internal {
-template <>
-struct scalar_product_traits<double, bool> {
-  enum { Defined = 1 };
-  typedef double ReturnType;
-};
-
-template <>
-struct scalar_product_traits<bool, double> {
-  enum { Defined = 1 };
-  typedef double ReturnType;
-};
-}
-}
 
 #endif

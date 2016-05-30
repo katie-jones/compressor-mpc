@@ -81,25 +81,7 @@ class MpcController {
       const UWeightType& u_weight = UWeightType().setIdentity(),
       const YWeightType& y_weight = YWeightType().setIdentity(),
       const InputConstraints& constraints = InputConstraints(),
-      const Input& u_offset = Input())
-      : auglinsys_(sys),
-        observer_(observer),
-        u_offset_(u_offset),
-        Ain_(GetConstraintMatrix()),
-        n_delay_(input_delay),
-        control_input_index_(control_input_index),
-        u_constraints_(constraints),
-        u_weight_(u_weight),
-        qp_problem_(
-            qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
-        y_weight_(y_weight) {
-    int sum_delay = 0;
-    for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
-    if (sum_delay != n_delay_states) {
-      throw delay_states_wrong();
-    }
-    observer_.InitializeSystem(&auglinsys_);
-  }
+      const Input& u_offset = Input());
 
   /**
    * Initialize the state, input and optionally state derivative of the system.

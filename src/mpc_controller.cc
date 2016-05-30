@@ -1,6 +1,41 @@
 #include "mpc_controller.h"
 
 /*
+ * Constructor
+ */
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m>
+MpcController<System, n_delay_states, n_disturbance_states, p, m>::
+    MpcController(
+        const AugmentedLinearizedSystem<System, n_delay_states,
+                                        n_disturbance_states>& sys,
+        const Observer<System, n_delay_states, n_disturbance_states>& observer,
+        const ControlInputIndex& input_delay,
+        const ControlInputIndex& control_input_index,
+        const UWeightType& u_weight,
+        const YWeightType& y_weight,
+        const InputConstraints& constraints,
+        const Input& u_offset)
+    : auglinsys_(sys),
+      observer_(observer),
+      u_offset_(u_offset),
+      Ain_(GetConstraintMatrix()),
+      n_delay_(input_delay),
+      control_input_index_(control_input_index),
+      u_constraints_(constraints),
+      u_weight_(u_weight),
+      qp_problem_(
+          qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
+      y_weight_(y_weight) {
+  int sum_delay = 0;
+  for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
+  if (sum_delay != n_delay_states) {
+    throw delay_states_wrong();
+  }
+  observer_.InitializeSystem(&auglinsys_);
+}
+
+/*
  * Generate QP matrices from MPC formulation
  */
 template <class System, int n_delay_states, int n_disturbance_states, int p,

@@ -4,6 +4,8 @@
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
 #include "dynamic_system.h"
+#include "aug_lin_sys.h"
+#include "observer.h"
 #include "mpc_exceptions.h"
 #include "qpOASES.hpp"
 
@@ -18,19 +20,16 @@
  *    p: prediction horizon of controller
  *    m: move horizon of controller
  */
-template <class AugmentedLinearizedSystem, int p, int m>
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m>
 class MpcController {
  protected:
-  static constexpr int n_control_inputs =
-      AugmentedLinearizedSystem::n_control_inputs;
-  static constexpr int n_inputs = AugmentedLinearizedSystem::n_inputs;
-  static constexpr int n_outputs = AugmentedLinearizedSystem::n_outputs;
-  static constexpr int n_states = AugmentedLinearizedSystem::n_states;
-  static constexpr int n_aug_states = AugmentedLinearizedSystem::n_aug_states;
-  static constexpr int n_obs_states = AugmentedLinearizedSystem::n_obs_states;
-
-  static constexpr int n_delay_states =
-      AugmentedLinearizedSystem::n_total_states - n_obs_states;
+  static constexpr int n_control_inputs = System::n_control_inputs;
+  static constexpr int n_inputs = System::n_inputs;
+  static constexpr int n_outputs = System::n_outputs;
+  static constexpr int n_states = System::n_states;
+  static constexpr int n_aug_states = n_delay_states + n_disturbance_states;
+  static constexpr int n_obs_states = n_states + n_disturbance_states;
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
@@ -62,9 +61,6 @@ class MpcController {
   /// Matrix of output weight terms
   typedef Eigen::Matrix<double, n_outputs, n_outputs> YWeightType;
 
-  /// Observer of dynamic system
-  typedef Eigen::Matrix<double, n_obs_states, n_outputs> ObserverMatrix;
-
   /// Vector of indices for a ControlInput
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
@@ -76,15 +72,18 @@ class MpcController {
   };
 
   /// Constructor -- doesn't initialize state or input/output
-  MpcController(const AugmentedLinearizedSystem& sys, const ObserverMatrix& M,
-                const ControlInputIndex& input_delay,
-                const ControlInputIndex& control_input_index,
-                const UWeightType& u_weight = UWeightType().setIdentity(),
-                const YWeightType& y_weight = YWeightType().setIdentity(),
-                const InputConstraints& constraints = InputConstraints(),
-                const Input& u_offset = Input())
+  MpcController(
+      const AugmentedLinearizedSystem<System, n_delay_states,
+                                      n_disturbance_states>& sys,
+      const Observer<System, n_delay_states, n_disturbance_states>& observer,
+      const ControlInputIndex& input_delay,
+      const ControlInputIndex& control_input_index,
+      const UWeightType& u_weight = UWeightType().setIdentity(),
+      const YWeightType& y_weight = YWeightType().setIdentity(),
+      const InputConstraints& constraints = InputConstraints(),
+      const Input& u_offset = Input())
       : auglinsys_(sys),
-        M_(M),
+        observer_(observer),
         u_offset_(u_offset),
         Ain_(GetConstraintMatrix()),
         n_delay_(input_delay),
@@ -99,6 +98,7 @@ class MpcController {
     if (sum_delay != n_delay_states) {
       throw delay_states_wrong();
     }
+    observer_.InitializeSystem(&auglinsys_);
   }
 
   /**
@@ -131,7 +131,8 @@ class MpcController {
 
   /// Output current state estimate
   const AugmentedState GetStateEstimate() const {
-    return (AugmentedState() << x_, dx_aug_.template tail<n_aug_states>())
+    return (AugmentedState() << x_,
+            observer_.GetStateEstimate().template tail<n_aug_states>())
         .finished();
   }
 
@@ -143,17 +144,11 @@ class MpcController {
     Eigen::Matrix<double, m * n_control_inputs, 1> f;
   };
 
-  // apply observer
-  void ObserveAPosteriori(const Output& y_in);
-
   // generate QP matrices based on linearization
   const QP GenerateQP() const;
 
   // use QPoases to solve QP
   const ControlInput SolveQP(const QP& qp);
-
-  // Generate state prediction
-  void ObserveAPriori(const ControlInput& u_in);
 
   // output rate constraint matrix
   static const inline std::array<double,
@@ -172,14 +167,14 @@ class MpcController {
     return A;
   }
 
-  OutputPrediction y_ref_;                // reference trajectory
-  State x_;                               // augmented state
-  AugmentedState dx_aug_;                 // differential augmented state
-  ControlInput u_old_;                    // past input
-  Output y_old_;                          // past output
-  const Input u_offset_;                  // offset applied to control input
-  const ObserverMatrix M_;                // observer matrix used
-  AugmentedLinearizedSystem auglinsys_;   // current augmented linearization
+  Observer<System, n_delay_states, n_disturbance_states> observer_;
+  OutputPrediction y_ref_;  // reference trajectory
+  State x_;                 // augmented state
+  ControlInput u_old_;      // past input
+  Output y_old_;            // past output
+  const Input u_offset_;    // offset applied to control input
+  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
+      auglinsys_;                         // current augmented linearization
   const UWeightType u_weight_;            // input weights
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input

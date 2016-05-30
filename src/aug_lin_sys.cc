@@ -165,7 +165,7 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  * Operator x_out = B*u
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-inline typename AugmentedLinearizedSystem<System, n_delay_states,
+typename AugmentedLinearizedSystem<System, n_delay_states,
                                    n_disturbance_states>::AugmentedState
     AugmentedLinearizedSystem<System, n_delay_states,
                               n_disturbance_states>::BComposite::

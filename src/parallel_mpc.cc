@@ -5,6 +5,7 @@
 #include "simulation_system.h"
 #include "mpc_controller.h"
 #include "aug_lin_sys.h"
+#include "observer.h"
 #include "print_matrix.h"
 
 namespace Control {
@@ -14,14 +15,19 @@ constexpr int p = 100;
 constexpr int m = 2;
 }
 
-extern template class MpcController<
-    AugmentedLinearizedSystem<ParallelCompressors, 80, 4>, 100, 2>;
+extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
+extern template class Observer<ParallelCompressors, 80, 4>;
+extern template class MpcController<ParallelCompressors, 80, 4, 100, 2>;
 
 using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
                               Control::n_disturbance_states>;
 
-using Controller = MpcController<AugmentedSystem, Control::p, Control::m>;
+using Obsv =
+    Observer<ParallelCompressors, Control::n_delay_states,
+                              Control::n_disturbance_states>;
+
+using Controller = MpcController<ParallelCompressors, 80, 4, 100, 2>;
 
 using SimSystem =
     SimulationSystem<ParallelCompressors, Control::n_delay_states>;
@@ -70,8 +76,8 @@ int main(void) {
 
   const double sampling_time = 0.05;
 
-  const Controller::ObserverMatrix M =
-      (Controller::ObserverMatrix()
+  const Obsv::ObserverMatrix M =
+      (Obsv::ObserverMatrix()
            << Eigen::Matrix<double, compressor.n_states,
                             compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
@@ -110,7 +116,9 @@ int main(void) {
 
   // Setup controller
   AugmentedSystem sys(compressor, sampling_time, delay);
-  Controller ctrl(sys, M, delay, index, uwt, ywt, constraints, offset);
+  Obsv observer(M, compressor.GetOutput(x_init));
+
+  Controller ctrl(sys, observer, delay, index, uwt, ywt, constraints, offset);
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);

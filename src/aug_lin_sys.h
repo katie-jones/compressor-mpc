@@ -60,7 +60,7 @@ class AugmentedLinearizedSystem {
     Eigen::SparseMatrix<bool> Baug;
 
     BComposite(const ControlInputIndex& n_delay);
-    inline AugmentedState operator*(const ControlInput& u) const;
+    AugmentedState operator*(const ControlInput& u) const;
   };
 
   /// Structure containing prediction matrices of augmented system

@@ -23,9 +23,8 @@ using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
                               Control::n_disturbance_states>;
 
-using Obsv =
-    Observer<ParallelCompressors, Control::n_delay_states,
-                              Control::n_disturbance_states>;
+using Obsv = Observer<ParallelCompressors, Control::n_delay_states,
+                      Control::n_disturbance_states>;
 
 using Controller = MpcController<ParallelCompressors, 80, 4, 100, 2>;
 
@@ -77,9 +76,8 @@ int main(void) {
   const double sampling_time = 0.05;
 
   const Obsv::ObserverMatrix M =
-      (Obsv::ObserverMatrix()
-           << Eigen::Matrix<double, compressor.n_states,
-                            compressor.n_outputs>::Zero(),
+      (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
+                                               compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
@@ -122,8 +120,7 @@ int main(void) {
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);
-  ctrl.SetInitialState(x_init, Controller::ControlInput::Zero(),
-                       y_ref.head<4>());
+  ctrl.SetInitialState(x_init, y_ref.head<4>());
 
   // Integrate system and time it
   boost::timer::cpu_timer integrate_timer;

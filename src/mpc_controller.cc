@@ -191,8 +191,8 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 void MpcController<System, n_delay_states, n_disturbance_states, p,
                    m>::SetInitialState(const State& x_init,
-                                       const ControlInput& u_init,
                                        const Output& y_init,
+                                       const ControlInput& u_init,
                                        const AugmentedState& dx_init) {
   x_ = x_init;
   u_old_ = u_init;

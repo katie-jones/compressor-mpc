@@ -88,8 +88,8 @@ class MpcController {
    * The QP problem is also initialized so further solutions can be obtained
    * using the hotstart method.
    */
-  void SetInitialState(const State& x_init, const ControlInput& u_init,
-                       const Output& y_init,
+  void SetInitialState(const State& x_init, const Output& y_init,
+                       const ControlInput& u_init = ControlInput::Zero(),
                        const AugmentedState& dx_init = AugmentedState::Zero());
 
   /**

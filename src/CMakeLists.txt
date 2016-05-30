@@ -16,6 +16,7 @@ find_package(Boost REQUIRED timer)
 
 # add_executable(comptest linearized_test.cc)
 add_executable(parmpc parallel_mpc.cc)
+add_executable(reduced_system_test reduced_system_test.cc)
 
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
@@ -28,6 +29,7 @@ target_link_libraries(parcomp compressor tank)
 target_link_libraries(mpc_controller qpOASES auglinsys observer)
 # target_link_libraries(comptest compressor mpc_controller)
 target_link_libraries(parmpc parcomp mpc_controller auglinsys observer)
+target_link_libraries(reduced_system_test parcomp)
 
 if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})

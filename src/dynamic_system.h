@@ -30,7 +30,6 @@ class DynamicSystem {
     Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> A;
     Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> B;
     Eigen::Matrix<double, n_outputs, n_states, Eigen::RowMajor> C;
-    Eigen::Matrix<double, n_outputs, n_control_inputs, Eigen::RowMajor> D;
     Eigen::Matrix<double, n_states, 1> f;
     friend std::ostream& operator<<(std::ostream& os,
                                     const Linearized& linsys) {

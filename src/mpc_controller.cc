@@ -62,13 +62,14 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
 void MpcController<System, n_delay_states, n_disturbance_states, p,
                    m>::LinearizeAndAugment() {
   // linearize and discretize dynamic system
-  typename System::Linearized sys_discrete =
-      DiscretizeRK4(sys_.GetLinearizedSystem(x_aug_.template head<n_states>(),
-                                             GetPlantInput(u_old_)),
-                    sampling_time_);
+  // typename System::Linearized sys_discrete =
+      // DiscretizeRK4(sys_.GetLinearizedSystem(x_aug_.template head<n_states>(),
+                                             // GetPlantInput(u_old_)),
+                    // sampling_time_);
 
   // Insert new values into augmented system
-  auglinsys_.Update(sys_discrete);
+  // auglinsys_.Update(sys_discrete);
+  auglinsys_.Update(x_aug_.template head<n_states>(), GetPlantInput(u_old_));
 }
 
 /*

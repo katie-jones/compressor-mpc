@@ -5,8 +5,11 @@
  */
 template <class System, int n_delay_states, int n_disturbance_states>
 AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
-    AugmentedLinearizedSystem(const ControlInputIndex& n_delay)
-    : A(AComposite(n_delay)),
+    AugmentedLinearizedSystem(const System& sys, const double sampling_time,
+                              const ControlInputIndex& n_delay)
+    : sys_(sys),
+      sampling_time_(sampling_time),
+      A(AComposite(n_delay)),
       B(BComposite(n_delay)),
       C(Eigen::MatrixXd::Zero(n_outputs, n_obs_states)),
       f(System::State::Zero()) {
@@ -114,7 +117,13 @@ inline typename AugmentedLinearizedSystem<System, n_delay_states,
  */
 template <class System, int n_delay_states, int n_disturbance_states>
 void AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
-    Update(const typename System::Linearized& sys_discrete) {
+    Update(const State x, const Input& u) {
+  typename System::Linearized sys_continuous = sys_.GetLinearizedSystem(x, u);
+
+  // linearize and discretize dynamic system
+  typename System::Linearized sys_discrete =
+      DiscretizeRK4(sys_continuous, sampling_time_);
+
   A.Aorig = sys_discrete.A;
   for (int i = 0; i < n_control_inputs; i++) {
     if (A.n_delay[i] == 0) {
@@ -163,6 +172,32 @@ typename AugmentedLinearizedSystem<System, n_delay_states,
   x_out.template head<n_states>() = Borig * u;
 
   return x_out;
+}
+
+/*
+ * Discretize using Runge-Kutta 4
+ */
+template <class System, int n_delay_states, int n_disturbance_states>
+const typename System::Linearized
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    DiscretizeRK4(const typename System::Linearized& sys_continuous,
+                  const double Ts) {
+  typename System::Linearized sys_discrete;
+  Eigen::Matrix<double, n_states, n_states> A2, A3, Acommon;
+
+  A2 = sys_continuous.A * sys_continuous.A;
+  A3 = A2 * sys_continuous.A;
+  Acommon = Ts * Eigen::Matrix<double, n_states, n_states>::Identity() +
+            Ts * Ts / 2.0 * sys_continuous.A + Ts * Ts * Ts / 6.0 * A2 +
+            Ts * Ts * Ts * Ts / 24.0 * A3;
+
+  sys_discrete.A = Eigen::Matrix<double, n_states, n_states>::Identity() +
+                   Acommon * sys_continuous.A;
+  sys_discrete.B = Acommon * sys_continuous.B;
+  sys_discrete.C = sys_continuous.C;
+  sys_discrete.f = Acommon * sys_continuous.f;
+
+  return sys_discrete;
 }
 
 #include "aug_lin_sys_list.h"

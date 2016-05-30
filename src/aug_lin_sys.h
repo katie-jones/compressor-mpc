@@ -19,6 +19,9 @@ class AugmentedLinearizedSystem {
   /// State of the dynamic system
   typedef Eigen::Matrix<double, n_states, 1> State;
 
+  /// Input to dynamic system
+  typedef typename System::Input Input;
+
   /// Augmented state including delay and disturbance states
   typedef Eigen::Matrix<double, n_total_states, 1> AugmentedState;
 
@@ -64,9 +67,16 @@ class AugmentedLinearizedSystem {
   BComposite B;
   Eigen::Matrix<double, n_outputs, n_obs_states> C;
   State f;
+  System sys_;
+  double sampling_time_;
 
-  AugmentedLinearizedSystem(const ControlInputIndex& n_delay_in);
-  void Update(const typename System::Linearized& sys_discrete);
+  AugmentedLinearizedSystem(const System& sys, const double sampling_time, const ControlInputIndex& n_delay_in);
+  void Update(const State x, const Input& u);
+  
+  // Discretize system using runge-kutta 4 method
+  static const typename System::Linearized DiscretizeRK4(
+      const typename System::Linearized& sys_continuous, const double Ts);
+
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }
 };

@@ -91,7 +91,7 @@ class MpcController {
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
-        auglinsys_(AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>(input_delay)),
+        auglinsys_(AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>(sys, Ts, input_delay)),
         qp_problem_(
             qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
         y_weight_(y_weight) {

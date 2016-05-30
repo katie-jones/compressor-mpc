@@ -7,6 +7,7 @@
 #include "aug_lin_sys.h"
 #include "observer.h"
 #include "print_matrix.h"
+#include "input_constraints.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -18,6 +19,7 @@ constexpr int m = 2;
 extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
 extern template class Observer<ParallelCompressors, 80, 4>;
 extern template class MpcController<ParallelCompressors, 80, 4, 100, 2>;
+extern template class MpcQpSolver<ParallelCompressors, 80, 4, 100, 2>;
 
 using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
@@ -105,7 +107,7 @@ int main(void) {
           .replicate<Control::p, 1>();
 
   // Input constraints
-  Controller::InputConstraints constraints;
+  InputConstraints<ParallelCompressors::n_control_inputs> constraints;
   constraints.lower_bound << -0.3, 0, -0.3, 0;
   constraints.upper_bound << 0.3, 1, 0.3, 1;
   constraints.lower_rate_bound << -0.1, -0.1, -0.1, -0.1;
@@ -116,7 +118,8 @@ int main(void) {
   AugmentedSystem sys(compressor, sampling_time, delay);
   Obsv observer(M, compressor.GetOutput(x_init));
 
-  Controller ctrl(sys, observer, delay, index, uwt, ywt, constraints, offset);
+  Controller ctrl(sys, observer, u_default, y_ref, delay, index, uwt, ywt,
+                  constraints);
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);

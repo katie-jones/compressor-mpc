@@ -207,12 +207,9 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  * Generate linearized prediction matrices
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-const typename AugmentedLinearizedSystem<System, n_delay_states,
-                                         n_disturbance_states>::Prediction
-AugmentedLinearizedSystem<System, n_delay_states,
-                          n_disturbance_states>::GeneratePrediction(const int p,
-                                                                    const int m)
-    const {
+const Prediction AugmentedLinearizedSystem<
+    System, n_delay_states,
+    n_disturbance_states>::GeneratePrediction(const int p, const int m) const {
   Prediction pred;
 
   pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_aug_states);

@@ -4,6 +4,8 @@
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
 
+#include "prediction.h"
+
 template <class System, int n_delay_states, int n_disturbance_states>
 class Observer;
 
@@ -66,11 +68,6 @@ class AugmentedLinearizedSystem {
 
     BComposite(const ControlInputIndex& n_delay);
     AugmentedState operator*(const ControlInput& u) const;
-  };
-
-  /// Structure containing prediction matrices of augmented system
-  struct Prediction {
-    Eigen::MatrixXd Sx, Sf, Su;
   };
 
   AugmentedLinearizedSystem(const System& sys, const double sampling_time,

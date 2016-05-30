@@ -4,10 +4,8 @@
 /*
  * Observe system given new output values from plant
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::ObserveAPosteriori(const Output& y_in) {
+template <class AugmentedLinearizedSystem, int p, int m>
+void MpcController<AugmentedLinearizedSystem, p, m>::ObserveAPosteriori(const Output& y_in) {
   // apply observer to non-delay states
   dx_aug_.template head<n_obs_states>() =
       dx_aug_.template head<n_obs_states>() +
@@ -28,58 +26,11 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
 }
 
 /*
- * Discretize linearized system using runge-kutta 4
- */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename System::Linearized MpcController<
-    System, n_delay_states, n_disturbance_states, p,
-    m>::DiscretizeRK4(const typename System::Linearized& sys_continuous,
-                      const double Ts) {
-  typename System::Linearized sys_discrete;
-  Eigen::Matrix<double, n_states, n_states> A2, A3, Acommon;
-
-  A2 = sys_continuous.A * sys_continuous.A;
-  A3 = A2 * sys_continuous.A;
-  Acommon = Ts * Eigen::Matrix<double, n_states, n_states>::Identity() +
-            Ts * Ts / 2.0 * sys_continuous.A + Ts * Ts * Ts / 6.0 * A2 +
-            Ts * Ts * Ts * Ts / 24.0 * A3;
-
-  sys_discrete.A = Eigen::Matrix<double, n_states, n_states>::Identity() +
-                   Acommon * sys_continuous.A;
-  sys_discrete.B = Acommon * sys_continuous.B;
-  sys_discrete.C = sys_continuous.C;
-  sys_discrete.f = Acommon * sys_continuous.f;
-
-  return sys_discrete;
-}
-
-/*
- * Linearize and augment the system about current state estimate
- */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::LinearizeAndAugment() {
-  // linearize and discretize dynamic system
-  // typename System::Linearized sys_discrete =
-      // DiscretizeRK4(sys_.GetLinearizedSystem(x_aug_.template head<n_states>(),
-                                             // GetPlantInput(u_old_)),
-                    // sampling_time_);
-
-  // Insert new values into augmented system
-  // auglinsys_.Update(sys_discrete);
-  auglinsys_.Update(x_aug_.template head<n_states>(), GetPlantInput(u_old_));
-}
-
-/*
  * Generate QP matrices from MPC formulation
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::QP
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::QP
+MpcController<AugmentedLinearizedSystem, p, m>::GenerateQP()
     const {
   QP qp;
   const Prediction pred = GeneratePrediction();
@@ -131,19 +82,16 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP()
 /*
  * Generate linearized prediction matrices
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::Prediction
-MpcController<System, n_delay_states, n_disturbance_states, p,
-              m>::GeneratePrediction() const {
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::Prediction
+MpcController<AugmentedLinearizedSystem, p, m>::GeneratePrediction() const {
   Prediction pred;
 
   pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_total_states);
   pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
   pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
 
-  typename AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::Ctype c_times_a;
+  typename AugmentedLinearizedSystem::Ctype c_times_a;
   c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
   c_times_a.template rightCols<n_delay_states>().setZero();
 
@@ -181,11 +129,9 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Solve QP and obtain next input to apply
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::ControlInput
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::ControlInput
+MpcController<AugmentedLinearizedSystem, p, m>::SolveQP(
     const QP& qp) {
   int n_wsr = n_wsr_max;
 
@@ -216,10 +162,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
 /*
  * Predict next state of system based on input value to be applied
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::ObserveAPriori(const ControlInput& du_in) {
+template <class AugmentedLinearizedSystem, int p, int m>
+void MpcController<AugmentedLinearizedSystem, p, m>::ObserveAPriori(const ControlInput& du_in) {
   ControlInput du;
   AugmentedState dx = dx_aug_;
 
@@ -243,12 +187,9 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Calculate a plant input based on control input and offset
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::Input
-MpcController<System, n_delay_states, n_disturbance_states, p,
-              m>::GetPlantInput(const ControlInput& u_control) const {
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::Input
+MpcController<AugmentedLinearizedSystem, p, m>::GetPlantInput(const ControlInput& u_control) const {
   Input u = u_offset_;
   for (int i = 0; i < n_control_inputs; i++) {
     u(control_input_index_[i]) += u_control(i);
@@ -259,12 +200,9 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Calculate a control input based on plant input and offset
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::ControlInput
-MpcController<System, n_delay_states, n_disturbance_states, p,
-              m>::GetControlInput(const Input& u) const {
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::ControlInput
+MpcController<AugmentedLinearizedSystem, p, m>::GetControlInput(const Input& u) const {
   ControlInput u_control;
   for (int i = 0; i < n_control_inputs; i++) {
     u_control(i) =
@@ -276,14 +214,12 @@ MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Solve QP and return optimal input to apply
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcController<System, n_delay_states, n_disturbance_states, p,
-                             m>::ControlInput
-MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
+template <class AugmentedLinearizedSystem, int p, int m>
+const typename MpcController<AugmentedLinearizedSystem, p, m>::ControlInput
+MpcController<AugmentedLinearizedSystem, p, m>::GetNextInput(
     const Output& y) {
   ObserveAPosteriori(y);
-  LinearizeAndAugment();
+  auglinsys_.Update(x_aug_.template head<n_states>(), GetPlantInput(u_old_));
   const QP qp = GenerateQP();
   const ControlInput usol = SolveQP(qp);
   ObserveAPriori(usol);
@@ -295,18 +231,19 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
 /*
  * Initialize initial states and QP
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-void MpcController<System, n_delay_states, n_disturbance_states, p,
-                   m>::SetInitialState(const State& x_init,
+template <class AugmentedLinearizedSystem, int p, int m>
+void MpcController<AugmentedLinearizedSystem, p, m>::SetInitialState(const State& x_init,
                                        const ControlInput& u_init,
+                                       const Output& y_init,
                                        const AugmentedState& dx_init) {
   x_aug_.template head<n_states>() = x_init;
   u_old_ = u_init;
-  y_old_ = sys_.GetOutput(x_init);
+  // y_old_ = sys_.GetOutput(x_init);
+  y_old_ = y_init;
   dx_aug_ = dx_init;
   x_aug_.template tail<n_aug_states>() = dx_init.template tail<n_aug_states>();
-  LinearizeAndAugment();
+
+  auglinsys_.Update(x_aug_.template head<n_states>(), GetPlantInput(u_old_));
   const QP qp = GenerateQP();
 
   // Replicate constraints for number of moves
@@ -328,10 +265,8 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
 /*
  * Default values for input constraints
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-MpcController<System, n_delay_states, n_disturbance_states, p,
-              m>::InputConstraints::InputConstraints()
+template <class AugmentedLinearizedSystem, int p, int m>
+MpcController<AugmentedLinearizedSystem, p, m>::InputConstraints::InputConstraints()
     : upper_bound(ControlInput::Constant(std::nan(""))),
       lower_bound(ControlInput::Constant(-std::nan(""))),
       use_rate_constraints(false) {}

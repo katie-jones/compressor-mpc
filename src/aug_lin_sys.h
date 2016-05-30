@@ -6,6 +6,7 @@
 
 template <class System, int n_delay_states, int n_disturbance_states>
 class AugmentedLinearizedSystem {
+ public:
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
@@ -15,7 +16,6 @@ class AugmentedLinearizedSystem {
   static constexpr int n_obs_states = n_states + n_disturbance_states;
   static constexpr int n_total_states = n_aug_states + n_states;
 
- public:
   /// State of the dynamic system
   typedef Eigen::Matrix<double, n_states, 1> State;
 
@@ -34,8 +34,6 @@ class AugmentedLinearizedSystem {
   /// Vector of indices for a ControlInput
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
- private:
- public:
   struct AComposite;
   struct BComposite;
 
@@ -70,9 +68,10 @@ class AugmentedLinearizedSystem {
   System sys_;
   double sampling_time_;
 
-  AugmentedLinearizedSystem(const System& sys, const double sampling_time, const ControlInputIndex& n_delay_in);
+  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
+                            const ControlInputIndex& n_delay_in);
   void Update(const State x, const Input& u);
-  
+
   // Discretize system using runge-kutta 4 method
   static const typename System::Linearized DiscretizeRK4(
       const typename System::Linearized& sys_continuous, const double Ts);

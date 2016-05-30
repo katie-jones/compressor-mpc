@@ -4,6 +4,7 @@
 #include "parallel_compressors.h"
 #include "simulation_system.h"
 #include "mpc_controller.h"
+#include "aug_lin_sys.h"
 #include "print_matrix.h"
 
 namespace Control {
@@ -14,12 +15,14 @@ constexpr int m = 2;
 }
 
 extern template class MpcController<
-    ParallelCompressors, Control::n_delay_states, Control::n_disturbance_states,
-    Control::p, Control::m>;
+    AugmentedLinearizedSystem<ParallelCompressors, 80, 4>, 100, 2>;
 
-using Controller =
-    MpcController<ParallelCompressors, Control::n_delay_states,
-                  Control::n_disturbance_states, Control::p, Control::m>;
+using AugmentedSystem =
+    AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
+                              Control::n_disturbance_states>;
+
+using Controller = MpcController<AugmentedSystem, Control::p, Control::m>;
+
 using SimSystem =
     SimulationSystem<ParallelCompressors, Control::n_delay_states>;
 
@@ -106,12 +109,13 @@ int main(void) {
   constraints.use_rate_constraints = true;
 
   // Setup controller
-  Controller ctrl(compressor, M, sampling_time, delay, index, uwt, ywt,
-                  constraints, offset);
+  AugmentedSystem sys(compressor, sampling_time, delay);
+  Controller ctrl(sys, M, delay, index, uwt, ywt, constraints, offset);
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);
-  ctrl.SetInitialState(x_init, Controller::ControlInput::Zero());
+  ctrl.SetInitialState(x_init, Controller::ControlInput::Zero(),
+                       y_ref.head<4>());
 
   // Integrate system and time it
   boost::timer::cpu_timer integrate_timer;
@@ -122,7 +126,7 @@ int main(void) {
   ParallelCompressors::Input u_disturbance = u_default;
   u_disturbance(8) -= 0.3;
 
-  sim_comp.SetOffset(u_disturbance);
+  // sim_comp.SetOffset(u_disturbance);
   integrate_timer.resume();
   sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
   integrate_timer.stop();

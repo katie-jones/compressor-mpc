@@ -4,7 +4,6 @@
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
 #include "dynamic_system.h"
-#include "aug_lin_sys.h"
 #include "mpc_exceptions.h"
 #include "qpOASES.hpp"
 
@@ -19,17 +18,19 @@
  *    p: prediction horizon of controller
  *    m: move horizon of controller
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
+template <class AugmentedLinearizedSystem, int p, int m>
 class MpcController {
  protected:
-  static constexpr int n_control_inputs = System::n_control_inputs;
-  static constexpr int n_inputs = System::n_inputs;
-  static constexpr int n_outputs = System::n_outputs;
-  static constexpr int n_states = System::n_states;
+  static constexpr int n_control_inputs =
+      AugmentedLinearizedSystem::n_control_inputs;
+  static constexpr int n_inputs = AugmentedLinearizedSystem::n_inputs;
+  static constexpr int n_outputs = AugmentedLinearizedSystem::n_outputs;
+  static constexpr int n_states = AugmentedLinearizedSystem::n_states;
+  static constexpr int n_aug_states = AugmentedLinearizedSystem::n_aug_states;
+  static constexpr int n_obs_states = AugmentedLinearizedSystem::n_obs_states;
 
-  static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
-  static constexpr int n_obs_states = n_states + n_disturbance_states;
+  static constexpr int n_delay_states =
+      AugmentedLinearizedSystem::n_total_states - n_obs_states;
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
@@ -75,23 +76,21 @@ class MpcController {
   };
 
   /// Constructor -- doesn't initialize state or input/output
-  MpcController(const System& sys, const ObserverMatrix& M, const double Ts,
+  MpcController(const AugmentedLinearizedSystem& sys, const ObserverMatrix& M,
                 const ControlInputIndex& input_delay,
                 const ControlInputIndex& control_input_index,
                 const UWeightType& u_weight = UWeightType().setIdentity(),
                 const YWeightType& y_weight = YWeightType().setIdentity(),
                 const InputConstraints& constraints = InputConstraints(),
                 const Input& u_offset = Input())
-      : sys_(sys),
+      : auglinsys_(sys),
         M_(M),
-        sampling_time_(Ts),
         u_offset_(u_offset),
         Ain_(GetConstraintMatrix()),
         n_delay_(input_delay),
         control_input_index_(control_input_index),
         u_constraints_(constraints),
         u_weight_(u_weight),
-        auglinsys_(AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>(sys, Ts, input_delay)),
         qp_problem_(
             qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)),
         y_weight_(y_weight) {
@@ -108,6 +107,7 @@ class MpcController {
    * using the hotstart method.
    */
   void SetInitialState(const State& x_init, const ControlInput& u_init,
+                       const Output& y_init,
                        const AugmentedState& dx_init = AugmentedState::Zero());
 
   /**
@@ -148,13 +148,6 @@ class MpcController {
   // apply observer
   void ObserveAPosteriori(const Output& y_in);
 
-  // Discretize system using runge-kutta 4 method
-  static const typename System::Linearized DiscretizeRK4(
-      const typename System::Linearized& sys_continuous, const double Ts);
-
-  // update linearized/augmented system
-  void LinearizeAndAugment();
-
   // Generate linearized prediction matrices
   const Prediction GeneratePrediction() const;
 
@@ -184,17 +177,14 @@ class MpcController {
     return A;
   }
 
-  const System sys_;            // dynamic system
-  OutputPrediction y_ref_;      // reference trajectory
-  const double sampling_time_;  // sample time
-  AugmentedState x_aug_;        // augmented state
-  AugmentedState dx_aug_;       // differential augmented state
-  ControlInput u_old_;          // past input
-  Output y_old_;                // past output
-  const Input u_offset_;        // offset applied to control input
-  const ObserverMatrix M_;      // observer matrix used
-  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
-      auglinsys_;                         // current augmented linearization
+  OutputPrediction y_ref_;                // reference trajectory
+  AugmentedState x_aug_;                  // augmented state
+  AugmentedState dx_aug_;                 // differential augmented state
+  ControlInput u_old_;                    // past input
+  Output y_old_;                          // past output
+  const Input u_offset_;                  // offset applied to control input
+  const ObserverMatrix M_;                // observer matrix used
+  AugmentedLinearizedSystem auglinsys_;   // current augmented linearization
   const UWeightType u_weight_;            // input weights
   const YWeightType y_weight_;            // output weights
   const ControlInputIndex n_delay_;       // delay states per input

@@ -89,8 +89,7 @@ class MpcController {
    * using the hotstart method.
    */
   void SetInitialState(const State& x_init, const Output& y_init,
-                       const ControlInput& u_init = ControlInput::Zero(),
-                       const AugmentedState& dx_init = AugmentedState::Zero());
+                       const ControlInput& u_init = ControlInput::Zero());
 
   /**
    * Compute the next input to apply to the system.

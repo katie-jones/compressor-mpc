@@ -116,8 +116,9 @@ inline typename AugmentedLinearizedSystem<System, n_delay_states,
  * Update augmented system with new linearization values
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-void AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
-    Update(const State x, const Input& u) {
+void AugmentedLinearizedSystem<System, n_delay_states,
+                               n_disturbance_states>::Update(const State x,
+                                                             const Input& u) {
   typename System::Linearized sys_continuous = sys_.GetLinearizedSystem(x, u);
 
   // linearize and discretize dynamic system
@@ -198,6 +199,56 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
   sys_discrete.f = Acommon * sys_continuous.f;
 
   return sys_discrete;
+}
+
+/*
+ * Generate linearized prediction matrices
+ */
+template <class System, int n_delay_states, int n_disturbance_states>
+const typename AugmentedLinearizedSystem<System, n_delay_states,
+                                         n_disturbance_states>::Prediction
+AugmentedLinearizedSystem<System, n_delay_states,
+                          n_disturbance_states>::GeneratePrediction(const int p, const int m) const {
+  Prediction pred;
+
+  // pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_total_states);
+  pred.Sx = Eigen::MatrixXd::Zero(p*n_outputs, n_aug_states);
+  pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
+  pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
+
+  Ctype c_times_a;
+  c_times_a.template leftCols<n_obs_states>() = C;
+  c_times_a.template rightCols<n_delay_states>().setZero();
+
+  Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
+  int ind_col, ind_row;
+
+  pred.Sf.template topRows<n_outputs>() =
+      C.template leftCols<n_states>();
+
+  for (int i = 0; i < p; i++) {
+    if (i > 0) {
+      pred.Sf.template block<n_outputs, n_states>(i * n_outputs, 0) =
+          pred.Sf.template block<n_outputs, n_states>((i - 1) * n_outputs, 0) +
+          c_times_a.template leftCols<n_states>();
+    }
+
+    to_add = c_times_a * B;
+    for (int j = 0; j < p - i; j++) {
+      ind_row = i + j;
+      if (j < m)
+        ind_col = j;
+      else
+        ind_col = m - 1;
+      pred.Su.template block<n_outputs, n_control_inputs>(
+          ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
+    }
+    c_times_a *= A;
+    pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) =
+        c_times_a;
+  }
+
+  return pred;
 }
 
 #include "aug_lin_sys_list.h"

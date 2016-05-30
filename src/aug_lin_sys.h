@@ -61,6 +61,11 @@ class AugmentedLinearizedSystem {
     AugmentedState operator*(const ControlInput& u) const;
   };
 
+  /// Structure containing prediction matrices of augmented system
+  struct Prediction {
+    Eigen::MatrixXd Sx, Sf, Su;
+  };
+
   AComposite A;
   BComposite B;
   Eigen::Matrix<double, n_outputs, n_obs_states> C;
@@ -75,6 +80,7 @@ class AugmentedLinearizedSystem {
   // Discretize system using runge-kutta 4 method
   static const typename System::Linearized DiscretizeRK4(
       const typename System::Linearized& sys_continuous, const double Ts);
+  const Prediction GeneratePrediction(const int p, const int m) const;
 
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }

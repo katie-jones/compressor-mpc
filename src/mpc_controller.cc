@@ -28,7 +28,9 @@ template <class AugmentedLinearizedSystem, int p, int m>
 const typename MpcController<AugmentedLinearizedSystem, p, m>::QP
 MpcController<AugmentedLinearizedSystem, p, m>::GenerateQP() const {
   QP qp;
-  const Prediction pred = GeneratePrediction();
+  const typename AugmentedLinearizedSystem::Prediction pred =
+      auglinsys_.GeneratePrediction(p, m);
+
   const OutputPrediction dy_ref = y_ref_ - y_old_.template replicate<p, 1>();
 
   AugmentedState delta_x0 = dx_aug_;
@@ -72,53 +74,6 @@ MpcController<AugmentedLinearizedSystem, p, m>::GenerateQP() const {
       delta_x0.transpose() * pred.Sx.transpose() * y_weight_full * pred.Su;
 
   return qp;
-}
-
-/*
- * Generate linearized prediction matrices
- */
-template <class AugmentedLinearizedSystem, int p, int m>
-const typename MpcController<AugmentedLinearizedSystem, p, m>::Prediction
-MpcController<AugmentedLinearizedSystem, p, m>::GeneratePrediction() const {
-  Prediction pred;
-
-  pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_total_states);
-  pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
-  pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
-
-  typename AugmentedLinearizedSystem::Ctype c_times_a;
-  c_times_a.template leftCols<n_obs_states>() = auglinsys_.C;
-  c_times_a.template rightCols<n_delay_states>().setZero();
-
-  Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
-  int ind_col, ind_row;
-
-  pred.Sf.template topRows<n_outputs>() =
-      auglinsys_.C.template leftCols<n_states>();
-
-  for (int i = 0; i < p; i++) {
-    if (i > 0) {
-      pred.Sf.template block<n_outputs, n_states>(i * n_outputs, 0) =
-          pred.Sf.template block<n_outputs, n_states>((i - 1) * n_outputs, 0) +
-          c_times_a.template leftCols<n_states>();
-    }
-
-    to_add = c_times_a * auglinsys_.B;
-    for (int j = 0; j < p - i; j++) {
-      ind_row = i + j;
-      if (j < m)
-        ind_col = j;
-      else
-        ind_col = m - 1;
-      pred.Su.template block<n_outputs, n_control_inputs>(
-          ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
-    }
-    c_times_a *= auglinsys_.A;
-    pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) =
-        c_times_a;
-  }
-
-  return pred;
 }
 
 /*

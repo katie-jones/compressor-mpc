@@ -136,11 +136,6 @@ class MpcController {
   }
 
  protected:
-  // Structure containing prediction matrices of augmented system
-  struct Prediction {
-    Eigen::MatrixXd Sx, Sf, Su;
-  };
-
   // Structure containing QP problem to solve
   struct QP {
     Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
@@ -150,9 +145,6 @@ class MpcController {
 
   // apply observer
   void ObserveAPosteriori(const Output& y_in);
-
-  // Generate linearized prediction matrices
-  const Prediction GeneratePrediction() const;
 
   // generate QP matrices based on linearization
   const QP GenerateQP() const;
@@ -181,7 +173,7 @@ class MpcController {
   }
 
   OutputPrediction y_ref_;                // reference trajectory
-  State x_;                           // augmented state
+  State x_;                               // augmented state
   AugmentedState dx_aug_;                 // differential augmented state
   ControlInput u_old_;                    // past input
   Output y_old_;                          // past output

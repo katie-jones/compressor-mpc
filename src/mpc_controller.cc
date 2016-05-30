@@ -33,10 +33,11 @@ MpcController<AugmentedLinearizedSystem, p, m>::GenerateQP() const {
 
   const OutputPrediction dy_ref = y_ref_ - y_old_.template replicate<p, 1>();
 
-  AugmentedState delta_x0 = dx_aug_;
-  delta_x0.template head<n_states>().setZero();
+  Eigen::Matrix<double, n_aug_states, 1> delta_x0 =
+      dx_aug_.template tail<n_aug_states>();
+  // delta_x0.template head<n_states>().setZero();
 
-  int index_delay_states = n_obs_states;
+  int index_delay_states = n_aug_states - n_delay_states;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       for (int j = 0; j < n_delay_[i]; j++) {

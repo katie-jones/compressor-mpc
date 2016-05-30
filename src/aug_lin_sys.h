@@ -38,8 +38,8 @@ class AugmentedLinearizedSystem {
   struct BComposite;
 
   struct Ctype : public Eigen::Matrix<double, n_outputs, n_total_states> {
-    Ctype& operator*=(const AComposite& a);
-    Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
+    inline Ctype& operator*=(const AComposite& a);
+    inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
     operator*(const BComposite& b);
   };
 
@@ -50,7 +50,9 @@ class AugmentedLinearizedSystem {
     ControlInputIndex n_delay;
 
     AComposite(const ControlInputIndex& n_delay);
-    AugmentedState operator*(const AugmentedState& x) const;
+    inline AugmentedState operator*(const AugmentedState& x) const;
+    AugmentedState TimesAugmentedOnly(
+        const Eigen::Matrix<double, n_aug_states, 1> x) const;
   };
 
   struct BComposite {
@@ -58,7 +60,7 @@ class AugmentedLinearizedSystem {
     Eigen::SparseMatrix<bool> Baug;
 
     BComposite(const ControlInputIndex& n_delay);
-    AugmentedState operator*(const ControlInput& u) const;
+    inline AugmentedState operator*(const ControlInput& u) const;
   };
 
   /// Structure containing prediction matrices of augmented system
@@ -85,6 +87,24 @@ class AugmentedLinearizedSystem {
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }
 };
+
+/*
+ * Operator x_out = A*x
+ */
+template <class System, int n_delay_states, int n_disturbance_states>
+inline typename AugmentedLinearizedSystem<System, n_delay_states,
+                                          n_disturbance_states>::AugmentedState
+    AugmentedLinearizedSystem<System, n_delay_states,
+                              n_disturbance_states>::AComposite::
+    operator*(const AugmentedState& x) const {
+  // multiply by augmented part of matrix
+  AugmentedState x_out = TimesAugmentedOnly(x.template tail<n_aug_states>());
+
+  // add contribution of Aorig
+  x_out.template head<n_states>() += Aorig * x.template head<n_states>();
+
+  return x_out;
+}
 
 namespace Eigen {
 namespace internal {

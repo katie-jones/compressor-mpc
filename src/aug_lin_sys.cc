@@ -89,26 +89,28 @@ inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
 }
 
 /*
- * Operator x_out = A*x
+ * Multiply A by augmented part of x
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-inline typename AugmentedLinearizedSystem<System, n_delay_states,
-                                          n_disturbance_states>::AugmentedState
-    AugmentedLinearizedSystem<System, n_delay_states,
-                              n_disturbance_states>::AComposite::
-    operator*(const AugmentedState& x) const {
+typename AugmentedLinearizedSystem<System, n_delay_states,
+                                   n_disturbance_states>::AugmentedState
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    AComposite::TimesAugmentedOnly(
+        const Eigen::Matrix<double, n_aug_states, 1> x) const {
+  // Augmented part
   AugmentedState x_out;
   x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
-  x_out.template head<n_states>() = Aorig * x.template head<n_states>();
 
+  // Effect of delayed input on states
   int index_delay_states = 0;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay[i] != 0) {
       x_out.template head<n_states>() +=
-          Adelay.col(i) * x(n_obs_states + index_delay_states);
+          Adelay.col(i) * x(n_disturbance_states + index_delay_states);
       index_delay_states += n_delay[i];
     }
   }
+
   return x_out;
 }
 
@@ -163,7 +165,7 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  * Operator x_out = B*u
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-typename AugmentedLinearizedSystem<System, n_delay_states,
+inline typename AugmentedLinearizedSystem<System, n_delay_states,
                                    n_disturbance_states>::AugmentedState
     AugmentedLinearizedSystem<System, n_delay_states,
                               n_disturbance_states>::BComposite::
@@ -208,11 +210,12 @@ template <class System, int n_delay_states, int n_disturbance_states>
 const typename AugmentedLinearizedSystem<System, n_delay_states,
                                          n_disturbance_states>::Prediction
 AugmentedLinearizedSystem<System, n_delay_states,
-                          n_disturbance_states>::GeneratePrediction(const int p, const int m) const {
+                          n_disturbance_states>::GeneratePrediction(const int p,
+                                                                    const int m)
+    const {
   Prediction pred;
 
-  // pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_total_states);
-  pred.Sx = Eigen::MatrixXd::Zero(p*n_outputs, n_aug_states);
+  pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_aug_states);
   pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
   pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
 
@@ -223,8 +226,7 @@ AugmentedLinearizedSystem<System, n_delay_states,
   Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
 
-  pred.Sf.template topRows<n_outputs>() =
-      C.template leftCols<n_states>();
+  pred.Sf.template topRows<n_outputs>() = C.template leftCols<n_states>();
 
   for (int i = 0; i < p; i++) {
     if (i > 0) {

@@ -116,10 +116,10 @@ template <class AugmentedLinearizedSystem, int p, int m>
 void MpcController<AugmentedLinearizedSystem, p, m>::ObserveAPriori(
     const ControlInput& du_in) {
   ControlInput du;
-  AugmentedState dx = dx_aug_;
+  Eigen::Matrix<double, n_aug_states, 1> dx =
+      dx_aug_.template tail<n_aug_states>();
 
-  dx.template head<n_states>().setZero();
-  int index_delay_states = n_obs_states;
+  int index_delay_states = n_aug_states - n_delay_states;
 
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
@@ -131,7 +131,7 @@ void MpcController<AugmentedLinearizedSystem, p, m>::ObserveAPriori(
     }
   }
 
-  dx_aug_ = auglinsys_.B * du + auglinsys_.A * dx;
+  dx_aug_ = auglinsys_.B * du + auglinsys_.A.TimesAugmentedOnly(dx);
   dx_aug_.template head<n_states>() += auglinsys_.f;
 }
 

@@ -130,7 +130,10 @@ class MpcController {
   const ControlInput GetControlInput(const Input& u) const;
 
   /// Output current state estimate
-  const AugmentedState GetStateEstimate() const { return x_aug_; }
+  const AugmentedState GetStateEstimate() const {
+    return (AugmentedState() << x_, dx_aug_.template tail<n_aug_states>())
+        .finished();
+  }
 
  protected:
   // Structure containing prediction matrices of augmented system
@@ -178,7 +181,7 @@ class MpcController {
   }
 
   OutputPrediction y_ref_;                // reference trajectory
-  AugmentedState x_aug_;                  // augmented state
+  State x_;                           // augmented state
   AugmentedState dx_aug_;                 // differential augmented state
   ControlInput u_old_;                    // past input
   Output y_old_;                          // past output

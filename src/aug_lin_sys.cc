@@ -244,8 +244,8 @@ AugmentedLinearizedSystem<System, n_delay_states,
           ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
     }
     c_times_a *= A;
-    pred.Sx.template block<n_outputs, n_total_states>(i * n_outputs, 0) =
-        c_times_a;
+    pred.Sx.template block<n_outputs, n_aug_states>(i * n_outputs, 0) =
+        c_times_a.template rightCols<n_aug_states>();
   }
 
   return pred;

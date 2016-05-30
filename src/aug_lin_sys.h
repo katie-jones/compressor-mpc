@@ -32,6 +32,7 @@ class AugmentedLinearizedSystem {
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
  private:
+ public:
   struct AComposite;
   struct BComposite;
 
@@ -42,9 +43,9 @@ class AugmentedLinearizedSystem {
   };
 
   struct AComposite {
-    Eigen::Matrix<double, n_states, n_states, Eigen::RowMajor> Aorig;
-    Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Adelay;
-    Eigen::SparseMatrix<bool, Eigen::RowMajor> Aaug;
+    Eigen::Matrix<double, n_states, n_states> Aorig;
+    Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
+    Eigen::SparseMatrix<bool> Aaug;
     ControlInputIndex n_delay;
 
     AComposite(const ControlInputIndex& n_delay);
@@ -52,8 +53,8 @@ class AugmentedLinearizedSystem {
   };
 
   struct BComposite {
-    Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> Borig;
-    Eigen::SparseMatrix<bool, Eigen::RowMajor> Baug;
+    Eigen::Matrix<double, n_states, n_control_inputs> Borig;
+    Eigen::SparseMatrix<bool> Baug;
 
     BComposite(const ControlInputIndex& n_delay);
     AugmentedState operator*(const ControlInput& u) const;
@@ -61,10 +62,9 @@ class AugmentedLinearizedSystem {
 
   AComposite A;
   BComposite B;
-  Eigen::Matrix<double, n_outputs, n_obs_states, Eigen::RowMajor> C;
+  Eigen::Matrix<double, n_outputs, n_obs_states> C;
   State f;
 
- public:
   AugmentedLinearizedSystem(const ControlInputIndex& n_delay_in);
   void Update(const typename System::Linearized& sys_discrete);
   const AComposite GetA() const { return A; }

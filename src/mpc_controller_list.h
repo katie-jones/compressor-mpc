@@ -17,7 +17,7 @@
 // Parallel compressors
 extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
 extern template class Observer<ParallelCompressors, 80, 4>;
-extern template class MpcQpSolver<ParallelCompressors, 80, 4, 100, 2>;
+template class MpcQpSolver<95, 4, 4, 100, 2>;
 template class MpcController<ParallelCompressors, 80, 4, 100, 2>;
 
 #endif

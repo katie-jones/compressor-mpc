@@ -1,24 +1,15 @@
 #include "mpc_qp_solver.h"
 
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::MpcQpSolver(
-    const OutputPrediction* y_ref, const ControlInputIndex& n_delay,
-    const ControlInput& u_init,
+template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
+MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::MpcQpSolver(
+    const OutputPrediction* y_ref, const ControlInput& u_init,
     const InputConstraints<n_control_inputs>& u_constraints,
     const UWeightType& u_weight, const YWeightType& y_weight)
     : p_y_ref_(y_ref),
-      n_delay_(n_delay),
       u_constraints_(u_constraints),
       Ain_(GetConstraintMatrix()),
       qp_problem_(
           qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)) {
-  int sum_delay = 0;
-  for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
-  if (sum_delay != n_delay_states) {
-    throw delay_states_wrong();
-  }
-
   y_weight_ = Eigen::SparseMatrix<double>(p * n_outputs, p * n_outputs);
   const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
       Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
@@ -41,33 +32,23 @@ MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::MpcQpSolver(
 /*
  * Generate QP matrices from MPC formulation
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
+const typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::QP
-MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP(
-    const Prediction& pred,
-    Eigen::Matrix<double, n_aug_states, 1>& delta_x0, const State& xdot,
-    const Output& y_prev) const {
+MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::GenerateQP(
+    const Prediction& pred, const AugmentedState& delta_x0,
+    const int n_aug_states, const Output& y_prev) const {
   QP qp;
 
   const OutputPrediction dy_ref = *p_y_ref_ - y_prev.template replicate<p, 1>();
 
-  int index_delay_states = n_aug_states - n_delay_states;
-  for (int i = 0; i < n_control_inputs; i++) {
-    if (n_delay_[i] != 0) {
-      for (int j = 0; j < n_delay_[i]; j++) {
-        delta_x0(index_delay_states + j) -= u_old_[i];
-      }
-      index_delay_states += n_delay_[i];
-    }
-  }
-
   qp.H = pred.Su.transpose() * y_weight_ * pred.Su + u_weight_;
 
-  qp.f = xdot.transpose() * pred.Sf.transpose() * y_weight_ * pred.Su -
+  qp.f = delta_x0.head(n_total_states - n_aug_states).transpose() *
+             pred.Sf.transpose() * y_weight_ * pred.Su -
          dy_ref.transpose() * y_weight_ * pred.Su +
-         delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
+         delta_x0.tail(n_aug_states).transpose() * pred.Sx.transpose() *
+             y_weight_ * pred.Su;
 
   return qp;
 }
@@ -75,11 +56,10 @@ MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP(
 /*
  * Solve QP and obtain next input to apply
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
-const typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
-                           m>::ControlInput
-MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
+template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
+const typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
+                           m>::ControlInputPrediction
+MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
     const QP& qp) {
   int n_wsr = n_wsr_max;
 
@@ -99,11 +79,14 @@ MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::SolveQP(
 
   if (status != qpOASES::SUCCESSFUL_RETURN) {
     // QP not solved, return zeros
-    return ControlInput::Zero();
+    return ControlInputPrediction::Zero();
   }
 
-  ControlInput u_solution;
+  ControlInputPrediction u_solution;
   qp_problem_.getPrimalSolution(u_solution.data());
+
+  u_old_ += u_solution.template head<n_control_inputs>();
+
   return u_solution;
 }
 

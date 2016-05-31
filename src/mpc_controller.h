@@ -28,7 +28,9 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 class MpcController
     : public ControllerInterface<System, p>,
-      public MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m> {
+      public MpcQpSolver<System::n_states + n_delay_states +
+                             n_disturbance_states,
+                         System::n_outputs, System::n_control_inputs, p, m> {
  private:
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
@@ -45,15 +47,15 @@ class MpcController
   using ControllerInterface<System, p>::n_delay_;
   using ControllerInterface<System, p>::control_input_index_;
 
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::u_old_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::u_old_;
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::u_weight_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::y_weight_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::u_constraints_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::Ain_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::Ain_;
+  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::qp_problem_;
 
  public:
@@ -66,16 +68,17 @@ class MpcController
   using OutputPrediction =
       typename ControllerInterface<System, p>::OutputPrediction;
   using AugmentedState =
-      typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
+      typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::AugmentedState;
-  using UWeightType =
-      typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
-                           m>::UWeightType;
-  using YWeightType =
-      typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
-                           m>::YWeightType;
-  using QP = typename MpcQpSolver<System, n_delay_states, n_disturbance_states,
+  using UWeightType = typename MpcQpSolver<n_total_states, n_outputs,
+                                           n_control_inputs, p, m>::UWeightType;
+  using YWeightType = typename MpcQpSolver<n_total_states, n_outputs,
+                                           n_control_inputs, p, m>::YWeightType;
+  using QP = typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs,
                                   p, m>::QP;
+  using ControlInputPrediction =
+      typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
+                           m>::ControlInputPrediction;
 
   /// Constructor -- doesn't initialize state or input/output
   MpcController(
@@ -116,7 +119,7 @@ class MpcController
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;
   Observer<System, n_delay_states, n_disturbance_states> observer_;
-  State x_;       // augmented state
+  State x_;  // augmented state
 };
 
 #endif

@@ -19,9 +19,8 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
       observer_(observer),
       ControllerInterface<System, p>(y_ref, u_offset, input_delay,
                                      control_input_index),
-      MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>(
-          &y_ref_, input_delay, ControlInput::Zero(), constraints, u_weight,
-          y_weight) {
+      MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
+          &y_ref_, ControlInput::Zero(), constraints, u_weight, y_weight) {
   int sum_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
   if (sum_delay != n_delay_states) {
@@ -60,14 +59,26 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  Eigen::Matrix<double, n_aug_states, 1> delta_x0 =
-      observer_.GetStateEstimate().template tail<n_aug_states>();
-  const QP qp = this->GenerateQP(pred, delta_x0, auglinsys_.GetF(),
-                                 observer_.GetPreviousOutput());
-  const ControlInput usol = this->SolveQP(qp);
-  observer_.ObserveAPriori(usol);
 
-  u_old_ += usol;
+  AugmentedState delta_x0;
+  delta_x0 << auglinsys_.GetF(),
+      observer_.GetStateEstimate().template tail<n_aug_states>();
+
+  int index_delay_states = n_obs_states;
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] != 0) {
+      for (int j = 0; j < n_delay_[i]; j++) {
+        delta_x0(index_delay_states + j) -= u_old_[i];
+      }
+      index_delay_states += n_delay_[i];
+    }
+  }
+
+  const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
+                                 observer_.GetPreviousOutput());
+  const ControlInputPrediction usol = this->SolveQP(qp);
+  observer_.ObserveAPriori(usol.template head<n_control_inputs>());
+
   return u_old_;
 }
 
@@ -85,12 +96,22 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
 
   observer_.SetIntialOutput(y_init);
 
-  auglinsys_.Update(x_, this->GetPlantInput(u_old_));
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  Eigen::Matrix<double, n_aug_states, 1> delta_x0 =
+  AugmentedState delta_x0;
+  delta_x0 << auglinsys_.GetF(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
-  const QP qp = this->GenerateQP(pred, delta_x0, auglinsys_.GetF(),
+  int index_delay_states = n_obs_states;
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] != 0) {
+      for (int j = 0; j < n_delay_[i]; j++) {
+        delta_x0(index_delay_states + j) -= u_old_[i];
+      }
+      index_delay_states += n_delay_[i];
+    }
+  }
+
+  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
+  const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
 
   // Replicate constraints for number of moves

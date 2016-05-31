@@ -25,6 +25,13 @@ class MpcQpSolver {
   /// Matrix of output weight terms
   typedef Eigen::Matrix<double, n_outputs, n_outputs> YWeightType;
 
+  /// Structure containing QP problem to solve
+  struct QP {
+    Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
+                  Eigen::RowMajor> H;
+    Eigen::Matrix<double, m * n_control_inputs, 1> f;
+  };
+
   /// Constructor
   MpcQpSolver(const OutputPrediction* y_ref,
               const ControlInput& u_init = ControlInput::Zero(),
@@ -33,12 +40,8 @@ class MpcQpSolver {
               const UWeightType& u_weight = UWeightType::Identity(),
               const YWeightType& y_weight = YWeightType::Identity());
 
-  /// Structure containing QP problem to solve
-  struct QP {
-    Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
-                  Eigen::RowMajor> H;
-    Eigen::Matrix<double, m * n_control_inputs, 1> f;
-  };
+  /// Initialize QP Problem so hotstart method can be used
+  void InitializeQPProblem(const QP& qp);
 
   /// generate QP matrices based on linearization
   const QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
@@ -49,7 +52,6 @@ class MpcQpSolver {
   
   /// Set initial input
   void SetInitialInput(const ControlInput& u_init) { u_old_ = u_init; }
-
 
  protected:
   // output rate constraint matrix

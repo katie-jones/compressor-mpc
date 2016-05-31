@@ -25,6 +25,7 @@ add_library(mpc_controller mpc_controller.cc)
 add_library(auglinsys aug_lin_sys.cc)
 add_library(observer observer.cc)
 add_library(qpsolver mpc_qp_solver.cc)
+add_library(cooperative_controller cooperative_controller.cc)
 
 target_link_libraries(parcomp compressor tank)
 target_link_libraries(mpc_controller qpOASES auglinsys observer qpsolver)

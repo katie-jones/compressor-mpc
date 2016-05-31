@@ -12,14 +12,13 @@ class MpcQpSolver {
  private:
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
- protected:
+ public:
   using AugmentedState = Eigen::Matrix<double, n_total_states, 1>;
   using Output = Eigen::Matrix<double, n_outputs, 1>;
   using ControlInput = Eigen::Matrix<double, n_control_inputs, 1>;
   using OutputPrediction = Eigen::Matrix<double, p * n_outputs, 1>;
   using ControlInputPrediction = Eigen::Matrix<double, m * n_control_inputs, 1>;
 
- public:
   /// Matrix of input weight terms
   typedef Eigen::Matrix<double, n_control_inputs, n_control_inputs> UWeightType;
 
@@ -34,21 +33,25 @@ class MpcQpSolver {
               const UWeightType& u_weight = UWeightType::Identity(),
               const YWeightType& y_weight = YWeightType::Identity());
 
- protected:
-  // Structure containing QP problem to solve
+  /// Structure containing QP problem to solve
   struct QP {
     Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
                   Eigen::RowMajor> H;
     Eigen::Matrix<double, m * n_control_inputs, 1> f;
   };
 
-  // generate QP matrices based on linearization
+  /// generate QP matrices based on linearization
   const QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
                       const int n_aug_states, const Output& y_prev) const;
 
-  // use QPoases to solve QP
+  /// use QPoases to solve QP
   const ControlInputPrediction SolveQP(const QP& qp);
+  
+  /// Set initial input
+  void SetInitialInput(const ControlInput& u_init) { u_old_ = u_init; }
 
+
+ protected:
   // output rate constraint matrix
   static const inline std::array<double,
                                  m * n_control_inputs * m * n_control_inputs>

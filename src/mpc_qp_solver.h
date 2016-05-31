@@ -44,19 +44,32 @@ class MpcQpSolver {
   void InitializeQPProblem(const QP& qp);
 
   /// generate QP matrices based on linearization
-  const QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
-                      const int n_aug_states, const Output& y_prev) const;
+  const QP GenerateQP(const Prediction& pred,
+                              const AugmentedState& delta_x0,
+                              const int n_aug_states,
+                              const Output& y_prev) const {
+    Eigen::MatrixXd y_pred_weight(p * n_outputs, m * n_control_inputs);
+    y_pred_weight = y_weight_ * pred.Su;
+    return GenerateQP(pred, delta_x0, n_aug_states, y_prev, y_pred_weight);
+  }
 
   /// use QPoases to solve QP
   const ControlInputPrediction SolveQP(const QP& qp);
-  
+
   /// Set initial input
   void SetInitialInput(const ControlInput& u_init) { u_old_ = u_init; }
 
  protected:
+  // generate QP matrices based on linearization, given the y prediction
+  // weight
+  const QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
+                      const int n_aug_states, const Output& y_prev,
+                      const Eigen::MatrixXd& y_pred_weight) const;
+
   // output rate constraint matrix
   static const inline std::array<double,
                                  m * n_control_inputs * m * n_control_inputs>
+
   GetConstraintMatrix() {
     std::array<double, m * n_control_inputs * m * n_control_inputs> A;
     for (int i = 0; i < m * m * n_control_inputs * n_control_inputs; i++)

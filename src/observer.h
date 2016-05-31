@@ -34,8 +34,7 @@ class Observer {
   }
 
   /// apply observer
-  State ObserveAPosteriori(
-      const typename System::Output& y_in);
+  State ObserveAPosteriori(const typename System::Output& y_in);
 
   /// Generate state prediction
   void ObserveAPriori(const typename System::ControlInput& u_in);
@@ -45,6 +44,11 @@ class Observer {
 
   /// Get previous output
   typename System::Output GetPreviousOutput() const { return y_old_; }
+
+  /// Set initial output
+  void SetIntialOutput(const typename System::Output& y_init) {
+    y_old_ = y_init;
+  }
 
  private:
   const ObserverMatrix M_;  // observer matrix used

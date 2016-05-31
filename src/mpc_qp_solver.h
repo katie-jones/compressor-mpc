@@ -44,16 +44,12 @@ class MpcQpSolver {
   typedef Eigen::Matrix<double, n_outputs, n_outputs> YWeightType;
 
   /// Constructor
-  MpcQpSolver(
-      const AugmentedLinearizedSystem<System, n_delay_states,
-                                      n_disturbance_states>& auglinsys,
-      const Observer<System, n_delay_states, n_disturbance_states> observer,
-      const OutputPrediction* y_ref, const ControlInputIndex& n_delay,
-      const ControlInput& u_init = ControlInput::Zero(),
-      const InputConstraints<n_control_inputs>& u_constraints =
-          InputConstraints<n_control_inputs>(),
-      const UWeightType& u_weight = UWeightType::Identity(),
-      const YWeightType& y_weight = YWeightType::Identity());
+  MpcQpSolver(const OutputPrediction* y_ref, const ControlInputIndex& n_delay,
+              const ControlInput& u_init = ControlInput::Zero(),
+              const InputConstraints<n_control_inputs>& u_constraints =
+                  InputConstraints<n_control_inputs>(),
+              const UWeightType& u_weight = UWeightType::Identity(),
+              const YWeightType& y_weight = YWeightType::Identity());
 
  protected:
   // Structure containing QP problem to solve
@@ -64,7 +60,9 @@ class MpcQpSolver {
   };
 
   // generate QP matrices based on linearization
-  const QP GenerateQP() const;
+  const QP GenerateQP(const Prediction& pred,
+                      Eigen::Matrix<double, n_aug_states, 1>& delta_x0,
+                      const State& xdot, const Output& y_prev) const;
 
   // use QPoases to solve QP
   const ControlInput SolveQP(const QP& qp);
@@ -86,9 +84,6 @@ class MpcQpSolver {
     return A;
   }
 
-  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
-      auglinsys_;  // current augmented linearization
-  Observer<System, n_delay_states, n_disturbance_states> observer_;
   const OutputPrediction* p_y_ref_;  // reference trajectory
   ControlInput u_old_;               // past input
   Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs> u_weight_;

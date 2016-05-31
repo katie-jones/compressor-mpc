@@ -3,16 +3,11 @@
 template <class System, int n_delay_states, int n_disturbance_states, int p,
           int m>
 MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::MpcQpSolver(
-    const AugmentedLinearizedSystem<System, n_delay_states,
-                                    n_disturbance_states>& auglinsys,
-    const Observer<System, n_delay_states, n_disturbance_states> observer,
     const OutputPrediction* y_ref, const ControlInputIndex& n_delay,
     const ControlInput& u_init,
     const InputConstraints<n_control_inputs>& u_constraints,
     const UWeightType& u_weight, const YWeightType& y_weight)
-    : auglinsys_(auglinsys),
-      observer_(observer),
-      p_y_ref_(y_ref),
+    : p_y_ref_(y_ref),
       n_delay_(n_delay),
       u_constraints_(u_constraints),
       Ain_(GetConstraintMatrix()),
@@ -51,14 +46,12 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
 const typename MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
                            m>::QP
 MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP(
-    ) const {
+    const Prediction& pred,
+    Eigen::Matrix<double, n_aug_states, 1>& delta_x0, const State& xdot,
+    const Output& y_prev) const {
   QP qp;
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  const OutputPrediction dy_ref =
-      *p_y_ref_ - observer_.GetPreviousOutput().template replicate<p, 1>();
 
-  Eigen::Matrix<double, n_aug_states, 1> delta_x0 =
-      observer_.GetStateEstimate().template tail<n_aug_states>();
+  const OutputPrediction dy_ref = *p_y_ref_ - y_prev.template replicate<p, 1>();
 
   int index_delay_states = n_aug_states - n_delay_states;
   for (int i = 0; i < n_control_inputs; i++) {
@@ -72,8 +65,7 @@ MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::GenerateQP(
 
   qp.H = pred.Su.transpose() * y_weight_ * pred.Su + u_weight_;
 
-  qp.f = auglinsys_.GetF().transpose() * pred.Sf.transpose() * y_weight_ *
-             pred.Su -
+  qp.f = xdot.transpose() * pred.Sf.transpose() * y_weight_ * pred.Su -
          dy_ref.transpose() * y_weight_ * pred.Su +
          delta_x0.transpose() * pred.Sx.transpose() * y_weight_ * pred.Su;
 

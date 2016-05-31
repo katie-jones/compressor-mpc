@@ -55,10 +55,6 @@ class MpcController
   using MpcQpSolver<System, n_delay_states, n_disturbance_states, p, m>::Ain_;
   using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
                     m>::qp_problem_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
-                    m>::auglinsys_;
-  using MpcQpSolver<System, n_delay_states, n_disturbance_states, p,
-                    m>::observer_;
 
  public:
   using State = typename ControllerInterface<System, p>::State;
@@ -117,8 +113,10 @@ class MpcController
   }
 
  protected:
+  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
+      auglinsys_;
+  Observer<System, n_delay_states, n_disturbance_states> observer_;
   State x_;       // augmented state
-  Output y_old_;  // past output
 };
 
 #endif

@@ -85,7 +85,6 @@ class AugmentedLinearizedSystem {
   static const typename System::Linearized DiscretizeRK4(
       const typename System::Linearized& sys_continuous, const double Ts);
 
- private:
   AComposite A;
   BComposite B;
   Eigen::Matrix<double, n_outputs, n_obs_states> C;

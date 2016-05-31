@@ -29,6 +29,11 @@ class CooperativeController : public ControllerInterface<System, p> {
   /// Number of states in augmented system
   static constexpr int n_total_states = n_aug_states + n_states;
 
+  using SubSolver = DistributedSolver<n_total_states, n_outputs,
+                                      n_control_inputs / n_controllers, p, m,
+                                      n_controllers - 1>;
+  static constexpr int n_sub_control_inputs = SubSolver::n_control_inputs;
+
   using State = typename ControllerInterface<System, p>::State;
   using Output = typename ControllerInterface<System, p>::Output;
   using Input = typename ControllerInterface<System, p>::Input;
@@ -44,20 +49,25 @@ class CooperativeController : public ControllerInterface<System, p> {
                                            n_control_inputs, p, m>::UWeightType;
   using YWeightType = typename MpcQpSolver<n_total_states, n_outputs,
                                            n_control_inputs, p, m>::YWeightType;
-  using QP = typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs,
-                                  p, m>::QP;
+  using QP = typename MpcQpSolver<n_total_states, n_outputs,
+                                  n_sub_control_inputs, p, m>::QP;
   using ControlInputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInputPrediction;
+  using SubControlInput = typename SubSolver::ControlInput;
+  using SubControlInputPrediction = typename SubSolver::ControlInputPrediction;
 
   /// Constructor
   CooperativeController(
-      const ControlInputIndex& input_delay, const Output& y_init,
-      const UWeightType& u_weight = UWeightType().setIdentity(),
-      const YWeightType& y_weight = YWeightType().setIdentity(),
+      const AugmentedLinearizedSystem<System, n_delay_states,
+                                      n_disturbance_states>& sys,
+      const Observer<System, n_delay_states, n_disturbance_states>& observer,
+      const OutputPrediction& y_ref, const ControlInputIndex& input_delay,
+      const ControlInputIndex& control_input_index, const Input& u_offset,
       const InputConstraints<n_control_inputs>& constraints =
           InputConstraints<n_control_inputs>(),
-      const ControlInput& u_init = ControlInput::Zero());
+      const UWeightType& u_weight = UWeightType::Identity(),
+      const YWeightType& y_weight = YWeightType::Identity());
 
   /**
    * Initialize the state, input and optionally state derivative of the system.
@@ -82,22 +92,14 @@ class CooperativeController : public ControllerInterface<System, p> {
   }
 
  private:
-  // Add effect of other inputs to QP
-  // void ApplyOtherInputs(QP& qp, const Eigen::VectorXd& du_other,
-                        // const Eigen::MatrixXd& Su_other,
-                        // const Eigen::MatrixXd& Su) {
-    // weight_du_other = Su_other.transpose() * y_weight_ * Su;
-    // qp.f += du_other.transpose() * weight_du_other;
-  // }
-
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
-      auglinsys_;
-  Observer<System, n_delay_states, n_disturbance_states> observer_;
-  State x_;  // augmented state
-  std::array<DistributedSolver<n_total_states, n_outputs,
-                               n_control_inputs / n_controllers, p, m,
-                               n_controllers - 1>,
-             n_controllers> SubSolvers;
+      auglinsys_;  // full auglinsys
+  Observer<System, n_delay_states, n_disturbance_states>
+      observer_;                    // observer of entire state
+  State x_;                         // current augmented state
+  ControlInput u_old_;              // previous applied input
+  ControlInputPrediction du_prev_;  // previous QP solution
+  std::array<SubSolver, n_controllers> sub_solvers_;  // solvers of sub QPs
 };
 
 #endif

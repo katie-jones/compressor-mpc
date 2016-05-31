@@ -35,6 +35,8 @@ class DistributedSolver
   using ControlInputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInputPrediction;
+  using Output = typename MpcQpSolver<n_total_states, n_outputs,
+                                      n_control_inputs, p, m>::Output;
   using OutputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
@@ -44,20 +46,28 @@ class DistributedSolver
 
   /// Constructor
   DistributedSolver(const OutputPrediction* y_ref,
-              const ControlInput& u_init = ControlInput::Zero(),
-              const InputConstraints<n_control_inputs>& u_constraints =
-                  InputConstraints<n_control_inputs>(),
-              const UWeightType& u_weight = UWeightType::Identity(),
-              const YWeightType& y_weight = YWeightType::Identity());
+                    const ControlInput& u_init = ControlInput::Zero(),
+                    const InputConstraints<n_control_inputs>& u_constraints =
+                        InputConstraints<n_control_inputs>(),
+                    const UWeightType& u_weight = UWeightType::Identity(),
+                    const YWeightType& y_weight = YWeightType::Identity());
 
-  // Add effect of other inputs to QP
-  void ApplyOtherInputs(QP& qp, const OtherControlInput& du_other,
-                        const Eigen::MatrixXd& Su_other,
-                        const Eigen::MatrixXd& Su) {
-    Eigen::MatrixXd weight_du_other(Su_other.cols(), Su.cols());
-    weight_du_other = Su_other.transpose() * y_weight_ * Su;
-    qp.f += du_other.transpose() * weight_du_other;
+  /// generate QP matrices based on linearization
+  QP GenerateDistributedQP(const Prediction& pred,
+                           const AugmentedState& delta_x0,
+                           const int n_aug_states, const Output& y_prev) const {
+    y_pred_weight_ = y_weight_ * pred.Su;
+    return GenerateQP(pred, delta_x0, n_aug_states, y_prev, y_pred_weight_);
   }
+
+  /// Add effect of another systems input on QP
+  void ApplyOtherInput(QP& qp, const OtherControlInput& du_other,
+                       const Eigen::MatrixXd& Su_other) {
+    qp.f += (du_other.transpose() * Su_other.transpose()) * y_pred_weight_;
+  }
+
+ private:
+  Eigen::MatrixXd y_pred_weight_;  // = y_weight_ * Su
 };
 
 #endif

@@ -29,10 +29,10 @@ class CooperativeController : public ControllerInterface<System, p> {
   /// Number of states in augmented system
   static constexpr int n_total_states = n_aug_states + n_states;
 
-  using SubSolver = DistributedSolver<n_total_states, n_outputs,
-                                      n_control_inputs / n_controllers, p, m,
-                                      n_controllers - 1>;
-  static constexpr int n_sub_control_inputs = SubSolver::n_control_inputs;
+  using SubSolver =
+      DistributedSolver<n_total_states, n_outputs,
+                        n_control_inputs / n_controllers, p, m, n_controllers>;
+  static constexpr int n_sub_control_inputs = SubSolver::n_control_inputs_;
 
   using State = typename ControllerInterface<System, p>::State;
   using Output = typename ControllerInterface<System, p>::Output;
@@ -62,8 +62,10 @@ class CooperativeController : public ControllerInterface<System, p> {
       const AugmentedLinearizedSystem<System, n_delay_states,
                                       n_disturbance_states>& sys,
       const Observer<System, n_delay_states, n_disturbance_states>& observer,
-      const OutputPrediction& y_ref, const ControlInputIndex& input_delay,
-      const ControlInputIndex& control_input_index, const Input& u_offset,
+      const Input& u_offset, const OutputPrediction& y_ref,
+      const ControlInputIndex& input_delay,
+      const ControlInputIndex& control_input_index,
+      const int n_solver_iterations,
       const InputConstraints<n_control_inputs>& constraints =
           InputConstraints<n_control_inputs>(),
       const UWeightType& u_weight = UWeightType::Identity(),
@@ -92,14 +94,29 @@ class CooperativeController : public ControllerInterface<System, p> {
   }
 
  private:
+  // Split Su matrix into components for each controller
+  void SplitSuMatrix(Eigen::MatrixXd sub_su[], const Eigen::MatrixXd& full_su) {
+    for (int i = 0; i < n_controllers; i++) {
+      sub_su[i] = Eigen::MatrixXd(p * n_outputs, m * n_sub_control_inputs);
+      for (int j = 0; j < m; j++) {
+        sub_su[i].template block<p * n_outputs, n_sub_control_inputs>(
+            0, j * n_sub_control_inputs) =
+            full_su.template block<p * n_outputs, n_sub_control_inputs>(
+                0, (i + n_controllers * j) * n_sub_control_inputs);
+      }
+    }
+  }
+
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;  // full auglinsys
   Observer<System, n_delay_states, n_disturbance_states>
-      observer_;                    // observer of entire state
-  State x_;                         // current augmented state
-  ControlInput u_old_;              // previous applied input
-  ControlInputPrediction du_prev_;  // previous QP solution
-  std::array<SubSolver, n_controllers> sub_solvers_;  // solvers of sub QPs
+      observer_;                        // observer of entire state
+  State x_;                             // current augmented state
+  ControlInput u_old_;                  // previous applied input
+  ControlInputPrediction du_prev_;      // previous QP solution
+  std::vector<SubSolver> sub_solvers_;  // solvers of sub QPs
+  const int n_solver_iterations_;  // number of QP iterations to solve using
+                                   // updated input values
 };
 
 #endif

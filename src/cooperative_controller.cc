@@ -11,13 +11,16 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
         const AugmentedLinearizedSystem<System, n_delay_states,
                                         n_disturbance_states>& sys,
         const Observer<System, n_delay_states, n_disturbance_states>& observer,
-        const OutputPrediction& y_ref, const ControlInputIndex& input_delay,
-        const ControlInputIndex& control_input_index, const Input& u_offset,
+        const Input& u_offset, const OutputPrediction& y_ref,
+        const ControlInputIndex& input_delay,
+        const ControlInputIndex& control_input_index,
+        const int n_solver_iterations,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight, const YWeightType& y_weight)
     : ControllerInterface<System, p>(y_ref, u_offset, input_delay,
                                      control_input_index),
       auglinsys_(sys),
+      n_solver_iterations_(n_solver_iterations),
       observer_(observer) {
   // Check number of delay states
   int sum_delay = 0;
@@ -30,6 +33,7 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
   observer_.InitializeSystem(&auglinsys_);
 
   // Intialize subsolvers with correct constraints and initial states
+  sub_solvers_.reserve(n_controllers);
   InputConstraints<n_sub_control_inputs> sub_constraints;
   for (int i = 0; i < n_controllers; i++) {
     sub_constraints.lower_bound =
@@ -45,8 +49,8 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
         constraints.upper_rate_bound.template segment<n_sub_control_inputs>(
             i * n_sub_control_inputs);
 
-    sub_solvers_[i] = SubSolver(
-        y_ref_, SubControlInput::Zero(), sub_constraints,
+    sub_solvers_.emplace_back(
+        &y_ref_, i, SubControlInput::Zero(), sub_constraints,
         u_weight.template block<n_sub_control_inputs, n_sub_control_inputs>(
             i * n_sub_control_inputs, i * n_sub_control_inputs),
         y_weight);
@@ -65,11 +69,12 @@ void CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
                                                                u_init) {
   x_ = x_init;
   observer_.SetIntialOutput(y_init);
-  u_old_ = u_init.template replicate<m, 1>();
+  u_old_ = u_init;
 
   for (int i = 0; i < n_controllers; i++) {
     sub_solvers_[i].SetInitialInput(
-        u_init.template segment<n_control_inputs>(i * n_control_inputs));
+        u_init.template segment<n_sub_control_inputs>(i *
+                                                      n_sub_control_inputs));
   }
 
   observer_.SetIntialOutput(y_init);
@@ -88,32 +93,16 @@ void CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
     }
   }
 
+  auglinsys_.Update(x_init, this->GetPlantInput(u_init));
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
-  Prediction sub_pred;
-  sub_pred.Sx = pred.Sx;
-  sub_pred.Sf = pred.Sf;
 
-  // Initialize for system 0
-  Eigen::MatrixXd Su_other(p * n_outputs,
-                           (n_controllers - 1) * n_sub_control_inputs);
-  Su_other = pred.Su.template block<p * n_outputs,
-                                    (n_controllers - 1) * n_sub_control_inputs>(
-      0, n_sub_control_inputs);
-
+  QP qp;
+  Eigen::MatrixXd sub_Su[n_controllers];
+  SplitSuMatrix(sub_Su, pred.Su);
   for (int i = 0; i < n_controllers; i++) {
-    sub_pred.Su = pred.Su.template block<p * n_outputs, n_sub_control_inputs>(
-        0, i * n_sub_control_inputs);
-    for (int j = 0; j < i; j++) {
-      Su_other.template block<p * n_outputs, n_sub_control_inputs>(
-          0, j * n_sub_control_inputs) =
-          pred.Su.template block<p * n_outputs,
-                                 (n_controllers - 1) * n_sub_control_inputs>(
-              0, j * n_sub_control_inputs);
-    }
-
-    const QP qp = sub_solvers_[i].GenerateQP(sub_pred, delta_x0, n_aug_states,
-                                             observer_.GetPreviousOutput());
-    sub_solvers_[i]->InitializeQPProblem(qp);
+    sub_solvers_[i].GenerateDistributedQP(qp, sub_Su[i], pred.Sx, pred.Sf,
+                                          delta_x0, n_aug_states, y_init);
+    sub_solvers_[i].InitializeQPProblem(qp);
   }
 }
 
@@ -148,40 +137,59 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
     }
   }
 
-  // Generate and solve QPs for each subsystem
-  QP qp;
-  ControlInputPrediction usol;
-  Prediction sub_pred(Eigen::MatrixXd(), pred.Sx, pred.Sf);
+  QP qp[n_controllers];
+  Eigen::MatrixXd sub_Su[n_controllers];
+
+  SplitSuMatrix(sub_Su, pred.Su);  // assign values to sub_Su
+
+  SubControlInputPrediction du_out[n_controllers];
   for (int i = 0; i < n_controllers; i++) {
-    sub_pred.Su = static_cast<Eigen::MatrixXd>(
-        pred.Su.template block<p * n_outputs, n_sub_control_inputs>(
-            0, i * n_sub_control_inputs));
-
-    // generate initial QP
-    qp = sub_solvers_[i].GenerateDistributedQP(sub_pred, delta_x0, n_aug_states,
-                                               y);
-    // Add cross terms from other systems
-    for (int j = 0; j < n_controllers; j++) {
-      if (i != j) {
-        sub_solvers_[i].ApplyOtherInput(
-            qp, du_prev_.template segment<m * n_sub_control_inputs>(
-                    j * m * n_sub_control_inputs),
-            static_cast<Eigen::MatrixXd>(
-                pred.Su.template block<p * n_outputs, n_sub_control_inputs>(
-                    0, i * n_sub_control_inputs)));
-      }
-    }
-    const SubControlInputPrediction sub_usol = sub_solvers_[i].SolveQP(qp);
-
-    // store solution and update u_old_
-    usol.template segment<m* n_sub_control_inputs>(
-        i * m * n_sub_control_inputs) = sub_usol;
-    u_old_.template segment<n_sub_control_inputs>(i * n_sub_control_inputs) =
-        sub_usol.template head<n_sub_control_inputs>();
+    sub_solvers_[i].GenerateDistributedQP(qp[i], sub_Su[i], pred.Sx, pred.Sf,
+                                          delta_x0, n_aug_states, y);
   }
 
-  observer_.ObserveAPriori(u_old_);
-  du_prev_ = usol;
+  for (int n_iter = 0; n_iter < n_solver_iterations_; n_iter++) {
+    // Re-solve QP with new inputs
+    for (int i = 0; i < n_controllers; i++) {
+      sub_solvers_[i].UpdateAndSolveQP(qp[i], du_out[i], sub_Su, du_prev_);
+    }
+
+    // Update du_prev for next iteration
+    for (int i = 0; i < n_controllers; i++) {
+      du_prev_.template segment<m* n_sub_control_inputs>(
+          i * m * n_sub_control_inputs) = du_out[i];
+    }
+  }
+
+  // Add new du to u_old_
+  ControlInput du_applied;
+  for (int i = 0; i < n_controllers; i++) {
+    du_applied.template segment<n_sub_control_inputs>(i * n_sub_control_inputs) =
+        du_prev_.template segment<n_sub_control_inputs>(i * m *
+                                                        n_sub_control_inputs);
+
+    // Initialize du_prev_ for next iteration using predictions
+    if (m > 1) {
+      du_prev_.template segment<(m - 1)* n_sub_control_inputs>(
+          i * m * n_sub_control_inputs) =
+          du_prev_.template segment<(m - 1) * n_sub_control_inputs>(
+              (i * m + 1) * n_sub_control_inputs);
+
+      // Repeat last prediction
+      du_prev_.template segment<n_sub_control_inputs>(((i + 1) * m - 1) *
+                                                      n_sub_control_inputs) =
+          du_prev_.template segment<n_sub_control_inputs>(((i + 1) * m - 2) *
+                                                          n_sub_control_inputs);
+    } else {
+      du_prev_.template segment<n_sub_control_inputs>(i * n_sub_control_inputs)
+          .setZero();
+    }
+  }
+
+  u_old_ += du_applied;
+  observer_.ObserveAPriori(du_applied);
 
   return u_old_;
 }
+
+#include "cooperative_controller_list.h"

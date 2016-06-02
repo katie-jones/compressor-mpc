@@ -36,19 +36,20 @@ template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 const typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::QP
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::GenerateQP(
-    const Prediction& pred, const AugmentedState& delta_x0,
+    const Eigen::MatrixXd& Su, const Eigen::MatrixXd& Sx,
+    const Eigen::MatrixXd& Sf, const AugmentedState& delta_x0,
     const int n_aug_states, const Output& y_prev,
     const Eigen::MatrixXd& y_pred_weight) const {
   QP qp;
 
   const OutputPrediction dy_ref = *p_y_ref_ - y_prev.template replicate<p, 1>();
 
-  qp.H = pred.Su.transpose() * y_pred_weight + u_weight_;
+  qp.H = Su.transpose() * y_pred_weight + u_weight_;
 
   qp.f = delta_x0.head(n_total_states - n_aug_states).transpose() *
-             pred.Sf.transpose() * y_pred_weight -
+             Sf.transpose() * y_pred_weight -
          dy_ref.transpose() * y_pred_weight +
-         delta_x0.tail(n_aug_states).transpose() * pred.Sx.transpose() *
+         delta_x0.tail(n_aug_states).transpose() * Sx.transpose() *
              y_pred_weight;
 
   return qp;

@@ -45,9 +45,10 @@ class MpcQpSolver {
 
   /// generate QP matrices based on linearization
   QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
-                      const int n_aug_states, const Output& y_prev) const {
+                const int n_aug_states, const Output& y_prev) const {
     Eigen::MatrixXd y_pred_weight = y_weight_ * pred.Su;
-    return GenerateQP(pred, delta_x0, n_aug_states, y_prev, y_pred_weight);
+    return GenerateQP(pred.Su, pred.Sx, pred.Sf, delta_x0, n_aug_states, y_prev,
+                      y_pred_weight);
   }
 
   /// use QPoases to solve QP
@@ -59,7 +60,8 @@ class MpcQpSolver {
  protected:
   // generate QP matrices based on linearization, given the y prediction
   // weight
-  const QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
+  const QP GenerateQP(const Eigen::MatrixXd& Su, const Eigen::MatrixXd& Sx,
+                      const Eigen::MatrixXd& Sf, const AugmentedState& delta_x0,
                       const int n_aug_states, const Output& y_prev,
                       const Eigen::MatrixXd& y_pred_weight) const;
 

@@ -42,6 +42,7 @@ SimulationSystem<Compressor, Control::n_delay_states> *p_sim_compressor;
 Compressor *p_compressor;
 Controller *p_controller;
 std::ofstream output_file;
+std::ofstream cpu_times_file;
 
 void Callback(Compressor::State x, double t) {
   // Update state
@@ -61,13 +62,8 @@ void Callback(Compressor::State x, double t) {
   // Get and apply next input
   boost::timer::cpu_timer integrate_timer;
   Controller::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller->GetNextInput(p_compressor->GetOutput(x),cpu_times_file);
   p_sim_compressor->SetInput(u);
-
-  const boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
-  const boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
-                                                 int_elapsed.user);
-  output_file << elapsed_ns << std::endl;
 
   for (int i = 0; i < Compressor::n_control_inputs; i++)
     output_file << u(i) << "\t";
@@ -77,6 +73,7 @@ void Callback(Compressor::State x, double t) {
 
 int main(void) {
   output_file.open("output.txt");
+  cpu_times_file.open("cent_cpu_times.txt");
 
   Compressor compressor;
   p_compressor = &compressor;

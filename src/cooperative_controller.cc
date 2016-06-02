@@ -1,4 +1,5 @@
 #include "cooperative_controller.h"
+#include <boost/timer/timer.hpp>
 
 /*
  * Constructor
@@ -117,7 +118,11 @@ const typename CooperativeController<System, n_delay_states,
                                      n_disturbance_states, p, m,
                                      n_controllers>::ControlInput
 CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
-                      n_controllers>::GetNextInput(const Output& y) {
+                      n_controllers>::GetNextInput(const Output& y,
+                                                   std::ofstream&
+                                                       cpu_time_out) {
+  boost::timer::cpu_timer integrate_timer;
+
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
 
@@ -146,25 +151,32 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
   for (int i = 0; i < n_controllers; i++) {
     sub_solvers_[i].GenerateDistributedQP(qp[i], sub_Su[i], pred.Sx, pred.Sf,
                                           delta_x0, n_aug_states, y);
+    if (i == 0) integrate_timer.stop();
   }
 
   for (int n_iter = 0; n_iter < n_solver_iterations_; n_iter++) {
     // Re-solve QP with new inputs
     for (int i = 0; i < n_controllers; i++) {
+      if (i == 0) integrate_timer.resume();
       sub_solvers_[i].UpdateAndSolveQP(qp[i], du_out[i], sub_Su, du_prev_);
+      if (i == 0) integrate_timer.stop();
     }
 
     // Update du_prev for next iteration
     for (int i = 0; i < n_controllers; i++) {
+      if (i == 0) integrate_timer.resume();
       du_prev_.template segment<m* n_sub_control_inputs>(
           i * m * n_sub_control_inputs) = du_out[i];
+      if (i == 0) integrate_timer.stop();
     }
   }
 
   // Add new du to u_old_
   ControlInput du_applied;
   for (int i = 0; i < n_controllers; i++) {
-    du_applied.template segment<n_sub_control_inputs>(i * n_sub_control_inputs) =
+    if (i == 0) integrate_timer.resume();
+    du_applied.template segment<n_sub_control_inputs>(i *
+                                                      n_sub_control_inputs) =
         du_prev_.template segment<n_sub_control_inputs>(i * m *
                                                         n_sub_control_inputs);
 
@@ -184,7 +196,14 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
       du_prev_.template segment<n_sub_control_inputs>(i * n_sub_control_inputs)
           .setZero();
     }
+    if (i == 0) integrate_timer.stop();
   }
+
+  boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
+  // boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
+                                           // int_elapsed.user);
+  boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
+  cpu_time_out << elapsed_ns << std::endl;
 
   u_old_ += du_applied;
   observer_.ObserveAPriori(du_applied);

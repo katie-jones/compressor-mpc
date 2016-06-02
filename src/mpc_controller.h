@@ -3,6 +3,8 @@
 
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
+#include <fstream>
+
 #include "dynamic_system.h"
 #include "aug_lin_sys.h"
 #include "observer.h"
@@ -106,7 +108,15 @@ class MpcController
    * Linearizes the system about current state estimate and finds the optimal
    * input value by solving a QP it generates using the MPC formulation.
    */
-  virtual const ControlInput GetNextInput(const Output& y);
+  virtual const ControlInput GetNextInput(const Output& y) {
+    std::ofstream null;
+    null.open("/dev/null");
+    ControlInput u = GetNextInput(y, null);
+    null.close();
+    return u;
+  }
+
+  const ControlInput GetNextInput(const Output& y, std::ofstream& cpu_time_out);
 
   /// Output current state estimate
   const AugmentedState GetStateEstimate() const {

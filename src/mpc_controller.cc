@@ -1,5 +1,7 @@
 #include "mpc_controller.h"
 
+#include <boost/timer/timer.hpp>
+
 /*
  * Constructor
  */
@@ -38,7 +40,8 @@ template <class System, int n_delay_states, int n_disturbance_states, int p,
 const typename MpcController<System, n_delay_states, n_disturbance_states, p,
                              m>::ControlInput
 MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
-    const Output& y) {
+    const Output& y, std::ofstream& cpu_time_out) {
+  boost::timer::cpu_timer integrate_timer;
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
@@ -61,6 +64,10 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
                                  observer_.GetPreviousOutput());
   const ControlInputPrediction usol = this->SolveQP(qp);
   observer_.ObserveAPriori(usol.template head<n_control_inputs>());
+  boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
+  boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
+  cpu_time_out << elapsed_ns << std::endl;
+
 
   return u_old_;
 }

@@ -40,6 +40,7 @@ if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})
    target_link_libraries(cooperative_test ${Boost_LIBRARIES})
    target_link_libraries(parmpc ${Boost_LIBRARIES})
+   # target_link_libraries(comptest ${Boost_LIBRARIES})
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

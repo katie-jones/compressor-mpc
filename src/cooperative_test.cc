@@ -38,6 +38,7 @@ SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 Controller *p_controller;
 std::ofstream output_file;
+std::ofstream cpu_times_file;
 
 void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
@@ -52,7 +53,7 @@ void Callback(ParallelCompressors::State x, double t) {
 
   // Get and apply next input
   Controller::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
   p_sim_compressor->SetInput(u);
 
   output_file << u.transpose() << std::endl
@@ -60,7 +61,8 @@ void Callback(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
-  output_file.open("output.txt");
+  output_file.open("coop_output.txt");
+  cpu_times_file.open("coop_cpu_times.txt");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -119,7 +121,7 @@ int main(void) {
   AugmentedSystem sys(compressor, sampling_time, delay);
   Obsv observer(M, compressor.GetOutput(x_init));
 
-  const int n_solver_iterations = 3;
+  const int n_solver_iterations = 6;
 
   Controller ctrl(sys, observer, u_default, y_ref, delay, index,
                   n_solver_iterations, constraints, uwt, ywt);
@@ -145,9 +147,11 @@ int main(void) {
   boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
                                            int_elapsed.user);
   output_file.close();
+  cpu_times_file.close();
   std::cout << "CPU time: " << elapsed_ns << std::endl;
   std::cout << "Wall time: " << int_elapsed.wall << std::endl
             << std::endl;
+
 
   return 0;
 }

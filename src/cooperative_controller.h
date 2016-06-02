@@ -1,6 +1,8 @@
 #ifndef COOPERATIVE_CONTROLLER_H
 #define COOPERATIVE_CONTROLLER_H
 
+#include <fstream>
+
 #include "controller_interface.h"
 #include "input_constraints.h"
 #include "prediction.h"
@@ -84,7 +86,18 @@ class CooperativeController : public ControllerInterface<System, p> {
    * Linearizes the system about current state estimate and finds the optimal
    * input value by solving a QP it generates using the MPC formulation.
    */
-  virtual const ControlInput GetNextInput(const Output& y);
+  virtual const ControlInput GetNextInput(const Output& y) {
+    std::ofstream null; 
+    null.open("/dev/null");
+    return GetNextInput(y, null);
+  }
+
+  /**
+   * Compute the next input to apply to the system.
+   * Print the CPU time required for a single sub-controller to perform the
+   * optimization in stream given by cpu_time_out.
+   */
+  const ControlInput GetNextInput(const Output& y, std::ofstream& cpu_time_out);
 
   /// Output current state estimate
   const AugmentedState GetStateEstimate() const {

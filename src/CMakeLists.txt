@@ -5,6 +5,9 @@ set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
+# add DEBUG option when running under debug mode
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
+
 # qpOASES library
 set( QPOASES_ROOT ../../qpOASES-3.2.0)
 INCLUDE_DIRECTORIES(${QPOASES_ROOT}/include)
@@ -18,6 +21,7 @@ find_package(Boost REQUIRED timer)
 add_executable(parmpc parallel_mpc.cc)
 add_executable(reduced_system_test reduced_system_test.cc)
 add_executable(cooperative_test cooperative_test.cc)
+add_executable(noncooperative_test noncooperative_test.cc)
 
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
@@ -27,18 +31,23 @@ add_library(auglinsys aug_lin_sys.cc)
 add_library(observer observer.cc)
 add_library(qpsolver mpc_qp_solver.cc)
 add_library(cooperative_controller cooperative_controller.cc)
+add_library(noncooperative_controller noncooperative_controller.cc)
 
 target_link_libraries(parcomp compressor tank)
 target_link_libraries(qpsolver qpOASES)
 target_link_libraries(mpc_controller auglinsys observer qpsolver)
+target_link_libraries(cooperative_controller auglinsys observer qpsolver)
+target_link_libraries(noncooperative_controller auglinsys observer qpsolver)
 # target_link_libraries(comptest compressor mpc_controller)
 target_link_libraries(parmpc parcomp mpc_controller auglinsys observer qpsolver)
 target_link_libraries(reduced_system_test parcomp)
 target_link_libraries(cooperative_test parcomp cooperative_controller auglinsys observer qpsolver)
+target_link_libraries(noncooperative_test parcomp noncooperative_controller auglinsys observer qpsolver)
 
 if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})
    target_link_libraries(cooperative_test ${Boost_LIBRARIES})
+   target_link_libraries(noncooperative_test ${Boost_LIBRARIES})
    target_link_libraries(parmpc ${Boost_LIBRARIES})
    # target_link_libraries(comptest ${Boost_LIBRARIES})
 endif()

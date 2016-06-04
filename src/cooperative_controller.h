@@ -87,7 +87,7 @@ class CooperativeController : public ControllerInterface<System, p> {
    * input value by solving a QP it generates using the MPC formulation.
    */
   virtual const ControlInput GetNextInput(const Output& y) {
-    std::ofstream null; 
+    std::ofstream null;
     null.open("/dev/null");
     return GetNextInput(y, null);
   }

@@ -8,7 +8,6 @@ template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m,
           int n_controllers>
 class DistributedSolver
     : public MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m> {
-  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::u_old_;
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::u_weight_;
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
@@ -47,18 +46,17 @@ class DistributedSolver
 
   /// Constructor
   DistributedSolver(const OutputPrediction* p_y_ref, const int index,
-                    const ControlInput& u_init = ControlInput::Zero(),
                     const InputConstraints<n_control_inputs>& u_constraints =
                         InputConstraints<n_control_inputs>(),
                     const UWeightType& u_weight = UWeightType::Identity(),
                     const YWeightType& y_weight = YWeightType::Identity())
       : MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
-            p_y_ref, u_init, u_constraints, u_weight, y_weight),
+            p_y_ref, u_constraints, u_weight, y_weight),
         index_(index) {}
 
   /// Return solution of QP generated based on prediction matrices given
   void UpdateAndSolveQP(QP& qp, ControlInputPrediction& du_out,
-                        const Eigen::MatrixXd Su[],
+                        const ControlInput u_old, const Eigen::MatrixXd Su[],
                         const TotalControlInput& du_full);
 
   /// generate QP matrices based on linearization
@@ -91,6 +89,7 @@ template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m,
 void DistributedSolver<
     n_total_states, n_outputs, n_control_inputs, p, m,
     n_controllers>::UpdateAndSolveQP(QP& qp, ControlInputPrediction& du_out,
+                                     const ControlInput u_old,
                                      const Eigen::MatrixXd Su[],
                                      const TotalControlInput& du_full) {
   // Add effect of other subcontrollers' inputs
@@ -103,8 +102,7 @@ void DistributedSolver<
   }
 
   // Solve QP and return solution
-  du_out = this->SolveQP(qp);
-  u_old_ = du_out.template head<n_control_inputs>();
+  du_out = this->SolveQP(qp, u_old);
 }
 
 #endif

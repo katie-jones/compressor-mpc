@@ -34,14 +34,13 @@ class MpcQpSolver {
 
   /// Constructor
   MpcQpSolver(const OutputPrediction* y_ref,
-              const ControlInput& u_init = ControlInput::Zero(),
               const InputConstraints<n_control_inputs>& u_constraints =
                   InputConstraints<n_control_inputs>(),
               const UWeightType& u_weight = UWeightType::Identity(),
               const YWeightType& y_weight = YWeightType::Identity());
 
   /// Initialize QP Problem so hotstart method can be used
-  void InitializeQPProblem(const QP& qp);
+  void InitializeQPProblem(const QP& qp, const ControlInput& u_old);
 
   /// generate QP matrices based on linearization
   QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
@@ -52,10 +51,7 @@ class MpcQpSolver {
   }
 
   /// use QPoases to solve QP
-  const ControlInputPrediction SolveQP(const QP& qp);
-
-  /// Set initial input
-  void SetInitialInput(const ControlInput& u_init) { u_old_ = u_init; }
+  const ControlInputPrediction SolveQP(const QP& qp, const ControlInput& u_old);
 
  protected:
   // generate QP matrices based on linearization, given the y prediction
@@ -84,7 +80,6 @@ class MpcQpSolver {
   }
 
   const OutputPrediction* p_y_ref_;  // reference trajectory
-  ControlInput u_old_;               // past input
   Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs> u_weight_;
   Eigen::SparseMatrix<double> y_weight_;
   const InputConstraints<n_control_inputs>

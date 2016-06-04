@@ -51,7 +51,7 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
             i * n_sub_control_inputs);
 
     sub_solvers_.emplace_back(
-        &y_ref_, i, SubControlInput::Zero(), sub_constraints,
+        &y_ref_, i, sub_constraints,
         u_weight.template block<n_sub_control_inputs, n_sub_control_inputs>(
             i * n_sub_control_inputs, i * n_sub_control_inputs),
         y_weight);
@@ -71,12 +71,6 @@ void CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
   x_ = x_init;
   observer_.SetIntialOutput(y_init);
   u_old_ = u_init;
-
-  for (int i = 0; i < n_controllers; i++) {
-    sub_solvers_[i].SetInitialInput(
-        u_init.template segment<n_sub_control_inputs>(i *
-                                                      n_sub_control_inputs));
-  }
 
   observer_.SetIntialOutput(y_init);
 
@@ -103,7 +97,9 @@ void CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
   for (int i = 0; i < n_controllers; i++) {
     sub_solvers_[i].GenerateDistributedQP(qp, sub_Su[i], pred.Sx, pred.Sf,
                                           delta_x0, n_aug_states, y_init);
-    sub_solvers_[i].InitializeQPProblem(qp);
+    sub_solvers_[i].InitializeQPProblem(
+        qp, u_old_.template segment<n_sub_control_inputs>(
+                i * n_sub_control_inputs));
   }
 }
 
@@ -158,7 +154,10 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
     // Re-solve QP with new inputs
     for (int i = 0; i < n_controllers; i++) {
       if (i == 0) integrate_timer.resume();
-      sub_solvers_[i].UpdateAndSolveQP(qp[i], du_out[i], sub_Su, du_prev_);
+      sub_solvers_[i].UpdateAndSolveQP(
+          qp[i], du_out[i], u_old_.template segment<n_sub_control_inputs>(
+                                i * n_sub_control_inputs),
+          sub_Su, du_prev_);
       if (i == 0) integrate_timer.stop();
     }
 
@@ -201,7 +200,7 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
 
   boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
   // boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
-                                           // int_elapsed.user);
+  // int_elapsed.user);
   boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
   cpu_time_out << elapsed_ns << std::endl;
 

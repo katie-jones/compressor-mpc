@@ -49,7 +49,6 @@ class MpcController
   using ControllerInterface<System, p>::n_delay_;
   using ControllerInterface<System, p>::control_input_index_;
 
-  using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::u_old_;
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::u_weight_;
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
@@ -130,6 +129,7 @@ class MpcController
       auglinsys_;
   Observer<System, n_delay_states, n_disturbance_states> observer_;
   State x_;  // augmented state
+  ControlInput u_old_;
 };
 
 #endif

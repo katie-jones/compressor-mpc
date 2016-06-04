@@ -22,7 +22,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
       ControllerInterface<System, p>(y_ref, u_offset, input_delay,
                                      control_input_index),
       MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
-          &y_ref_, ControlInput::Zero(), constraints, u_weight, y_weight) {
+          &y_ref_, constraints, u_weight, y_weight) {
   // Check number of delay states
   int sum_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
@@ -62,7 +62,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
 
   const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
-  const ControlInputPrediction usol = this->SolveQP(qp);
+  const ControlInputPrediction usol = this->SolveQP(qp, u_old_);
   observer_.ObserveAPriori(usol.template head<n_control_inputs>());
   boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
@@ -103,7 +103,7 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
   const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
-  this->InitializeQPProblem(qp);
+  this->InitializeQPProblem(qp, u_old_);
 }
 
 #include "mpc_controller_list.h"

@@ -2,7 +2,7 @@
 
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::MpcQpSolver(
-    const OutputPrediction* y_ref, const ControlInput& u_init,
+    const OutputPrediction* y_ref, 
     const InputConstraints<n_control_inputs>& u_constraints,
     const UWeightType& u_weight, const YWeightType& y_weight)
     : p_y_ref_(y_ref),
@@ -62,14 +62,14 @@ template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 const typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInputPrediction
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
-    const QP& qp) {
+    const QP& qp, const ControlInput& u_old) {
   int n_wsr = n_wsr_max;
 
   // Replicate constraints for number of moves
   const Eigen::Matrix<double, m * n_control_inputs, 1> lb =
-      (u_constraints_.lower_bound - u_old_).template replicate<m, 1>();
+      (u_constraints_.lower_bound - u_old).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ub =
-      (u_constraints_.upper_bound - u_old_).template replicate<m, 1>();
+      (u_constraints_.upper_bound - u_old).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> lbA =
       u_constraints_.lower_rate_bound.template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ubA =
@@ -87,8 +87,6 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
   ControlInputPrediction u_solution;
   qp_problem_.getPrimalSolution(u_solution.data());
 
-  u_old_ += u_solution.template head<n_control_inputs>();
-
   return u_solution;
 }
 
@@ -97,20 +95,22 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
  */
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 void MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
-                 m>::InitializeQPProblem(const QP& qp) {
+                 m>::InitializeQPProblem(const QP& qp, const ControlInput& u_old) {
   int n_wsr = n_wsr_max;
 
   // Replicate constraints for number of moves
   const Eigen::Matrix<double, m * n_control_inputs, 1> lb =
-      (u_constraints_.lower_bound - u_old_).template replicate<m, 1>();
+      (u_constraints_.lower_bound - u_old).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ub =
-      (u_constraints_.upper_bound - u_old_).template replicate<m, 1>();
+      (u_constraints_.upper_bound - u_old).template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> lbA =
       u_constraints_.lower_rate_bound.template replicate<m, 1>();
   const Eigen::Matrix<double, m * n_control_inputs, 1> ubA =
       u_constraints_.upper_rate_bound.template replicate<m, 1>();
 
+#ifndef DEBUG
   qp_problem_.setPrintLevel(qpOASES::PrintLevel::PL_LOW);  // only print errors
+#endif
   qp_problem_.init(qp.H.data(), qp.f.data(), Ain_.data(), lb.data(), ub.data(),
                    lbA.data(), ubA.data(), n_wsr, NULL);
 }

@@ -61,8 +61,8 @@ void Callback(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
-  output_file.open("coop_output.txt");
-  cpu_times_file.open("coop_cpu_times.txt");
+  output_file.open("coop_output.dat");
+  cpu_times_file.open("coop_cpu_times.dat");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;

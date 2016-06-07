@@ -40,14 +40,13 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
   Eigen::MatrixXd initial_prediction = y_ref;
   initial_prediction.resize(n_outputs, p);
 
-  SubOutputPrediction sub_output_refs[n_controllers];
   for (int i = 0; i < n_controllers; i++) {
     Eigen::MatrixXd sub_ref_matrix(n_sub_outputs, p);
     for (int j = 0; j < n_sub_outputs; j++) {
       sub_ref_matrix.row(j) = initial_prediction.row(sub_output_index_(i, j));
     }
     sub_ref_matrix.resize(p * n_sub_outputs, 1);
-    sub_output_refs[i] = sub_ref_matrix;
+    y_sub_refs_[i] = sub_ref_matrix;
   }
 
   // Intialize subsolvers with correct constraints and initial states
@@ -68,7 +67,7 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
             i * n_sub_control_inputs);
 
     sub_solvers_.emplace_back(
-        &sub_output_refs[i], i, sub_constraints,
+        &y_sub_refs_[i], i, sub_constraints,
         u_weight.template block<n_sub_control_inputs, n_sub_control_inputs>(
             i * n_sub_control_inputs, i * n_sub_control_inputs),
         y_weight);
@@ -85,10 +84,9 @@ void NonCooperativeController<
     n_sub_outputs>::SetInitialState(const State& x_init, const Output& y_init,
                                     const ControlInput& u_init) {
   x_ = x_init;
-  observer_.SetIntialOutput(y_init);
   u_old_ = u_init;
-
   observer_.SetIntialOutput(y_init);
+  auglinsys_.Update(x_init, this->GetPlantInput(u_init));
 
   AugmentedState delta_x0;
   delta_x0 << auglinsys_.GetF(),
@@ -108,12 +106,12 @@ void NonCooperativeController<
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
 
   QP qp;
+
   Eigen::MatrixXd sub_Su[n_controllers];
   Eigen::MatrixXd sub_Sx[n_controllers];
   Eigen::MatrixXd sub_Sf[n_controllers];
 
-  SplitSuMatrix(sub_Su, pred.Su);
-  SplitSxSfMatrices(sub_Sx, sub_Sf, pred.Sx, pred.Sf);
+  SplitSuSxSfMatrices(sub_Su, sub_Sx, sub_Sf, pred.Su, pred.Sx, pred.Sf);
 
   // Split output
   SubOutput y_subs[n_controllers];
@@ -169,8 +167,7 @@ NonCooperativeController<
   Eigen::MatrixXd sub_Sx[n_controllers];
   Eigen::MatrixXd sub_Sf[n_controllers];
 
-  SplitSuMatrix(sub_Su, pred.Su);
-  SplitSxSfMatrices(sub_Sx, sub_Sf, pred.Sx, pred.Sf);
+  SplitSuSxSfMatrices(sub_Su, sub_Sx, sub_Sf, pred.Su, pred.Sx, pred.Sf);
 
   // Split output
   SubOutput y_subs[n_controllers];

@@ -15,14 +15,14 @@ constexpr int n_disturbance_states = 4;
 constexpr int p = 100;
 constexpr int m = 2;
 constexpr int n_controllers = 2;
-constexpr int n_sub_outputs = 3;
+constexpr int n_sub_outputs = 2;
 }
 
 extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
 extern template class Observer<ParallelCompressors, 80, 4>;
-extern template class NonCooperativeController<ParallelCompressors, 80, 4, 100, 2,
-                                            2, 3>;
-extern template class MpcQpSolver<95, 4, 2, 100, 2>;
+extern template class NonCooperativeController<ParallelCompressors, 80, 4, 100,
+                                               2, 2, 2>;
+extern template class MpcQpSolver<95, 2, 2, 100, 2>;
 
 using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
@@ -65,8 +65,8 @@ void Callback(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
-  output_file.open("noncoop_output.txt");
-  cpu_times_file.open("noncoop_cpu_times.txt");
+  output_file.open("noncoop_output.dat");
+  cpu_times_file.open("noncoop_cpu_times.dat");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -84,7 +84,7 @@ int main(void) {
       output_index =
           (Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>()
                << 0,
-           1, 2, 2, 3, 3).finished();
+           3, 1, 3).finished();
 
   SimSystem sim_comp(p_compressor, u_default, index, delay, x_init);
   p_sim_compressor = &sim_comp;
@@ -97,8 +97,8 @@ int main(void) {
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  Controller::UWeightType uwt;
-  Controller::YWeightType ywt;
+  Controller::UWeightType uwt = Controller::UWeightType::Zero();
+  Controller::YWeightType ywt = Controller::YWeightType::Zero();
 
   std::ifstream weight_file;
   weight_file.open("uweight_noncoop");
@@ -124,6 +124,8 @@ int main(void) {
   InputConstraints<ParallelCompressors::n_control_inputs> constraints;
   constraints.lower_bound << -0.3, 0, -0.3, 0;
   constraints.upper_bound << 0.3, 1, 0.3, 1;
+  // constraints.lower_bound << 0, 0, 0, 0;
+  // constraints.upper_bound << 0, 0, 0, 0;
   constraints.lower_rate_bound << -0.1, -0.1, -0.1, -0.1;
   constraints.upper_rate_bound << 0.1, 1, 0.1, 1;
   constraints.use_rate_constraints = true;
@@ -132,13 +134,12 @@ int main(void) {
   AugmentedSystem sys(compressor, sampling_time, delay);
   Obsv observer(M, compressor.GetOutput(x_init));
 
-  const int n_solver_iterations = 6;
+  const int n_solver_iterations = 3;
 
   Controller ctrl(sys, observer, u_default, y_ref, delay, index,
                   n_solver_iterations, output_index, constraints, uwt, ywt);
   p_controller = &ctrl;
 
-  ctrl.SetReference(y_ref);
   ctrl.SetInitialState(x_init, compressor.GetOutput(x_init));
 
   // Integrate system and time it

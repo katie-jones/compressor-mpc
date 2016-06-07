@@ -66,8 +66,7 @@ class NonCooperativeController : public ControllerInterface<System, p> {
       const AugmentedLinearizedSystem<System, n_delay_states,
                                       n_disturbance_states>& sys,
       const Observer<System, n_delay_states, n_disturbance_states>& observer,
-      const Input& u_offset,
-      const OutputPrediction& y_ref,
+      const Input& u_offset, const OutputPrediction& y_ref,
       const ControlInputIndex& input_delay,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
@@ -82,8 +81,7 @@ class NonCooperativeController : public ControllerInterface<System, p> {
       const AugmentedLinearizedSystem<System, n_delay_states,
                                       n_disturbance_states>& sys,
       const Observer<System, n_delay_states, n_disturbance_states>& observer,
-      const Input& u_offset,
-      const OutputPrediction& y_ref,
+      const Input& u_offset, const OutputPrediction& y_ref,
       const ControlInputIndex& input_delay,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
@@ -127,31 +125,29 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   }
 
  private:
-  // Split Su matrix into components for each controller
-  void SplitSuMatrix(Eigen::MatrixXd sub_su[], const Eigen::MatrixXd& full_su) {
-    for (int i = 0; i < n_controllers; i++) {
-      sub_su[i] = Eigen::MatrixXd(p * n_sub_outputs, m * n_sub_control_inputs);
-      for (int j = 0; j < m; j++) {
-        sub_su[i].template block<p * n_sub_outputs, n_sub_control_inputs>(
-            0, j * n_sub_control_inputs) =
-            full_su.template block<p * n_sub_outputs, n_sub_control_inputs>(
-                0, (i + n_controllers * j) * n_sub_control_inputs);
-      }
-    }
-  }
-
   // Split Sx and Sf matrix into components for each controller
-  void SplitSxSfMatrices(Eigen::MatrixXd sub_sx[], Eigen::MatrixXd sub_sf[],
-                         const Eigen::MatrixXd& Sx, const Eigen::MatrixXd& Sf) {
+  void SplitSuSxSfMatrices(Eigen::MatrixXd sub_su[], Eigen::MatrixXd sub_sx[],
+                           Eigen::MatrixXd sub_sf[], const Eigen::MatrixXd& Su,
+                           const Eigen::MatrixXd& Sx,
+                           const Eigen::MatrixXd& Sf) {
     for (int i = 0; i < n_controllers; i++) {
       sub_sx[i] = Eigen::MatrixXd(p * n_sub_outputs, 1 * n_aug_states);
       sub_sf[i] = Eigen::MatrixXd(p * n_sub_outputs, 1 * n_states);
-      for (int j = 0; j < n_sub_outputs; j++) {
-        for (int k = 0; k < p; k++) {
+      sub_su[i] = Eigen::MatrixXd(p * n_sub_outputs, m * n_sub_control_inputs);
+      for (int k = 0; k < p; k++) {
+        for (int j = 0; j < n_sub_outputs; j++) {
           sub_sx[i].row(k * n_sub_outputs + j) =
               Sx.row(k * n_outputs + sub_output_index_(i, j));
           sub_sf[i].row(k * n_sub_outputs + j) =
               Sf.row(k * n_outputs + sub_output_index_(i, j));
+
+          for (int l = 0; l < m; l++) {
+            sub_su[i].block<1, n_sub_control_inputs>(k * n_sub_outputs + j,
+                                                     l * n_sub_control_inputs) =
+                Su.template block<1, n_sub_control_inputs>(
+                    k * n_outputs + sub_output_index_(i, j),
+                    l * n_control_inputs + i * n_sub_control_inputs);
+          }
         }
       }
     }
@@ -169,7 +165,9 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;  // full auglinsys
   Observer<System, n_delay_states, n_disturbance_states>
-      observer_;                        // observer of entire state
+      observer_;  // observer of entire state
+  SubOutputPrediction
+      y_sub_refs_[n_controllers];       // reference output for subsystems
   State x_;                             // current augmented state
   ControlInput u_old_;                  // previous applied input
   ControlInputPrediction du_prev_;      // previous QP solution

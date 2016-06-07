@@ -8,6 +8,7 @@
 #include "print_matrix.h"
 #include "input_constraints.h"
 #include "noncooperative_controller.h"
+#include "prediction.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -23,6 +24,10 @@ extern template class Observer<ParallelCompressors, 80, 4>;
 extern template class NonCooperativeController<ParallelCompressors, 80, 4, 100,
                                                2, 2, 2>;
 extern template class MpcQpSolver<95, 2, 2, 100, 2>;
+
+extern template const Prediction
+AugmentedLinearizedSystem<ParallelCompressors, 80, 4>::GenerateSubPrediction<2>(
+    const int p, const int m, const int* output_index) const;
 
 using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,

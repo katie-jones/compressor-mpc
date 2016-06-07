@@ -174,7 +174,7 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   std::vector<SubSolver> sub_solvers_;  // solvers of sub QPs
   const int n_solver_iterations_;  // number of QP iterations to solve using
                                    // updated input values
-  Eigen::Array<int, n_controllers, n_sub_outputs>
+  Eigen::Array<int, n_controllers, n_sub_outputs, Eigen::RowMajor>
       sub_output_index_;  // indices of sub controller outputs
 };
 

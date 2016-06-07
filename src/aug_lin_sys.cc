@@ -214,7 +214,7 @@ template <int n_sub_outputs>
 const Prediction
 AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
     GenerateSubPrediction(const int p, const int m,
-                          const int output_index[n_sub_outputs]) const {
+                          const int* output_index) const {
       // Check that number of sub outputs is valid
   static_assert(n_sub_outputs <= n_outputs,
                 "Number of sub outputs should be less than or equal to the "
@@ -229,7 +229,7 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
       c_times_a.template block<1, n_obs_states>(i, 0) = C.row(output_index[i]);
     }
   } else {
-    c_times_a.template leftCols<n_obs_states>() = C;
+    c_times_a.template leftCols<n_obs_states>() = C.template topRows<n_sub_outputs>();
   }
 
   // Initialize prediction to zero

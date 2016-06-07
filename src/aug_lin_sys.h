@@ -82,7 +82,7 @@ class AugmentedLinearizedSystem {
 
   template <int n_sub_outputs>
   const Prediction GenerateSubPrediction(
-      const int p, const int m, const int output_index[n_sub_outputs]) const;
+      const int p, const int m, const int* output_index) const;
 
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }

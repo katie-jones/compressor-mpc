@@ -1,10 +1,11 @@
 #ifndef AUG_LIN_SYS_LIST_H
 #define AUG_LIN_SYS_LIST_H
-// #include "compressor.h"
 #include "parallel_compressors.h"
+#include "prediction.h"
 
-// Single compressor
-// template class AugmentedLinearizedSystem<Compressor, 5, 2>;
+template const Prediction
+AugmentedLinearizedSystem<ParallelCompressors, 80, 4>::GenerateSubPrediction<2>(
+    const int p, const int m, const int* output_index) const;
 
 // Parallel compressors
 template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;

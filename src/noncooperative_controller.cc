@@ -177,26 +177,32 @@ void NonCooperativeController<
   }
 
   auglinsys_.Update(x_init, this->GetPlantInput(u_init));
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
 
   QP qp;
 
-  Eigen::MatrixXd sub_Su[n_controllers];
-  Eigen::MatrixXd sub_Sx[n_controllers];
-  Eigen::MatrixXd sub_Sf[n_controllers];
+  // Eigen::MatrixXd sub_Su[n_controllers];
+  // Eigen::MatrixXd sub_Sx[n_controllers];
+  // Eigen::MatrixXd sub_Sf[n_controllers];
 
-  SplitSuSxSfMatrices(sub_Su, sub_Sx, sub_Sf, pred.Su, pred.Sx, pred.Sf);
+  // SplitSuSxSfMatrices(sub_Su, sub_Sx, sub_Sf, pred.Su, pred.Sx, pred.Sf);
 
   // Split output
   SubOutput y_subs[n_controllers];
   SplitOutput(y_subs, y_init);
 
+  Prediction pred;
+  int* output_index_data = sub_output_index_.data();
   for (int i = 0; i < n_controllers; i++) {
-    sub_solvers_[i].GenerateDistributedQP(qp, sub_Su[i], sub_Sx[i], sub_Sf[i],
+    pred = auglinsys_.template GenerateSubPrediction<n_sub_outputs>(
+        p, m, output_index_data);
+
+    sub_solvers_[i].GenerateDistributedQP(qp, pred.Su, pred.Sx, pred.Sf,
                                           delta_x0, n_aug_states, y_subs[i]);
     sub_solvers_[i].InitializeQPProblem(
         qp, u_old_.template segment<n_sub_control_inputs>(
                 i * n_sub_control_inputs));
+
+    output_index_data += n_sub_outputs;
   }
 }
 

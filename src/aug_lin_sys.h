@@ -44,12 +44,6 @@ class AugmentedLinearizedSystem {
   struct AComposite;
   struct BComposite;
 
-  struct Ctype : public Eigen::Matrix<double, n_outputs, n_total_states> {
-    inline Ctype& operator*=(const AComposite& a);
-    inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
-    operator*(const BComposite& b);
-  };
-
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;
     Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
@@ -60,6 +54,10 @@ class AugmentedLinearizedSystem {
     inline AugmentedState operator*(const AugmentedState& x) const;
     AugmentedState TimesAugmentedOnly(
         const Eigen::Matrix<double, n_aug_states, 1> x) const;
+
+    template <int n_sub_outputs>
+    void MultiplyC(
+        Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const;
   };
 
   struct BComposite {
@@ -68,13 +66,23 @@ class AugmentedLinearizedSystem {
 
     BComposite(const ControlInputIndex& n_delay);
     AugmentedState operator*(const ControlInput& u) const;
+
+    template <int n_sub_outputs>
+    Eigen::Matrix<double, n_sub_outputs, System::n_control_inputs> MultiplyC(
+        const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const;
   };
 
   AugmentedLinearizedSystem(const System& sys, const double sampling_time,
                             const ControlInputIndex& n_delay_in);
   void Update(const State x, const Input& u);
 
-  const Prediction GeneratePrediction(const int p, const int m) const;
+  const Prediction GeneratePrediction(const int p, const int m) const {
+    return GenerateSubPrediction<n_outputs>(p, m, NULL);
+  }
+
+  template <int n_sub_outputs>
+  const Prediction GenerateSubPrediction(
+      const int p, const int m, const int output_index[n_sub_outputs]) const;
 
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }

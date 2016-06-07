@@ -53,37 +53,37 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  * Operator C *= A
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-inline typename AugmentedLinearizedSystem<System, n_delay_states,
-                                          n_disturbance_states>::Ctype&
-    AugmentedLinearizedSystem<System, n_delay_states,
-                              n_disturbance_states>::Ctype::
-    operator*=(const AComposite& a) {
-  this->template leftCols<n_states>() *= a.Aorig;
-  this->template rightCols<n_aug_states>() *= a.Aaug;
+template <int n_sub_outputs>
+void AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    AComposite::MultiplyC(
+        Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const {
+  const Eigen::Matrix<double, n_sub_outputs, n_states> temp =
+      C->template leftCols<n_states>();
+
+  C->template leftCols<n_states>() *= Aorig;
+  C->template rightCols<n_aug_states>() *= Aaug;
 
   int index_delay_states = 0;
   for (int i = 0; i < n_control_inputs; i++) {
-    if (a.n_delay[i] != 0) {
-      this->col(n_obs_states + index_delay_states) +=
-          this->template leftCols<n_states>() * a.Adelay.col(i);
-      index_delay_states += a.n_delay[i];
+    if (n_delay[i] != 0) {
+      C->col(n_obs_states + index_delay_states) += temp * Adelay.col(i);
+      index_delay_states += n_delay[i];
     }
   }
-
-  return *this;
 }
 
 /*
  * Operator output = C * B
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-inline Eigen::Matrix<double, System::n_outputs, System::n_control_inputs>
-    AugmentedLinearizedSystem<System, n_delay_states,
-                              n_disturbance_states>::Ctype::
-    operator*(const BComposite& b) {
-  Eigen::Matrix<double, n_outputs, n_control_inputs> output =
-      this->template leftCols<n_states>() * b.Borig;
-  output += this->template rightCols<n_delay_states>() * b.Baug;
+template <int n_sub_outputs>
+Eigen::Matrix<double, n_sub_outputs, System::n_control_inputs>
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    BComposite::MultiplyC(
+        const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const {
+  Eigen::Matrix<double, n_sub_outputs, n_control_inputs> output =
+      C.template leftCols<n_states>() * Borig;
+  output += C.template rightCols<n_delay_states>() * Baug;
 
   return output;
 }
@@ -210,43 +210,61 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  * Generate linearized prediction matrices
  */
 template <class System, int n_delay_states, int n_disturbance_states>
-const Prediction AugmentedLinearizedSystem<
-    System, n_delay_states,
-    n_disturbance_states>::GeneratePrediction(const int p, const int m) const {
-  Prediction pred;
+template <int n_sub_outputs>
+const Prediction
+AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    GenerateSubPrediction(const int p, const int m,
+                          const int output_index[n_sub_outputs]) const {
+      // Check that number of sub outputs is valid
+  static_assert(n_sub_outputs <= n_outputs,
+                "Number of sub outputs should be less than or equal to the "
+                "total number of outputs.");
 
-  pred.Sx = Eigen::MatrixXd::Zero(p * n_outputs, n_aug_states);
-  pred.Sf = Eigen::MatrixXd::Zero(p * n_outputs, n_states);
-  pred.Su = Eigen::MatrixXd::Zero(p * n_outputs, m * n_control_inputs);
-
-  Ctype c_times_a;
-  c_times_a.template leftCols<n_obs_states>() = C;
+  // Initialize c_times_a to C (with only desired outputs)
+  Eigen::Matrix<double, n_sub_outputs, n_total_states> c_times_a;
   c_times_a.template rightCols<n_delay_states>().setZero();
 
-  Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
+  if (n_sub_outputs < n_outputs) {
+    for (int i = 0; i < n_sub_outputs; i++) {
+      c_times_a.template block<1, n_obs_states>(i, 0) = C.row(output_index[i]);
+    }
+  } else {
+    c_times_a.template leftCols<n_obs_states>() = C;
+  }
+
+  // Initialize prediction to zero
+  Prediction pred;
+  pred.Sx = Eigen::MatrixXd::Zero(p * n_sub_outputs, n_aug_states);
+  pred.Sf = Eigen::MatrixXd::Zero(p * n_sub_outputs, n_states);
+  pred.Su = Eigen::MatrixXd::Zero(p * n_sub_outputs, m * n_control_inputs);
+
+  Eigen::Matrix<double, n_sub_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
 
-  pred.Sf.template topRows<n_outputs>() = C.template leftCols<n_states>();
+  pred.Sf.template topRows<n_sub_outputs>() =
+      c_times_a.template leftCols<n_states>();
 
   for (int i = 0; i < p; i++) {
     if (i > 0) {
-      pred.Sf.template block<n_outputs, n_states>(i * n_outputs, 0) =
-          pred.Sf.template block<n_outputs, n_states>((i - 1) * n_outputs, 0) +
+      // Sf is additive
+      pred.Sf.template block<n_sub_outputs, n_states>(i * n_sub_outputs, 0) =
+          pred.Sf.template block<n_sub_outputs, n_states>(
+              (i - 1) * n_sub_outputs, 0) +
           c_times_a.template leftCols<n_states>();
     }
 
-    to_add = c_times_a * B;
+    to_add = B.MultiplyC(c_times_a);
     for (int j = 0; j < p - i; j++) {
       ind_row = i + j;
       if (j < m)
         ind_col = j;
       else
         ind_col = m - 1;
-      pred.Su.template block<n_outputs, n_control_inputs>(
-          ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
+      pred.Su.template block<n_sub_outputs, n_control_inputs>(
+          ind_row * n_sub_outputs, ind_col * n_control_inputs) += to_add;
     }
-    c_times_a *= A;
-    pred.Sx.template block<n_outputs, n_aug_states>(i * n_outputs, 0) =
+    A.MultiplyC(&c_times_a);
+    pred.Sx.template block<n_sub_outputs, n_aug_states>(i * n_sub_outputs, 0) =
         c_times_a.template rightCols<n_aug_states>();
   }
 

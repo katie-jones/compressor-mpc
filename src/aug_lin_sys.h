@@ -78,6 +78,7 @@ class AugmentedLinearizedSystem {
 
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }
+  const Eigen::Matrix<double, n_outputs, n_obs_states> GetC() { return C; }
   const State GetF() const { return f; }
 
  protected:

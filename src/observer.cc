@@ -6,7 +6,7 @@
 template <class System, int n_obs_states, int n_total_states>
 void Observer<System, n_obs_states, n_total_states>::ObserveAPriori(
     const typename System::ControlInput& du_in) {
-  typename System::ControlInput du;
+  typename System::ControlInput du = System::ControlInput::Zero();
   AugmentedState dx = dx_aug_;
 
   dx.template head<n_states>().setZero();

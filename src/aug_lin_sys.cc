@@ -98,7 +98,7 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
     AComposite::TimesAugmentedOnly(
         const Eigen::Matrix<double, n_aug_states, 1> x) const {
   // Augmented part
-  AugmentedState x_out;
+  AugmentedState x_out = AugmentedState::Zero();
   x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
 
   // Effect of delayed input on states
@@ -157,6 +157,8 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
     if (n_delay[i] != 0) {
       index_delay_states += n_delay[i];
       Baug.insert(index_delay_states - 1, i) = 1;
+    } else {
+      Baug.insert(0, i) = 0;
     }
   }
 }
@@ -171,8 +173,9 @@ typename AugmentedLinearizedSystem<System, n_delay_states,
                               n_disturbance_states>::BComposite::
     operator*(const ControlInput& u) const {
   AugmentedState x_out;
-  x_out.template tail<n_delay_states>() = Baug * u;
   x_out.template head<n_states>() = Borig * u;
+  x_out.template segment<n_disturbance_states>(n_states).setZero();
+  x_out.template tail<n_delay_states>() = Baug * u;
 
   return x_out;
 }

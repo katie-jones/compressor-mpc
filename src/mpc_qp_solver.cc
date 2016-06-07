@@ -2,7 +2,7 @@
 
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::MpcQpSolver(
-    const OutputPrediction* y_ref, 
+    const OutputPrediction* y_ref,
     const InputConstraints<n_control_inputs>& u_constraints,
     const UWeightType& u_weight, const YWeightType& y_weight)
     : p_y_ref_(y_ref),
@@ -46,11 +46,11 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::GenerateQP(
 
   qp.H = Su.transpose() * y_pred_weight + u_weight_;
 
-  qp.f = delta_x0.head(n_total_states - n_aug_states).transpose() *
-             Sf.transpose() * y_pred_weight -
-         dy_ref.transpose() * y_pred_weight +
-         delta_x0.tail(n_aug_states).transpose() * Sx.transpose() *
-             y_pred_weight;
+  qp.f =
+      delta_x0.head(n_total_states - n_aug_states).transpose() *
+          Sf.transpose() * y_pred_weight -
+      dy_ref.transpose() * y_pred_weight +
+      delta_x0.tail(n_aug_states).transpose() * Sx.transpose() * y_pred_weight;
 
   return qp;
 }
@@ -95,7 +95,8 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
  */
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 void MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
-                 m>::InitializeQPProblem(const QP& qp, const ControlInput& u_old) {
+                 m>::InitializeQPProblem(const QP& qp,
+                                         const ControlInput& u_old) {
   int n_wsr = n_wsr_max;
 
   // Replicate constraints for number of moves

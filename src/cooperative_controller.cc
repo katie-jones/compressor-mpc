@@ -22,6 +22,7 @@ CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
                                      control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
+      du_prev_(ControlInputPrediction::Zero()),
       observer_(observer) {
   // Check number of delay states
   int sum_delay = 0;
@@ -70,9 +71,8 @@ void CooperativeController<System, n_delay_states, n_disturbance_states, p, m,
                                                                u_init) {
   x_ = x_init;
   observer_.SetIntialOutput(y_init);
+  auglinsys_.Update(x_init, this->GetPlantInput(u_init));
   u_old_ = u_init;
-
-  observer_.SetIntialOutput(y_init);
 
   AugmentedState delta_x0;
   delta_x0 << auglinsys_.GetF(),

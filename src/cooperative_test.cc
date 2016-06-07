@@ -86,8 +86,8 @@ int main(void) {
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  Controller::UWeightType uwt;
-  Controller::YWeightType ywt;
+  Controller::UWeightType uwt = Controller::UWeightType::Zero();
+  Controller::YWeightType ywt = Controller::YWeightType::Zero();
 
   std::ifstream weight_file;
   weight_file.open("uweight");
@@ -128,7 +128,8 @@ int main(void) {
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);
-  ctrl.SetInitialState(x_init, compressor.GetOutput(x_init));
+  const ParallelCompressors::Output y_init = compressor.GetOutput(x_init);
+  ctrl.SetInitialState(x_init, y_init);
 
   // Integrate system and time it
   boost::timer::cpu_timer integrate_timer;

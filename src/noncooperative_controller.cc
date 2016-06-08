@@ -24,7 +24,6 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
-      du_prev_(ControlInputPrediction::Zero()),
       observer_(observer) {
   // make array of yweights all mapped to the same data and use them to
   // initialize
@@ -59,7 +58,6 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
-      du_prev_(ControlInputPrediction::Zero()),
       observer_(observer) {
   InitializeArguments(y_ref, y_weights, constraints, u_weight);
 }
@@ -96,6 +94,11 @@ void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
     }
     sub_ref_matrix.resize(p * n_sub_outputs, 1);
     y_sub_refs_[i] = sub_ref_matrix;
+  }
+
+  // Initialize previous QP solutions
+  for (int i = 0; i < n_controllers; i++) {
+    du_prev_[i] = SubControlInputPrediction::Zero();
   }
 
   // Intialize subsolvers with correct constraints and initial states
@@ -154,12 +157,6 @@ void NonCooperativeController<
   auglinsys_.Update(x_init, this->GetPlantInput(u_init));
 
   QP qp;
-
-  // Eigen::MatrixXd sub_Su[n_controllers];
-  // Eigen::MatrixXd sub_Sx[n_controllers];
-  // Eigen::MatrixXd sub_Sf[n_controllers];
-
-  // SplitSuSxSfMatrices(sub_Su, sub_Sx, sub_Sf, pred.Su, pred.Sx, pred.Sf);
 
   // Split output
   SubOutput y_subs[n_controllers];
@@ -251,8 +248,7 @@ NonCooperativeController<
     // Update du_prev for next iteration
     for (int i = 0; i < n_controllers; i++) {
       if (i == 0) integrate_timer.resume();
-      du_prev_.template segment<m* n_sub_control_inputs>(
-          i * m * n_sub_control_inputs) = du_out[i];
+      du_prev_[i] = du_out[i];
       if (i == 0) integrate_timer.stop();
     }
   }
@@ -263,24 +259,19 @@ NonCooperativeController<
     if (i == 0) integrate_timer.resume();
     du_applied.template segment<n_sub_control_inputs>(i *
                                                       n_sub_control_inputs) =
-        du_prev_.template segment<n_sub_control_inputs>(i * m *
-                                                        n_sub_control_inputs);
+        du_prev_[i].template head<n_sub_control_inputs>();
 
     // Initialize du_prev_ for next iteration using predictions
     if (m > 1) {
-      du_prev_.template segment<(m - 1)* n_sub_control_inputs>(
-          i * m * n_sub_control_inputs) =
-          du_prev_.template segment<(m - 1) * n_sub_control_inputs>(
-              (i * m + 1) * n_sub_control_inputs);
+      du_prev_[i].template head<(m - 1)* n_sub_control_inputs>() =
+          du_prev_[i].template tail<(m - 1) * n_sub_control_inputs>();
 
       // Repeat last prediction
-      du_prev_.template segment<n_sub_control_inputs>(((i + 1) * m - 1) *
-                                                      n_sub_control_inputs) =
-          du_prev_.template segment<n_sub_control_inputs>(((i + 1) * m - 2) *
-                                                          n_sub_control_inputs);
+      du_prev_[i].template tail<n_sub_control_inputs>() =
+          du_prev_[i].template segment<n_sub_control_inputs>(
+              (m - 2) * n_sub_control_inputs);
     } else {
-      du_prev_.template segment<n_sub_control_inputs>(i * n_sub_control_inputs)
-          .setZero();
+      du_prev_[i].setZero();
     }
     if (i == 0) integrate_timer.stop();
   }

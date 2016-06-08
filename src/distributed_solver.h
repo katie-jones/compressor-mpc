@@ -57,7 +57,7 @@ class DistributedSolver
   /// Return solution of QP generated based on prediction matrices given
   void UpdateAndSolveQP(QP& qp, ControlInputPrediction& du_out,
                         const ControlInput u_old, const Eigen::MatrixXd Su[],
-                        const TotalControlInput& du_full);
+                        const ControlInputPrediction du_full[n_controllers]);
 
   /// generate QP matrices based on linearization
   void GenerateDistributedQP(QP& qp, const Eigen::MatrixXd& Su,
@@ -86,18 +86,15 @@ class DistributedSolver
 
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m,
           int n_controllers>
-void DistributedSolver<
-    n_total_states, n_outputs, n_control_inputs, p, m,
-    n_controllers>::UpdateAndSolveQP(QP& qp, ControlInputPrediction& du_out,
-                                     const ControlInput u_old,
-                                     const Eigen::MatrixXd Su[],
-                                     const TotalControlInput& du_full) {
+void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
+                       n_controllers>::
+    UpdateAndSolveQP(QP& qp, ControlInputPrediction& du_out,
+                     const ControlInput u_old, const Eigen::MatrixXd Su[],
+                     const ControlInputPrediction du_full[n_controllers]) {
   // Add effect of other subcontrollers' inputs
   for (int i = 0; i < n_controllers; i++) {
     if (i != index_) {
-      ApplyOtherInput(qp, du_full.template segment<m * n_control_inputs>(
-                              i * m * n_control_inputs),
-                      Su[i]);
+      ApplyOtherInput(qp, du_full[i], Su[i]);
     }
   }
 

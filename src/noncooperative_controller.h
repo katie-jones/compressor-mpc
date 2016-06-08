@@ -174,11 +174,11 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   Observer<System, n_delay_states, n_disturbance_states>
       observer_;  // observer of entire state
   SubOutputPrediction
-      y_sub_refs_[n_controllers];       // reference output for subsystems
-  State x_;                             // current augmented state
-  ControlInput u_old_;                  // previous applied input
-  ControlInputPrediction du_prev_;      // previous QP solution
-  std::vector<SubSolver> sub_solvers_;  // solvers of sub QPs
+      y_sub_refs_[n_controllers];  // reference output for subsystems
+  State x_;                        // current augmented state
+  ControlInput u_old_;             // previous applied input
+  SubControlInputPrediction du_prev_[n_controllers];  // previous QP solution
+  std::vector<SubSolver> sub_solvers_;                // solvers of sub QPs
   const int n_solver_iterations_;  // number of QP iterations to solve using
                                    // updated input values
   Eigen::Array<int, n_controllers, n_sub_outputs, Eigen::RowMajor>

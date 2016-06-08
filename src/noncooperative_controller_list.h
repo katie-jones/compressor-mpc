@@ -5,9 +5,15 @@
 
 extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
 extern template class Observer<ParallelCompressors, 80, 4>;
+
 extern template class MpcQpSolver<95, 2, 2, 100, 2>;
+extern template class MpcQpSolver<95, 3, 2, 100, 2>;
+
 template class NonCooperativeController<ParallelCompressors, 80, 4, 100, 2,
                                             2, 2>;
+
+template class NonCooperativeController<ParallelCompressors, 80, 4, 100, 2,
+                                            2, 3>;
 
 
 #endif 

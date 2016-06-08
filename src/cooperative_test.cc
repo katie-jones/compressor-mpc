@@ -7,20 +7,31 @@
 #include "observer.h"
 #include "print_matrix.h"
 #include "input_constraints.h"
-#include "cooperative_controller.h"
+#include "noncooperative_controller.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
 constexpr int n_disturbance_states = 4;
 constexpr int p = 100;
 constexpr int m = 2;
+constexpr int n_controllers = 2;
+constexpr int n_sub_outputs = 3;
+constexpr int n_sub_control_inputs = 2;
 }
 
-extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
-extern template class Observer<ParallelCompressors, 80, 4>;
-extern template class CooperativeController<ParallelCompressors, 80, 4, 100, 2,
-                                            2>;
-extern template class MpcQpSolver<95, 4, 2, 100, 2>;
+using namespace Control;
+
+extern template class AugmentedLinearizedSystem<
+    ParallelCompressors, n_delay_states, n_disturbance_states>;
+extern template class Observer<ParallelCompressors, n_delay_states,
+                               n_disturbance_states>;
+extern template class NonCooperativeController<
+    ParallelCompressors, n_delay_states, n_disturbance_states, p, m,
+    n_controllers, n_sub_outputs>;
+
+extern template class MpcQpSolver<n_delay_states + n_disturbance_states +
+                                      ParallelCompressors::n_states,
+                                  n_sub_outputs, n_sub_control_inputs, p, m>;
 
 using AugmentedSystem =
     AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
@@ -29,7 +40,8 @@ using AugmentedSystem =
 using Obsv = Observer<ParallelCompressors, Control::n_delay_states,
                       Control::n_disturbance_states>;
 
-using Controller = CooperativeController<ParallelCompressors, 80, 4, 100, 2, 2>;
+using Controller = NonCooperativeController<ParallelCompressors, n_delay_states,
+                                            n_disturbance_states, p, m, 2, 3>;
 
 using SimSystem =
     SimulationSystem<ParallelCompressors, Control::n_delay_states>;
@@ -86,17 +98,24 @@ int main(void) {
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
+  // index of outputs per subcontroller
+  const Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>
+      output_index =
+          (Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>()
+               << 0,
+           1, 3, 0, 1, 3).finished();
+
   Controller::UWeightType uwt = Controller::UWeightType::Zero();
   Controller::YWeightType ywt = Controller::YWeightType::Zero();
 
   std::ifstream weight_file;
-  weight_file.open("uweight");
+  weight_file.open("uweight_coop");
   for (int i = 0; i < uwt.rows(); i++) {
     weight_file >> uwt(i, i);
   }
   weight_file.close();
 
-  weight_file.open("yweight");
+  weight_file.open("yweight_coop");
   for (int i = 0; i < ywt.rows(); i++) {
     weight_file >> ywt(i, i);
   }
@@ -124,7 +143,7 @@ int main(void) {
   const int n_solver_iterations = 6;
 
   Controller ctrl(sys, observer, u_default, y_ref, delay, index,
-                  n_solver_iterations, constraints, uwt, ywt);
+                  n_solver_iterations, output_index, constraints, uwt, ywt);
   p_controller = &ctrl;
 
   ctrl.SetReference(y_ref);
@@ -153,7 +172,5 @@ int main(void) {
   std::cout << "Wall time: " << int_elapsed.wall << std::endl
             << std::endl;
 
-
   return 0;
 }
-

@@ -74,6 +74,7 @@ class AugmentedLinearizedSystem {
 
   AugmentedLinearizedSystem(const System& sys, const double sampling_time,
                             const ControlInputIndex& n_delay_in);
+
   void Update(const State x, const Input& u);
 
   const Prediction GeneratePrediction(const int p, const int m) const {
@@ -108,8 +109,8 @@ class AugmentedLinearizedSystem {
   BComposite B;
   Eigen::Matrix<double, n_outputs, n_obs_states> C;
   State f;
-  System sys_;
-  double sampling_time_;
+  const System sys_;
+  const double sampling_time_;
 };
 
 /*

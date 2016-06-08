@@ -26,52 +26,13 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
       sub_output_index_(sub_output_index),
       du_prev_(ControlInputPrediction::Zero()),
       observer_(observer) {
-  // Check number of delay states
-  int sum_delay = 0;
-  for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];
-  if (sum_delay != n_delay_states) {
-    throw delay_states_wrong();
-  }
-
-  // Initialize observer pointer
-  observer_.InitializeSystem(&auglinsys_);
-
-  // Split output reference
-  Eigen::MatrixXd initial_prediction = y_ref;
-  initial_prediction.resize(n_outputs, p);
-
+  // make array of yweights all mapped to the same data and use them to
+  // initialize
+  std::array<YWeightType, n_controllers> y_weights;
   for (int i = 0; i < n_controllers; i++) {
-    Eigen::MatrixXd sub_ref_matrix(n_sub_outputs, p);
-    for (int j = 0; j < n_sub_outputs; j++) {
-      sub_ref_matrix.row(j) = initial_prediction.row(sub_output_index_(i, j));
-    }
-    sub_ref_matrix.resize(p * n_sub_outputs, 1);
-    y_sub_refs_[i] = sub_ref_matrix;
+    y_weights[i] = Eigen::Map<const YWeightType>(y_weight.data());
   }
-
-  // Intialize subsolvers with correct constraints and initial states
-  sub_solvers_.reserve(n_controllers);
-  InputConstraints<n_sub_control_inputs> sub_constraints;
-  for (int i = 0; i < n_controllers; i++) {
-    sub_constraints.lower_bound =
-        constraints.lower_bound.template segment<n_sub_control_inputs>(
-            i * n_sub_control_inputs);
-    sub_constraints.upper_bound =
-        constraints.upper_bound.template segment<n_sub_control_inputs>(
-            i * n_sub_control_inputs);
-    sub_constraints.lower_rate_bound =
-        constraints.lower_rate_bound.template segment<n_sub_control_inputs>(
-            i * n_sub_control_inputs);
-    sub_constraints.upper_rate_bound =
-        constraints.upper_rate_bound.template segment<n_sub_control_inputs>(
-            i * n_sub_control_inputs);
-
-    sub_solvers_.emplace_back(
-        &y_sub_refs_[i], i, sub_constraints,
-        u_weight.template block<n_sub_control_inputs, n_sub_control_inputs>(
-            i * n_sub_control_inputs, i * n_sub_control_inputs),
-        y_weight);
-  }
+  InitializeArguments(y_ref, y_weights, constraints, u_weight);
 }
 
 /*
@@ -100,6 +61,20 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
       sub_output_index_(sub_output_index),
       du_prev_(ControlInputPrediction::Zero()),
       observer_(observer) {
+  InitializeArguments(y_ref, y_weights, constraints, u_weight);
+}
+
+/*
+ * Initialize member variables (called by constructors)
+ */
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m, int n_controllers, int n_sub_outputs>
+void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
+                              m, n_controllers, n_sub_outputs>::
+    InitializeArguments(const OutputPrediction& y_ref,
+                        const std::array<YWeightType, n_controllers>& y_weights,
+                        const InputConstraints<n_control_inputs>& constraints,
+                        const UWeightType& u_weight) {
   // Check number of delay states
   int sum_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];

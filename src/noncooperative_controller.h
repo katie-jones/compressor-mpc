@@ -162,6 +162,13 @@ class NonCooperativeController : public ControllerInterface<System, p> {
     }
   }
 
+  // Initialize arguments not set in initializer list - called by constructor
+  void InitializeArguments(
+      const OutputPrediction& y_ref,
+      const std::array<YWeightType, n_controllers>& y_weights,
+      const InputConstraints<n_control_inputs>& constraints,
+      const UWeightType& u_weight);
+
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;  // full auglinsys
   Observer<System, n_delay_states, n_disturbance_states>

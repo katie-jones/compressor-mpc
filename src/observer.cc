@@ -5,7 +5,7 @@
  */
 template <class System, int n_obs_states, int n_total_states>
 void Observer<System, n_obs_states, n_total_states>::ObserveAPriori(
-    const typename System::ControlInput& du_in) {
+    const typename System::ControlInput& du_in, const typename System::ControlInput& u_old) {
   typename System::ControlInput du = System::ControlInput::Zero();
   AugmentedState dx = dx_aug_;
 
@@ -16,16 +16,14 @@ void Observer<System, n_obs_states, n_total_states>::ObserveAPriori(
     if (p_auglinsys_->A.n_delay[i] == 0) {
       du(i) = du_in(i);
     } else {
-      du(i) = u_old_[i] + du_in(i);
-      dx(index_delay_states) -= u_old_[i];
+      du(i) = u_old[i] + du_in(i);
+      dx(index_delay_states) -= u_old[i];
       index_delay_states += p_auglinsys_->A.n_delay[i];
     }
   }
 
   dx_aug_ = p_auglinsys_->B * du + p_auglinsys_->A * dx;
   dx_aug_.template head<n_states>() += p_auglinsys_->f;
-
-  u_old_ += du_in;
 }
 
 /*

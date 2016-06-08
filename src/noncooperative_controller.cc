@@ -299,15 +299,13 @@ NonCooperativeController<
     if (i == 0) integrate_timer.stop();
   }
 
+  observer_.ObserveAPriori(du_applied, u_old_);
+
   boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
-  // boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
-  // int_elapsed.user);
   boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
   cpu_time_out << elapsed_ns << std::endl;
 
   u_old_ += du_applied;
-
-  observer_.ObserveAPriori(du_applied);
 
   return u_old_;
 }

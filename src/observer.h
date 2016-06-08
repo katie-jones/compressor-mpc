@@ -26,7 +26,7 @@ class Observer {
            const typename System::ControlInput& u_init =
                System::ControlInput::Zero(),
            const AugmentedState dx_init = AugmentedState::Zero())
-      : M_(M), y_old_(y_init), u_old_(u_init), dx_aug_(dx_init) {}
+      : M_(M), y_old_(y_init), dx_aug_(dx_init) {}
 
   void InitializeSystem(const AugmentedLinearizedSystem<
       System, n_delay_states, n_disturbance_states>* p_auglinsys) {
@@ -37,7 +37,7 @@ class Observer {
   State ObserveAPosteriori(const typename System::Output& y_in);
 
   /// Generate state prediction
-  void ObserveAPriori(const typename System::ControlInput& u_in);
+  void ObserveAPriori(const typename System::ControlInput& du_in, const typename System::ControlInput& u_old);
 
   /// Get augmented state
   AugmentedState GetStateEstimate() const { return dx_aug_; }
@@ -55,7 +55,6 @@ class Observer {
   const AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>*
       p_auglinsys_;                      // current augmented linearization
   typename System::Output y_old_;        // past output
-  typename System::ControlInput u_old_;  // past input
   AugmentedState dx_aug_;                // differential augmented state
 };
 

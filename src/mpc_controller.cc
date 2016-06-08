@@ -60,14 +60,21 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
     }
   }
 
+  // Solve QP and get optimal input
   const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
   const ControlInputPrediction usol = this->SolveQP(qp, u_old_);
-  observer_.ObserveAPriori(usol.template head<n_control_inputs>());
+
+  // Update state estimation based on input
+  observer_.ObserveAPriori(usol.template head<n_control_inputs>(), u_old_);
+
+  // Update previous solution
+  u_old_ += usol.template head<n_control_inputs>();
+
+  // Measure time
   boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);
   cpu_time_out << elapsed_ns << std::endl;
-
 
   return u_old_;
 }

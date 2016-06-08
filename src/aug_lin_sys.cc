@@ -211,11 +211,11 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
  */
 template <class System, int n_delay_states, int n_disturbance_states>
 template <int n_sub_outputs>
-const Prediction
-AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
-    GenerateSubPrediction(const int p, const int m,
+void AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
+    GenerateSubPrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
+                          Eigen::MatrixXd* Sf, const int p, const int m,
                           const int* output_index) const {
-      // Check that number of sub outputs is valid
+  // Check that number of sub outputs is valid
   static_assert(n_sub_outputs <= n_outputs,
                 "Number of sub outputs should be less than or equal to the "
                 "total number of outputs.");
@@ -224,32 +224,36 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
   Eigen::Matrix<double, n_sub_outputs, n_total_states> c_times_a;
   c_times_a.template rightCols<n_delay_states>().setZero();
 
-  if (n_sub_outputs < n_outputs) {
+  if (output_index != nullptr) {
     for (int i = 0; i < n_sub_outputs; i++) {
       c_times_a.template block<1, n_obs_states>(i, 0) = C.row(output_index[i]);
     }
   } else {
-    c_times_a.template leftCols<n_obs_states>() = C.template topRows<n_sub_outputs>();
+    c_times_a.template leftCols<n_obs_states>() =
+        C.template topRows<n_sub_outputs>();
   }
 
   // Initialize prediction to zero
-  Prediction pred;
-  pred.Sx = Eigen::MatrixXd::Zero(p * n_sub_outputs, n_aug_states);
-  pred.Sf = Eigen::MatrixXd::Zero(p * n_sub_outputs, n_states);
-  pred.Su = Eigen::MatrixXd::Zero(p * n_sub_outputs, m * n_control_inputs);
+  Su->resize(p * n_sub_outputs, m * n_control_inputs);
+  Sx->resize(p * n_sub_outputs, n_aug_states);
+  Sf->resize(p * n_sub_outputs, n_states);
+
+  Su->setZero();
+  Sx->setZero();
+  Sf->setZero();
 
   Eigen::Matrix<double, n_sub_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
 
-  pred.Sf.template topRows<n_sub_outputs>() =
+  Sf->template topRows<n_sub_outputs>() =
       c_times_a.template leftCols<n_states>();
 
   for (int i = 0; i < p; i++) {
     if (i > 0) {
       // Sf is additive
-      pred.Sf.template block<n_sub_outputs, n_states>(i * n_sub_outputs, 0) =
-          pred.Sf.template block<n_sub_outputs, n_states>(
-              (i - 1) * n_sub_outputs, 0) +
+      Sf->template block<n_sub_outputs, n_states>(i * n_sub_outputs, 0) =
+          Sf->template block<n_sub_outputs, n_states>((i - 1) * n_sub_outputs,
+                                                      0) +
           c_times_a.template leftCols<n_states>();
     }
 
@@ -260,15 +264,14 @@ AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>::
         ind_col = j;
       else
         ind_col = m - 1;
-      pred.Su.template block<n_sub_outputs, n_control_inputs>(
+
+      Su->template block<n_sub_outputs, n_control_inputs>(
           ind_row * n_sub_outputs, ind_col * n_control_inputs) += to_add;
     }
     A.MultiplyC(&c_times_a);
-    pred.Sx.template block<n_sub_outputs, n_aug_states>(i * n_sub_outputs, 0) =
+    Sx->template block<n_sub_outputs, n_aug_states>(i * n_sub_outputs, 0) =
         c_times_a.template rightCols<n_aug_states>();
   }
-
-  return pred;
 }
 
 #include "aug_lin_sys_list.h"

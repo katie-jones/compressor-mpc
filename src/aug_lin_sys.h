@@ -81,8 +81,18 @@ class AugmentedLinearizedSystem {
   }
 
   template <int n_sub_outputs>
-  const Prediction GenerateSubPrediction(
-      const int p, const int m, const int* output_index) const;
+  const Prediction GenerateSubPrediction(const int p, const int m,
+                                         const int* output_index) const {
+    Prediction pred;
+    GenerateSubPrediction<n_sub_outputs>(&pred.Su, &pred.Sx, &pred.Sf, p, m,
+                                         output_index);
+    return pred;
+  }
+
+  template <int n_sub_outputs>
+  void GenerateSubPrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
+                             Eigen::MatrixXd* Sf, const int p, const int m,
+                             const int* output_index) const;
 
   const AComposite GetA() const { return A; }
   const BComposite GetB() const { return B; }

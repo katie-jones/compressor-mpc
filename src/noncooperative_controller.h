@@ -125,34 +125,6 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   }
 
  private:
-  // Split Sx and Sf matrix into components for each controller
-  void SplitSuSxSfMatrices(Eigen::MatrixXd sub_su[], Eigen::MatrixXd sub_sx[],
-                           Eigen::MatrixXd sub_sf[], const Eigen::MatrixXd& Su,
-                           const Eigen::MatrixXd& Sx,
-                           const Eigen::MatrixXd& Sf) {
-    for (int i = 0; i < n_controllers; i++) {
-      sub_sx[i] = Eigen::MatrixXd(p * n_sub_outputs, 1 * n_aug_states);
-      sub_sf[i] = Eigen::MatrixXd(p * n_sub_outputs, 1 * n_states);
-      sub_su[i] = Eigen::MatrixXd(p * n_sub_outputs, m * n_sub_control_inputs);
-      for (int k = 0; k < p; k++) {
-        for (int j = 0; j < n_sub_outputs; j++) {
-          sub_sx[i].row(k * n_sub_outputs + j) =
-              Sx.row(k * n_outputs + sub_output_index_(i, j));
-          sub_sf[i].row(k * n_sub_outputs + j) =
-              Sf.row(k * n_outputs + sub_output_index_(i, j));
-
-          for (int l = 0; l < m; l++) {
-            sub_su[i].block<1, n_sub_control_inputs>(k * n_sub_outputs + j,
-                                                     l * n_sub_control_inputs) =
-                Su.template block<1, n_sub_control_inputs>(
-                    k * n_outputs + sub_output_index_(i, j),
-                    l * n_control_inputs + i * n_sub_control_inputs);
-          }
-        }
-      }
-    }
-  }
-
   // Split output into components for each controller
   void SplitOutput(SubOutput y_subs[], const Output& y_full) {
     for (int i = 0; i < n_controllers; i++) {

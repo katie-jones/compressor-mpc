@@ -19,7 +19,7 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
         const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight, const YWeightType& y_weight)
-    : ControllerInterface<System, p>(y_ref, u_offset, input_delay,
+    : ControllerInterface<System, p>(u_offset, input_delay,
                                      control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
@@ -53,7 +53,7 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
         const std::array<YWeightType, n_controllers>& y_weights,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight)
-    : ControllerInterface<System, p>(y_ref, u_offset, input_delay,
+    : ControllerInterface<System, p>(u_offset, input_delay,
                                      control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
@@ -83,19 +83,6 @@ void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
   // Initialize observer pointer
   observer_.InitializeSystem(&auglinsys_);
 
-  // Split output reference
-  Eigen::MatrixXd initial_prediction = y_ref;
-  initial_prediction.resize(n_outputs, p);
-
-  for (int i = 0; i < n_controllers; i++) {
-    Eigen::MatrixXd sub_ref_matrix(n_sub_outputs, p);
-    for (int j = 0; j < n_sub_outputs; j++) {
-      sub_ref_matrix.row(j) = initial_prediction.row(sub_output_index_(i, j));
-    }
-    sub_ref_matrix.resize(p * n_sub_outputs, 1);
-    y_sub_refs_[i] = sub_ref_matrix;
-  }
-
   // Initialize previous QP solutions
   for (int i = 0; i < n_controllers; i++) {
     du_prev_[i] = SubControlInputPrediction::Zero();
@@ -119,11 +106,15 @@ void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
             i * n_sub_control_inputs);
 
     sub_solvers_.emplace_back(
-        &y_sub_refs_[i], i, sub_constraints,
+        i, sub_constraints, SubOutputPrediction::Zero(),
         u_weight.template block<n_sub_control_inputs, n_sub_control_inputs>(
             i * n_sub_control_inputs, i * n_sub_control_inputs),
         y_weights[i]);
   }
+
+  // Split output reference
+  SetOutputReference(y_ref);
+
 }
 
 /*

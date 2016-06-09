@@ -44,7 +44,6 @@ class MpcController
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
-  using ControllerInterface<System, p>::y_ref_;
   using ControllerInterface<System, p>::u_offset_;
   using ControllerInterface<System, p>::n_delay_;
   using ControllerInterface<System, p>::control_input_index_;

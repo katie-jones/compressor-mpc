@@ -33,9 +33,8 @@ class MpcQpSolver {
   };
 
   /// Constructor
-  MpcQpSolver(const OutputPrediction* y_ref,
-              const InputConstraints<n_control_inputs>& u_constraints =
-                  InputConstraints<n_control_inputs>(),
+  MpcQpSolver(const InputConstraints<n_control_inputs>& u_constraints,
+              const OutputPrediction y_ref = OutputPrediction::Zero(),
               const UWeightType& u_weight = UWeightType::Identity(),
               const YWeightType& y_weight = YWeightType::Identity());
 
@@ -52,6 +51,12 @@ class MpcQpSolver {
 
   /// use QPoases to solve QP
   const ControlInputPrediction SolveQP(const QP& qp, const ControlInput& u_old);
+
+  /// Set output reference to use
+  void SetOutputReference(const OutputPrediction& y_ref) { y_ref_ = y_ref; }
+
+  /// Get current output reference
+  OutputPrediction GetOutputReference() const { return y_ref_; }
 
  protected:
   // generate QP matrices based on linearization, given the y prediction
@@ -79,7 +84,7 @@ class MpcQpSolver {
     return A;
   }
 
-  const OutputPrediction* p_y_ref_;  // reference trajectory
+  OutputPrediction y_ref_;  // reference trajectory
   Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs> u_weight_;
   Eigen::SparseMatrix<double> y_weight_;
   const InputConstraints<n_control_inputs>

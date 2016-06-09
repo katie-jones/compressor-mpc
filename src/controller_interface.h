@@ -38,11 +38,9 @@ class ControllerInterface {
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
   /// Constructor
-  ControllerInterface(const OutputPrediction& y_ref, const Input& u_offset,
-                      const ControlInputIndex& n_delay,
+  ControllerInterface(const Input& u_offset, const ControlInputIndex& n_delay,
                       const ControlInputIndex& control_input_index)
-      : y_ref_(y_ref),
-        u_offset_(u_offset),
+      : u_offset_(u_offset),
         n_delay_(n_delay),
         control_input_index_(control_input_index) {}
 
@@ -52,12 +50,6 @@ class ControllerInterface {
    * input value by solving a QP it generates using the MPC formulation.
    */
   virtual const ControlInput GetNextInput(const Output& y) = 0;
-
-  /// Set the reference output trajectory
-  void SetReference(const OutputPrediction& y_ref) { y_ref_ = y_ref; }
-
-  /// Get the reference output trajectory
-  OutputPrediction GetReference() const { return y_ref_; }
 
   /// output plant input based on control input and offset
   const Input GetPlantInput(const ControlInput& u_control) const {
@@ -79,7 +71,6 @@ class ControllerInterface {
   }
 
  protected:
-  OutputPrediction y_ref_;           // reference trajectory
   const Input u_offset_;             // offset applied to control input
   const ControlInputIndex n_delay_;  // delay states per input
   const ControlInputIndex

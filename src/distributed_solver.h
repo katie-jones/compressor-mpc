@@ -45,13 +45,13 @@ class DistributedSolver
   static constexpr int n_control_inputs_ = n_control_inputs;
 
   /// Constructor
-  DistributedSolver(const OutputPrediction* p_y_ref, const int index,
-                    const InputConstraints<n_control_inputs>& u_constraints =
-                        InputConstraints<n_control_inputs>(),
+  DistributedSolver(const int index,
+                    const InputConstraints<n_control_inputs>& u_constraints,
+                    const OutputPrediction y_ref = OutputPrediction::Zero(),
                     const UWeightType& u_weight = UWeightType::Identity(),
                     const YWeightType& y_weight = YWeightType::Identity())
       : MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
-            p_y_ref, u_constraints, u_weight, y_weight),
+            u_constraints, y_ref, u_weight, y_weight),
         index_(index) {}
 
   /// Return solution of QP generated based on prediction matrices given
@@ -94,9 +94,6 @@ void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
   // Add effect of other subcontrollers' inputs
   for (int i = 0; i < n_controllers; i++) {
     if (i != index_) {
-      // Eigen::MatrixXd Su_i = Eigen::Map<const Eigen::MatrixXd>(
-      // Su_full.col(i * m * n_control_inputs).data(), p * n_outputs,
-      // m * n_control_inputs);
       ApplyOtherInput(
           qp, du_full[i],
           Su_full.template block<p * n_outputs, m * n_control_inputs>(

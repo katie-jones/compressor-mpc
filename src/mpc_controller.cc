@@ -19,10 +19,10 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::
         const InputConstraints<n_control_inputs>& constraints)
     : auglinsys_(sys),
       observer_(observer),
-      ControllerInterface<System, p>(y_ref, u_offset, input_delay,
+      ControllerInterface<System, p>(u_offset, input_delay,
                                      control_input_index),
       MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
-          &y_ref_, constraints, u_weight, y_weight) {
+          constraints, y_ref, u_weight, y_weight) {
   // Check number of delay states
   int sum_delay = 0;
   for (int i = 0; i < n_control_inputs; i++) sum_delay += n_delay_[i];

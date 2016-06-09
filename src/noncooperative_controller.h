@@ -22,7 +22,6 @@ class NonCooperativeController : public ControllerInterface<System, p> {
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
-  using ControllerInterface<System, p>::y_ref_;
   using ControllerInterface<System, p>::u_offset_;
   using ControllerInterface<System, p>::n_delay_;
   using ControllerInterface<System, p>::control_input_index_;
@@ -124,6 +123,9 @@ class NonCooperativeController : public ControllerInterface<System, p> {
         .finished();
   }
 
+  /// Set output reference
+  virtual inline void SetOutputReference(const OutputPrediction& y_ref);
+
  private:
   // Split output into components for each controller
   void SplitOutput(SubOutput y_subs[], const Output& y_full) {
@@ -144,11 +146,9 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
       auglinsys_;  // full auglinsys
   Observer<System, n_delay_states, n_disturbance_states>
-      observer_;  // observer of entire state
-  SubOutputPrediction
-      y_sub_refs_[n_controllers];  // reference output for subsystems
-  State x_;                        // current augmented state
-  ControlInput u_old_;             // previous applied input
+      observer_;        // observer of entire state
+  State x_;             // current augmented state
+  ControlInput u_old_;  // previous applied input
   SubControlInputPrediction du_prev_[n_controllers];  // previous QP solution
   std::vector<SubSolver> sub_solvers_;                // solvers of sub QPs
   const int n_solver_iterations_;  // number of QP iterations to solve using
@@ -156,5 +156,24 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   Eigen::Array<int, n_controllers, n_sub_outputs, Eigen::RowMajor>
       sub_output_index_;  // indices of sub controller outputs
 };
+template <class System, int n_delay_states, int n_disturbance_states, int p,
+          int m, int n_controllers, int n_sub_outputs>
+inline void NonCooperativeController<
+    System, n_delay_states, n_disturbance_states, p, m, n_controllers,
+    n_sub_outputs>::SetOutputReference(const OutputPrediction& y_ref) {
+  // Resize output prediction by rows
+  Eigen::MatrixXd initial_prediction = y_ref;
+  initial_prediction.resize(n_outputs, p);
+
+  // Split prediction into predictions for each subcontroller
+  for (int i = 0; i < n_controllers; i++) {
+    Eigen::MatrixXd sub_ref_matrix(n_sub_outputs, p);
+    for (int j = 0; j < n_sub_outputs; j++) {
+      sub_ref_matrix.row(j) = initial_prediction.row(sub_output_index_(i, j));
+    }
+    sub_ref_matrix.resize(p * n_sub_outputs, 1);
+    sub_solvers_[i].SetOutputReference(sub_ref_matrix);
+  }
+}
 
 #endif

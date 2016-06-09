@@ -2,10 +2,10 @@
 
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::MpcQpSolver(
-    const OutputPrediction* y_ref,
     const InputConstraints<n_control_inputs>& u_constraints,
+    const OutputPrediction y_ref,
     const UWeightType& u_weight, const YWeightType& y_weight)
-    : p_y_ref_(y_ref),
+    : y_ref_(y_ref),
       u_constraints_(u_constraints),
       Ain_(GetConstraintMatrix()),
       qp_problem_(
@@ -42,7 +42,7 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::GenerateQP(
     const Eigen::MatrixXd& y_pred_weight) const {
   QP qp;
 
-  const OutputPrediction dy_ref = *p_y_ref_ - y_prev.template replicate<p, 1>();
+  const OutputPrediction dy_ref = y_ref_ - y_prev.template replicate<p, 1>();
 
   qp.H = Su.transpose() * y_pred_weight + u_weight_;
 

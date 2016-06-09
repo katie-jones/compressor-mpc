@@ -53,9 +53,6 @@ void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
 
-  Controller::Output yref =
-      p_controller->GetReference()
-          .template head<ParallelCompressors::n_outputs>();
   Controller::Output y = p_compressor->GetOutput(x);
 
   output_file << y.transpose() << std::endl;

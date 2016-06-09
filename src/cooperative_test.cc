@@ -56,9 +56,6 @@ void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
 
-  Controller::Output yref =
-      p_controller->GetReference()
-          .template head<ParallelCompressors::n_outputs>();
   Controller::Output y = p_compressor->GetOutput(x);
 
   output_file << y.transpose() << std::endl;
@@ -146,7 +143,7 @@ int main(void) {
                   n_solver_iterations, output_index, constraints, uwt, ywt);
   p_controller = &ctrl;
 
-  ctrl.SetReference(y_ref);
+  ctrl.SetOutputReference(y_ref);
   const ParallelCompressors::Output y_init = compressor.GetOutput(x_init);
   ctrl.SetInitialState(x_init, y_init);
 

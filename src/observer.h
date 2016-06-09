@@ -15,12 +15,23 @@ class Observer {
   /// Observer of dynamic system
   typedef Eigen::Matrix<double, n_obs_states, System::n_outputs> ObserverMatrix;
 
+ protected:
   /// Augmented state of system
-  typedef Eigen::Matrix<double, n_total_states, 1> AugmentedState;
+  using AugmentedState =
+      typename AugmentedLinearizedSystem<System, n_delay_states,
+                                         n_disturbance_states>::AugmentedState;
 
   /// State of system
-  typedef Eigen::Matrix<double, n_states, 1> State;
+  using State = typename AugmentedLinearizedSystem<System, n_delay_states,
+                                                   n_disturbance_states>::State;
 
+  const ObserverMatrix M_;  // observer matrix used
+  const AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>*
+      p_auglinsys_;                // current augmented linearization
+  typename System::Output y_old_;  // past output
+  AugmentedState dx_aug_;          // differential augmented state
+
+ public:
   /// Constructor
   Observer(const ObserverMatrix& M, const typename System::Output& y_init,
            const typename System::ControlInput& u_init =
@@ -37,7 +48,8 @@ class Observer {
   State ObserveAPosteriori(const typename System::Output& y_in);
 
   /// Generate state prediction
-  void ObserveAPriori(const typename System::ControlInput& du_in, const typename System::ControlInput& u_old);
+  void ObserveAPriori(const typename System::ControlInput& du_in,
+                      const typename System::ControlInput& u_old);
 
   /// Get augmented state
   AugmentedState GetStateEstimate() const { return dx_aug_; }
@@ -50,12 +62,8 @@ class Observer {
     y_old_ = y_init;
   }
 
- private:
-  const ObserverMatrix M_;  // observer matrix used
-  const AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>*
-      p_auglinsys_;                      // current augmented linearization
-  typename System::Output y_old_;        // past output
-  AugmentedState dx_aug_;                // differential augmented state
+  /// Set initial augmented state
+  void SetInitialAugmentedState(const AugmentedState dx) { dx_aug_ = dx; }
 };
 
 #endif

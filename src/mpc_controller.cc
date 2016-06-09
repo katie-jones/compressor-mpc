@@ -47,7 +47,7 @@ MpcController<System, n_delay_states, n_disturbance_states, p, m>::GetNextInput(
   const Prediction pred = auglinsys_.GeneratePrediction(p, m);
 
   AugmentedState delta_x0;
-  delta_x0 << auglinsys_.GetF(),
+  delta_x0 << auglinsys_.GetDerivative(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   int index_delay_states = n_obs_states;
@@ -94,7 +94,7 @@ void MpcController<System, n_delay_states, n_disturbance_states, p,
   observer_.SetIntialOutput(y_init);
 
   AugmentedState delta_x0;
-  delta_x0 << auglinsys_.GetF(),
+  delta_x0 << auglinsys_.GetDerivative(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   int index_delay_states = n_obs_states;

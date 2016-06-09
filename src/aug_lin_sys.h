@@ -41,9 +41,38 @@ class AugmentedLinearizedSystem {
   /// Vector of indices for a ControlInput
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
-  struct AComposite;
-  struct BComposite;
+  /// Constructor
+  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
+                            const ControlInputIndex& n_delay_in);
 
+  /// Re-linearize about given state/input
+  void Update(const State x, const Input& u);
+
+  /// Generate prediction matrices based on current linearization
+  const Prediction GeneratePrediction(const int p, const int m) const {
+    return GenerateSubPrediction<n_outputs>(p, m, NULL);
+  }
+
+  /// Generate prediction matrices for a subset of outputs
+  template <int n_sub_outputs>
+  const Prediction GenerateSubPrediction(const int p, const int m,
+                                         const int* output_index) const {
+    Prediction pred;
+    GenerateSubPrediction<n_sub_outputs>(&pred.Su, &pred.Sx, &pred.Sf, p, m,
+                                         output_index);
+    return pred;
+  }
+
+  /// Generate prediction matrices for a subset of outputs
+  template <int n_sub_outputs>
+  void GenerateSubPrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
+                             Eigen::MatrixXd* Sf, const int p, const int m,
+                             const int* output_index) const;
+
+  /// Return current derivative of system
+  const State GetDerivative() const { return f; }
+
+ protected:
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;
     Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
@@ -72,45 +101,17 @@ class AugmentedLinearizedSystem {
         const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const;
   };
 
-  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
-                            const ControlInputIndex& n_delay_in);
-
-  void Update(const State x, const Input& u);
-
-  const Prediction GeneratePrediction(const int p, const int m) const {
-    return GenerateSubPrediction<n_outputs>(p, m, NULL);
-  }
-
-  template <int n_sub_outputs>
-  const Prediction GenerateSubPrediction(const int p, const int m,
-                                         const int* output_index) const {
-    Prediction pred;
-    GenerateSubPrediction<n_sub_outputs>(&pred.Su, &pred.Sx, &pred.Sf, p, m,
-                                         output_index);
-    return pred;
-  }
-
-  template <int n_sub_outputs>
-  void GenerateSubPrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
-                             Eigen::MatrixXd* Sf, const int p, const int m,
-                             const int* output_index) const;
-
-  const AComposite GetA() const { return A; }
-  const BComposite GetB() const { return B; }
-  const Eigen::Matrix<double, n_outputs, n_obs_states> GetC() { return C; }
-  const State GetF() const { return f; }
-
- protected:
   // Discretize system using runge-kutta 4 method
   static const typename System::Linearized DiscretizeRK4(
       const typename System::Linearized& sys_continuous, const double Ts);
 
-  AComposite A;
-  BComposite B;
-  Eigen::Matrix<double, n_outputs, n_obs_states> C;
-  State f;
-  const System sys_;
-  const double sampling_time_;
+  AComposite A;  // Augmented A matrix
+  BComposite B;  // Augmented B matrix
+  Eigen::Matrix<double, n_outputs, n_obs_states>
+      C;              // C matrix with delay states removed (all zeros)
+  State f;            // Derivative of system at current operating point
+  const System sys_;  // Continuous time system to represent
+  const double sampling_time_;  // Sampling time of the discretization
 };
 
 /*

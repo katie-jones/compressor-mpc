@@ -132,7 +132,7 @@ void NonCooperativeController<
   auglinsys_.Update(x_init, this->GetPlantInput(u_init));
 
   AugmentedState delta_x0;
-  delta_x0 << auglinsys_.GetF(),
+  delta_x0 << auglinsys_.GetDerivative(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   int index_delay_states = n_obs_states;
@@ -196,7 +196,7 @@ NonCooperativeController<
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
 
   AugmentedState delta_x0;
-  delta_x0 << auglinsys_.GetF(),
+  delta_x0 << auglinsys_.GetDerivative(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   int index_delay_states = n_obs_states;

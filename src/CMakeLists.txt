@@ -32,6 +32,7 @@ add_library(observer observer.cc)
 add_library(qpsolver mpc_qp_solver.cc)
 # add_library(cooperative_controller cooperative_controller.cc)
 add_library(noncooperative_controller noncooperative_controller.cc)
+add_library(distributed_controller distributed_controller.cc)
 
 target_link_libraries(parcomp compressor tank)
 target_link_libraries(qpsolver qpOASES)

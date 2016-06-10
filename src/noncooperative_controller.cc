@@ -18,7 +18,7 @@ NonCooperativeController<System, Delays, n_disturbance_states, p, m,
         const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight, const YWeightType& y_weight)
-    : ControllerInterface<System, p>(u_offset, control_input_index),
+    : ControllerInterface<System, Delays, p>(u_offset, control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
@@ -50,7 +50,7 @@ NonCooperativeController<System, Delays, n_disturbance_states, p, m,
         const std::array<YWeightType, n_controllers>& y_weights,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight)
-    : ControllerInterface<System, p>(u_offset, control_input_index),
+    : ControllerInterface<System, Delays, p>(u_offset, control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
@@ -162,7 +162,7 @@ void NonCooperativeController<
               0, (j * n_controllers + i) * n_sub_control_inputs);
     }
 
-    sub_solvers_[i].GenerateDistributedQP(qp, sub_Su, pred.Sx, pred.Sf,
+    sub_solvers_[i].GenerateDistributedQP(&qp, sub_Su, pred.Sx, pred.Sf,
                                           delta_x0, n_aug_states, y_subs[i]);
     sub_solvers_[i].InitializeQPProblem(
         qp, u_old_.template segment<n_sub_control_inputs>(
@@ -233,7 +233,7 @@ NonCooperativeController<
     }
 
     sub_solvers_[i].GenerateDistributedQP(
-        qp[i],
+        &qp[i],
         sub_Su[i].template block<p * n_sub_outputs, m * n_sub_control_inputs>(
             0, i * m * n_sub_control_inputs),
         pred.Sx, pred.Sf, delta_x0, n_aug_states, y_subs[i]);
@@ -248,7 +248,7 @@ NonCooperativeController<
     for (int i = 0; i < n_controllers; i++) {
       if (i == 0) integrate_timer.resume();
       sub_solvers_[i].UpdateAndSolveQP(
-          qp[i], du_out[i], u_old_.template segment<n_sub_control_inputs>(
+          &qp[i], du_out[i], u_old_.template segment<n_sub_control_inputs>(
                                 i * n_sub_control_inputs),
           sub_Su[i], du_prev_);
       if (i == 0) integrate_timer.stop();

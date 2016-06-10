@@ -1,9 +1,17 @@
 # Project definition
 cmake_minimum_required(VERSION 2.6)
 project(Compressor_MPC CXX)
+
+# Use gcc 5.2 to get c++14 standard
 set( CMAKE_CXX_COMPILER "/usr/local/bin/g++-5.2" )
+
+# export library path to find correct versions of shit
+set(ENV{LD_LIBRARY_PATH} "/usr/local/lib64" )
+
+# export commands for ycm
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
+# use c++14 standard
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 # add DEBUG option when running under debug mode
@@ -33,14 +41,14 @@ add_library(auglinsys aug_lin_sys.cc)
 add_library(observer observer.cc)
 add_library(qpsolver mpc_qp_solver.cc)
 # add_library(cooperative_controller cooperative_controller.cc)
-# add_library(noncooperative_controller noncooperative_controller.cc)
+add_library(noncooperative_controller noncooperative_controller.cc)
 add_library(distributed_controller distributed_controller.cc)
 
 target_link_libraries(parcomp compressor tank)
 target_link_libraries(qpsolver qpOASES)
 target_link_libraries(mpc_controller auglinsys observer qpsolver)
 # target_link_libraries(cooperative_controller auglinsys observer qpsolver)
-# target_link_libraries(noncooperative_controller auglinsys observer qpsolver)
+target_link_libraries(noncooperative_controller auglinsys observer qpsolver)
 # target_link_libraries(comptest compressor mpc_controller)
 target_link_libraries(parmpc parcomp mpc_controller auglinsys observer qpsolver)
 target_link_libraries(reduced_system_test parcomp)

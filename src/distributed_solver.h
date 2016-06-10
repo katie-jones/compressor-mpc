@@ -68,7 +68,7 @@ class DistributedSolver
   }
 
   /// generate QP matrices based on linearization
-  void GenerateDistributedQP(QP& qp, const Eigen::MatrixXd& Su,
+  void GenerateDistributedQP(QP* qp, const Eigen::MatrixXd& Su,
                              const Eigen::MatrixXd& Sx,
                              const Eigen::MatrixXd& Sf,
                              const AugmentedState& delta_x0,
@@ -77,7 +77,7 @@ class DistributedSolver
     y_pred_weight_ = (y_weight_ * Su);
 
     // Get original QP
-    qp = this->GenerateQP(Su, Sx, Sf, delta_x0, n_aug_states, y_prev,
+    *qp = this->GenerateQP(Su, Sx, Sf, delta_x0, n_aug_states, y_prev,
                           y_pred_weight_);
   }
 

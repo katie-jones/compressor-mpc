@@ -11,7 +11,7 @@
 
 template <class System, typename Delays, int n_disturbance_states, int p, int m,
           int n_controllers, int n_sub_outputs>
-class NonCooperativeController : public ControllerInterface<System, p> {
+class NonCooperativeController : public ControllerInterface<System, Delays, p> {
  protected:
   static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_inputs = System::n_inputs;
@@ -23,8 +23,9 @@ class NonCooperativeController : public ControllerInterface<System, p> {
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
-  using ControllerInterface<System, p>::u_offset_;
-  using ControllerInterface<System, p>::control_input_index_;
+  using ControllerInterface<System, Delays, p>::u_offset_;
+  using ControllerInterface<System, Delays, p>::n_delay_;
+  using ControllerInterface<System, Delays, p>::control_input_index_;
 
  public:
   /// Number of states in augmented system
@@ -35,14 +36,14 @@ class NonCooperativeController : public ControllerInterface<System, p> {
                         n_control_inputs / n_controllers, p, m, n_controllers>;
   static constexpr int n_sub_control_inputs = SubSolver::n_control_inputs_;
 
-  using State = typename ControllerInterface<System, p>::State;
-  using Output = typename ControllerInterface<System, p>::Output;
-  using Input = typename ControllerInterface<System, p>::Input;
-  using ControlInput = typename ControllerInterface<System, p>::ControlInput;
+  using State = typename ControllerInterface<System, Delays, p>::State;
+  using Output = typename ControllerInterface<System, Delays, p>::Output;
+  using Input = typename ControllerInterface<System, Delays, p>::Input;
+  using ControlInput = typename ControllerInterface<System, Delays, p>::ControlInput;
   using ControlInputIndex =
-      typename ControllerInterface<System, p>::ControlInputIndex;
+      typename ControllerInterface<System, Delays, p>::ControlInputIndex;
   using OutputPrediction =
-      typename ControllerInterface<System, p>::OutputPrediction;
+      typename ControllerInterface<System, Delays, p>::OutputPrediction;
   using AugmentedState =
       typename MpcQpSolver<n_total_states, n_sub_outputs, n_control_inputs, p,
                            m>::AugmentedState;

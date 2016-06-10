@@ -6,14 +6,15 @@
 
 #include "prediction.h"
 
-template <class System, int n_delay_states, int n_disturbance_states>
+template <class System, typename Delays, int n_disturbance_states>
 class Observer;
 
-template <class System, int n_delay_states, int n_disturbance_states>
+template <class System, typename Delays, int n_disturbance_states>
 class AugmentedLinearizedSystem {
-  friend Observer<System, n_delay_states, n_disturbance_states>;
+  friend Observer<System, Delays, n_disturbance_states>;
 
  public:
+  static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
@@ -42,8 +43,7 @@ class AugmentedLinearizedSystem {
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
   /// Constructor
-  AugmentedLinearizedSystem(const System& sys, const double sampling_time,
-                            const ControlInputIndex& n_delay_in);
+  AugmentedLinearizedSystem(const System& sys, const double sampling_time);
 
   /// Re-linearize about given state/input
   void Update(const State x, const Input& u);
@@ -81,9 +81,8 @@ class AugmentedLinearizedSystem {
     Eigen::Matrix<double, n_states, n_states> Aorig;
     Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
     Eigen::SparseMatrix<bool> Aaug;
-    ControlInputIndex n_delay;
 
-    AComposite(const ControlInputIndex& n_delay);
+    AComposite();
     inline AugmentedState operator*(const AugmentedState& x) const;
     AugmentedState TimesAugmentedOnly(
         const Eigen::Matrix<double, n_aug_states, 1> x) const;
@@ -97,7 +96,7 @@ class AugmentedLinearizedSystem {
     Eigen::Matrix<double, n_states, n_control_inputs> Borig;
     Eigen::SparseMatrix<bool> Baug;
 
-    BComposite(const ControlInputIndex& n_delay);
+    BComposite();
     AugmentedState operator*(const ControlInput& u) const;
 
     template <int n_sub_outputs>
@@ -116,15 +115,16 @@ class AugmentedLinearizedSystem {
   State f;            // Derivative of system at current operating point
   const System sys_;  // Continuous time system to represent
   const double sampling_time_;  // Sampling time of the discretization
+  static constexpr auto n_delay_ = Delays();
 };
 
 /*
  * Operator x_out = A*x
  */
-template <class System, int n_delay_states, int n_disturbance_states>
-inline typename AugmentedLinearizedSystem<System, n_delay_states,
+template <class System, typename Delays, int n_disturbance_states>
+inline typename AugmentedLinearizedSystem<System, Delays,
                                           n_disturbance_states>::AugmentedState
-    AugmentedLinearizedSystem<System, n_delay_states,
+    AugmentedLinearizedSystem<System, Delays,
                               n_disturbance_states>::AComposite::
     operator*(const AugmentedState& x) const {
   // multiply by augmented part of matrix

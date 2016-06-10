@@ -8,30 +8,35 @@
 #include "observer.h"
 #include "print_matrix.h"
 #include "input_constraints.h"
+#include "constexpr_array.h"
+
+template class ConstexprArray<0, 40, 0, 40>;
 
 namespace Control {
-constexpr int n_delay_states = 80;
+using Delays = ConstexprArray<0, 40, 0, 40>;
 constexpr int n_disturbance_states = 4;
 constexpr int p = 100;
 constexpr int m = 2;
 }
 
-extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
-extern template class Observer<ParallelCompressors, 80, 4>;
-extern template class MpcController<ParallelCompressors, 80, 4, 100, 2>;
+extern template class AugmentedLinearizedSystem<ParallelCompressors,
+                                                Control::Delays, 4>;
+extern template class Observer<ParallelCompressors, Control::Delays, 4>;
+extern template class MpcController<ParallelCompressors, Control::Delays, 4,
+                                    100, 2>;
 extern template class MpcQpSolver<95, 4, 4, 100, 2>;
 
 using AugmentedSystem =
-    AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
+    AugmentedLinearizedSystem<ParallelCompressors, Control::Delays,
                               Control::n_disturbance_states>;
 
-using Obsv = Observer<ParallelCompressors, Control::n_delay_states,
+using Obsv = Observer<ParallelCompressors, Control::Delays,
                       Control::n_disturbance_states>;
 
-using Controller = MpcController<ParallelCompressors, 80, 4, 100, 2>;
+using Controller =
+    MpcController<ParallelCompressors, Control::Delays, 4, 100, 2>;
 
-using SimSystem =
-    SimulationSystem<ParallelCompressors, Control::n_delay_states>;
+using SimSystem = SimulationSystem<ParallelCompressors, Control::Delays>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -68,10 +73,8 @@ int main(void) {
 
   // index of controlled inputs
   const Controller::ControlInputIndex index = {0, 3, 4, 7};
-  const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
-                                               0, Control::n_delay_states / 2};
 
-  SimSystem sim_comp(p_compressor, u_default, index, delay, x_init);
+  SimSystem sim_comp(p_compressor, u_default, index, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
@@ -114,10 +117,10 @@ int main(void) {
   constraints.use_rate_constraints = true;
 
   // Setup controller
-  AugmentedSystem sys(compressor, sampling_time, delay);
+  AugmentedSystem sys(compressor, sampling_time);
   Obsv observer(M, compressor.GetOutput(x_init));
 
-  Controller ctrl(sys, observer, u_default, y_ref, delay, index, uwt, ywt,
+  Controller ctrl(sys, observer, u_default, y_ref, index, uwt, ywt,
                   constraints);
   p_controller = &ctrl;
 

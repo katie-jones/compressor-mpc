@@ -10,7 +10,7 @@
 #include "qpOASES.hpp"
 #include "input_constraints.h"
 
-template <class System, int p>
+template <class System, typename Delays, int p>
 class ControllerInterface {
  protected:
   static constexpr int n_control_inputs = System::n_control_inputs;
@@ -38,10 +38,9 @@ class ControllerInterface {
   typedef std::array<int, n_control_inputs> ControlInputIndex;
 
   /// Constructor
-  ControllerInterface(const Input& u_offset, const ControlInputIndex& n_delay,
+  ControllerInterface(const Input& u_offset, 
                       const ControlInputIndex& control_input_index)
       : u_offset_(u_offset),
-        n_delay_(n_delay),
         control_input_index_(control_input_index) {}
 
   /**
@@ -72,7 +71,7 @@ class ControllerInterface {
 
  protected:
   const Input u_offset_;             // offset applied to control input
-  const ControlInputIndex n_delay_;  // delay states per input
+  static constexpr auto n_delay_ = Delays();  // delay states per input
   const ControlInputIndex
       control_input_index_;  // index such that ControlInput[i] ->
                              // Input[control_input_index_[i]]

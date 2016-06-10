@@ -5,6 +5,7 @@
 #include "aug_lin_sys.h"
 #include "observer.h"
 #include "mpc_qp_solver.h"
+#include "constexpr_array.h"
 
 // Single compressor
 // template class MpcController<Compressor, 40, 2, 100, 2>;
@@ -15,9 +16,14 @@
 // template class MpcController<Compressor, 2, 2, 5, 2>;
 
 // Parallel compressors
-extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
-extern template class Observer<ParallelCompressors, 80, 4>;
+template class ConstexprArray<0, 40, 0, 40>;
+
+extern template class AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
+extern template class Observer<ParallelCompressors,
+                               ConstexprArray<0, 40, 0, 40>, 4>;
 template class MpcQpSolver<95, 4, 4, 100, 2>;
-template class MpcController<ParallelCompressors, 80, 4, 100, 2>;
+template class MpcController<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+                             4, 100, 2>;
 
 #endif

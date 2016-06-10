@@ -7,11 +7,13 @@
 #include "distributed_solver.h"
 #include "input_constraints.h"
 #include "observer.h"
+#include "constexpr_array.h"
 
-template <class System, int n_control_inputs, int n_delay_states,
+template <class System, int n_control_inputs, typename Delays,
           int n_disturbance_states, int p, int m, int n_controllers>
 class DistributedController {
  private:
+  static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_states = System::n_states;
   static constexpr int n_aug_states = n_delay_states + n_disturbance_states;
@@ -46,26 +48,22 @@ class DistributedController {
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
   using ControlInputIndex = typename AugmentedLinearizedSystem<
-      System, n_delay_states, n_disturbance_states>::ControlInputIndex;
+      System, Delays, n_disturbance_states>::ControlInputIndex;
   using ObserverMatrix =
-      typename Observer<System, n_delay_states,
-                        n_disturbance_states>::ObserverMatrix;
+      typename Observer<System, Delays, n_disturbance_states>::ObserverMatrix;
 
-  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
-      auglinsys_;
-  Observer<System, n_delay_states, n_disturbance_states> observer_;
+  AugmentedLinearizedSystem<System, Delays, n_disturbance_states> auglinsys_;
+  Observer<System, Delays, n_disturbance_states> observer_;
   DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
-                    n_controllers>
-      qp_solver_;
-  State x_;                        // current state of system
-  ControlInput u_old_;             // previous optimal input to system
-  int n_delay_[n_control_inputs];  // number of delay states per input
-  OutputPrediction y_ref_;         // Reference output
+                    n_controllers> qp_solver_;
+  State x_;                 // current state of system
+  ControlInput u_old_;      // previous optimal input to system
+  OutputPrediction y_ref_;  // Reference output
+  static constexpr auto n_delay_ = Delays();  // delay states per input
 
  public:
   /// Constructor
   DistributedController(const System& sys, const double Ts,
-                        const ControlInputIndex& n_delay,
                         const InputConstraints<n_control_inputs>& constraints,
                         const ObserverMatrix& M);
 
@@ -96,14 +94,13 @@ class DistributedController {
 /*
  * Get QP solution based on inputs of other controllers
  */
-template <class System, int n_control_inputs, int n_delay_states,
+template <class System, int n_control_inputs, typename Delays,
           int n_disturbance_states, int p, int m, int n_controllers>
 void DistributedController<
-    System, n_control_inputs, n_delay_states, n_disturbance_states, p, m,
+    System, n_control_inputs, Delays, n_disturbance_states, p, m,
     n_controllers>::GetInput(ControlInputPrediction* u_solution, QP* qp,
                              const Eigen::VectorXd& du_last) {
-  Eigen::MatrixXd Su_other =
-      auglinsys_.GetSuOther();
+  Eigen::MatrixXd Su_other = auglinsys_.GetSuOther();
 
   qp_solver_.UpdateAndSolveQP(qp, u_solution, u_old_, Su_other, du_last);
 }

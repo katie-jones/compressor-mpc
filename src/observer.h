@@ -4,9 +4,10 @@
 #include <Eigen/Eigen>
 #include "aug_lin_sys.h"
 
-template <class System, int n_delay_states, int n_disturbance_states>
+template <class System, typename Delays, int n_disturbance_states>
 class Observer {
  public:
+  constexpr static int n_delay_states = Delays::GetSum();
   constexpr static int n_states = System::n_states;
   constexpr static int n_control_inputs = System::n_control_inputs;
   constexpr static int n_obs_states = System::n_states + n_disturbance_states;
@@ -18,15 +19,15 @@ class Observer {
  protected:
   /// Augmented state of system
   using AugmentedState =
-      typename AugmentedLinearizedSystem<System, n_delay_states,
+      typename AugmentedLinearizedSystem<System, Delays,
                                          n_disturbance_states>::AugmentedState;
 
   /// State of system
-  using State = typename AugmentedLinearizedSystem<System, n_delay_states,
+  using State = typename AugmentedLinearizedSystem<System, Delays,
                                                    n_disturbance_states>::State;
 
   const ObserverMatrix M_;  // observer matrix used
-  const AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>*
+  const AugmentedLinearizedSystem<System, Delays, n_disturbance_states>*
       p_auglinsys_;                // current augmented linearization
   typename System::Output y_old_;  // past output
   AugmentedState dx_aug_;          // differential augmented state
@@ -40,7 +41,7 @@ class Observer {
       : M_(M), y_old_(y_init), dx_aug_(dx_init) {}
 
   void InitializeSystem(const AugmentedLinearizedSystem<
-      System, n_delay_states, n_disturbance_states>* p_auglinsys) {
+      System, Delays, n_disturbance_states>* p_auglinsys) {
     p_auglinsys_ = p_auglinsys;
   }
 

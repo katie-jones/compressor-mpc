@@ -3,8 +3,9 @@
 
 #include "distributed_controller.h"
 #include "parallel_compressors.h"
+#include "constexpr_array.h"
 
-template class DistributedController<ParallelCompressors, 2, 40, 2, 100, 2, 2>;
+template class DistributedController<ParallelCompressors, 2, ConstexprArray<0, 40>, 2, 100, 2, 2>;
 
 
 #endif

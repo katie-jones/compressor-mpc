@@ -1,9 +1,10 @@
 # Project definition
 cmake_minimum_required(VERSION 2.6)
 project(Compressor_MPC CXX)
+set( CMAKE_CXX_COMPILER "/usr/local/bin/g++-5.2" )
 set( CMAKE_EXPORT_COMPILE_COMMANDS 1 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 # add DEBUG option when running under debug mode
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
@@ -20,6 +21,7 @@ find_package(Boost REQUIRED timer)
 # add_executable(comptest linearized_test.cc)
 add_executable(parmpc parallel_mpc.cc)
 add_executable(reduced_system_test reduced_system_test.cc)
+add_executable(indextest index_test.cc)
 # add_executable(cooperative_test cooperative_test.cc)
 # add_executable(noncooperative_test noncooperative_test.cc)
 

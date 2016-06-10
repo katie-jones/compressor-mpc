@@ -26,14 +26,14 @@
  *    p: prediction horizon of controller
  *    m: move horizon of controller
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m>
+template <class System, typename Delays, int n_disturbance_states, int p, int m>
 class MpcController
-    : public ControllerInterface<System, p>,
-      public MpcQpSolver<System::n_states + n_delay_states +
+    : public ControllerInterface<System, Delays, p>,
+      public MpcQpSolver<System::n_states + Delays::GetSum() +
                              n_disturbance_states,
                          System::n_outputs, System::n_control_inputs, p, m> {
  private:
+  static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
@@ -44,9 +44,9 @@ class MpcController
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
-  using ControllerInterface<System, p>::u_offset_;
-  using ControllerInterface<System, p>::n_delay_;
-  using ControllerInterface<System, p>::control_input_index_;
+  using ControllerInterface<System, Delays, p>::u_offset_;
+  using ControllerInterface<System, Delays, p>::n_delay_;
+  using ControllerInterface<System, Delays, p>::control_input_index_;
 
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                     m>::u_weight_;
@@ -59,14 +59,14 @@ class MpcController
                     m>::qp_problem_;
 
  public:
-  using State = typename ControllerInterface<System, p>::State;
-  using Output = typename ControllerInterface<System, p>::Output;
-  using Input = typename ControllerInterface<System, p>::Input;
-  using ControlInput = typename ControllerInterface<System, p>::ControlInput;
+  using State = typename ControllerInterface<System, Delays, p>::State;
+  using Output = typename ControllerInterface<System, Delays, p>::Output;
+  using Input = typename ControllerInterface<System, Delays, p>::Input;
+  using ControlInput = typename ControllerInterface<System, Delays, p>::ControlInput;
   using ControlInputIndex =
-      typename ControllerInterface<System, p>::ControlInputIndex;
+      typename ControllerInterface<System, Delays, p>::ControlInputIndex;
   using OutputPrediction =
-      typename ControllerInterface<System, p>::OutputPrediction;
+      typename ControllerInterface<System, Delays, p>::OutputPrediction;
   using AugmentedState =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::AugmentedState;
@@ -81,17 +81,15 @@ class MpcController
                            m>::ControlInputPrediction;
 
   /// Constructor -- doesn't initialize state or input/output
-  MpcController(
-      const AugmentedLinearizedSystem<System, n_delay_states,
-                                      n_disturbance_states>& sys,
-      const Observer<System, n_delay_states, n_disturbance_states>& observer,
-      const Input& u_offset, const OutputPrediction& y_ref,
-      const ControlInputIndex& input_delay,
-      const ControlInputIndex& control_input_index,
-      const UWeightType& u_weight = UWeightType().setIdentity(),
-      const YWeightType& y_weight = YWeightType().setIdentity(),
-      const InputConstraints<n_control_inputs>& constraints =
-          InputConstraints<n_control_inputs>());
+  MpcController(const AugmentedLinearizedSystem<System, Delays,
+                                                n_disturbance_states>& sys,
+                const Observer<System, Delays, n_disturbance_states>& observer,
+                const Input& u_offset, const OutputPrediction& y_ref,
+                const ControlInputIndex& control_input_index,
+                const UWeightType& u_weight = UWeightType().setIdentity(),
+                const YWeightType& y_weight = YWeightType().setIdentity(),
+                const InputConstraints<n_control_inputs>& constraints =
+                    InputConstraints<n_control_inputs>());
 
   /**
    * Initialize the state, input and optionally state derivative of the system.
@@ -124,9 +122,8 @@ class MpcController
   }
 
  protected:
-  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
-      auglinsys_;
-  Observer<System, n_delay_states, n_disturbance_states> observer_;
+  AugmentedLinearizedSystem<System, Delays, n_disturbance_states> auglinsys_;
+  Observer<System, Delays, n_disturbance_states> observer_;
   State x_;  // augmented state
   ControlInput u_old_;
 };

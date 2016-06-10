@@ -4,23 +4,21 @@
 /*
  * Constructor
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
-NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
+NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugmentedLinearizedSystem<System, n_delay_states,
+        const AugmentedLinearizedSystem<System, Delays,
                                         n_disturbance_states>& sys,
-        const Observer<System, n_delay_states, n_disturbance_states>& observer,
+        const Observer<System, Delays, n_disturbance_states>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
-        const ControlInputIndex& input_delay,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,
         const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight, const YWeightType& y_weight)
-    : ControllerInterface<System, p>(u_offset, input_delay,
-                                     control_input_index),
+    : ControllerInterface<System, p>(u_offset, control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
@@ -37,24 +35,22 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
 /*
  * Constructor with multiple y weights
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
-NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
+NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugmentedLinearizedSystem<System, n_delay_states,
+        const AugmentedLinearizedSystem<System, Delays,
                                         n_disturbance_states>& sys,
-        const Observer<System, n_delay_states, n_disturbance_states>& observer,
+        const Observer<System, Delays, n_disturbance_states>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
-        const ControlInputIndex& input_delay,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,
         const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
         const std::array<YWeightType, n_controllers>& y_weights,
         const InputConstraints<n_control_inputs>& constraints,
         const UWeightType& u_weight)
-    : ControllerInterface<System, p>(u_offset, input_delay,
-                                     control_input_index),
+    : ControllerInterface<System, p>(u_offset, control_input_index),
       auglinsys_(sys),
       n_solver_iterations_(n_solver_iterations),
       sub_output_index_(sub_output_index),
@@ -65,9 +61,9 @@ NonCooperativeController<System, n_delay_states, n_disturbance_states, p, m,
 /*
  * Initialize member variables (called by constructors)
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
-void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
+void NonCooperativeController<System, Delays, n_disturbance_states, p,
                               m, n_controllers, n_sub_outputs>::
     InitializeArguments(const OutputPrediction& y_ref,
                         const std::array<YWeightType, n_controllers>& y_weights,
@@ -114,16 +110,15 @@ void NonCooperativeController<System, n_delay_states, n_disturbance_states, p,
 
   // Split output reference
   SetOutputReference(y_ref);
-
 }
 
 /*
  * Set initial state, output and inputs of system and initialize QP
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
 void NonCooperativeController<
-    System, n_delay_states, n_disturbance_states, p, m, n_controllers,
+    System, Delays, n_disturbance_states, p, m, n_controllers,
     n_sub_outputs>::SetInitialState(const State& x_init, const Output& y_init,
                                     const ControlInput& u_init) {
   x_ = x_init;
@@ -182,13 +177,13 @@ void NonCooperativeController<
  * Linearizes the system about current state estimate and finds the optimal
  * input value by solving a QP it generates using the MPC formulation.
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
 const typename NonCooperativeController<
-    System, n_delay_states, n_disturbance_states, p, m, n_controllers,
+    System, Delays, n_disturbance_states, p, m, n_controllers,
     n_sub_outputs>::ControlInput
 NonCooperativeController<
-    System, n_delay_states, n_disturbance_states, p, m, n_controllers,
+    System, Delays, n_disturbance_states, p, m, n_controllers,
     n_sub_outputs>::GetNextInput(const Output& y, std::ofstream& cpu_time_out) {
   boost::timer::cpu_timer integrate_timer;
 

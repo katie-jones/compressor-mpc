@@ -3,40 +3,35 @@
 /*
  * Constructor
  */
-template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
-DistributedController<System, n_control_inputs, n_delay_states,
-                      n_disturbance_states, p, m, n_controllers>::
+template <class System, int n_control_inputs, typename Delays,
+          int n_disturbance_states, int p, int m, int n_controllers>
+DistributedController<System, n_control_inputs, Delays, n_disturbance_states, p,
+                      m, n_controllers>::
     DistributedController(const System& sys, const double Ts,
-                          const ControlInputIndex& n_delay,
                           const InputConstraints<n_control_inputs>& constraints,
                           const ObserverMatrix& M)
-    : observer_(Observer<System, n_delay_states, n_disturbance_states>(
-          M, Output::Zero())),
+    : observer_(
+          Observer<System, Delays, n_disturbance_states>(M, Output::Zero())),
       auglinsys_(
-          AugmentedLinearizedSystem<System, n_delay_states,
-                                    n_disturbance_states>(sys, Ts, n_delay)),
+          AugmentedLinearizedSystem<System, Delays, n_disturbance_states>(
+              sys, Ts)),
       qp_solver_(DistributedSolver<n_total_states, n_outputs, n_control_inputs,
                                    p, m, n_controllers>(0, constraints)) {
-  static_assert(n_delay_states >= 0,
-                "Number of delay states should be positive.");
   static_assert(n_disturbance_states >= 0,
                 "Number of disturbance states should be positive.");
   static_assert(n_controllers >= 0,
                 "Number of controllers should be positive.");
   static_assert(p >= 0, "Prediction horizon should be positive.");
   static_assert(m >= 0, "Move horizon should be positive.");
-
-  for (int i = 0; i < n_control_inputs; i++) {
-    n_delay_[i] = n_delay[i];
-  }
 }
 
 /*
  * Initialize output, input, state
  */
-template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
+template <class System, int n_control_inputs, typename Delays,
+          int n_disturbance_states, int p, int m, int n_controllers>
 void DistributedController<
-    System, n_control_inputs, n_delay_states, n_disturbance_states, p, m,
+    System, n_control_inputs, Delays, n_disturbance_states, p, m,
     n_controllers>::Initialize(const Output& y_init, const ControlInput& u_init,
                                const Input& full_u_old, const State& x_init,
                                const AugmentedState& dx_init) {
@@ -76,9 +71,10 @@ void DistributedController<
 /*
  * Get solution based on previous iteration's outputs
  */
-template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
+template <class System, int n_control_inputs, typename Delays,
+          int n_disturbance_states, int p, int m, int n_controllers>
 auto DistributedController<
-    System, n_control_inputs, n_delay_states, n_disturbance_states, p, m,
+    System, n_control_inputs, Delays, n_disturbance_states, p, m,
     n_controllers>::GenerateInitialQP(const Output& y, const Input& full_u_old)
     -> QP {
   // Observe and update linearization

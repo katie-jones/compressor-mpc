@@ -9,10 +9,11 @@
 #include "mpc_qp_solver.h"
 #include "distributed_solver.h"
 
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
 class NonCooperativeController : public ControllerInterface<System, p> {
  protected:
+  static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_outputs = System::n_outputs;
@@ -23,7 +24,6 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
   using ControllerInterface<System, p>::u_offset_;
-  using ControllerInterface<System, p>::n_delay_;
   using ControllerInterface<System, p>::control_input_index_;
 
  public:
@@ -62,11 +62,10 @@ class NonCooperativeController : public ControllerInterface<System, p> {
 
   /// Constructor
   NonCooperativeController(
-      const AugmentedLinearizedSystem<System, n_delay_states,
+      const AugmentedLinearizedSystem<System, Delays,
                                       n_disturbance_states>& sys,
-      const Observer<System, n_delay_states, n_disturbance_states>& observer,
+      const Observer<System, Delays, n_disturbance_states>& observer,
       const Input& u_offset, const OutputPrediction& y_ref,
-      const ControlInputIndex& input_delay,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
       const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
@@ -77,11 +76,10 @@ class NonCooperativeController : public ControllerInterface<System, p> {
 
   /// Constructor with different YWeights for each sub-controller
   NonCooperativeController(
-      const AugmentedLinearizedSystem<System, n_delay_states,
+      const AugmentedLinearizedSystem<System, Delays,
                                       n_disturbance_states>& sys,
-      const Observer<System, n_delay_states, n_disturbance_states>& observer,
+      const Observer<System, Delays, n_disturbance_states>& observer,
       const Input& u_offset, const OutputPrediction& y_ref,
-      const ControlInputIndex& input_delay,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
       const Eigen::Array<int, n_controllers, n_sub_outputs> sub_output_index,
@@ -143,9 +141,9 @@ class NonCooperativeController : public ControllerInterface<System, p> {
       const InputConstraints<n_control_inputs>& constraints,
       const UWeightType& u_weight);
 
-  AugmentedLinearizedSystem<System, n_delay_states, n_disturbance_states>
+  AugmentedLinearizedSystem<System, Delays, n_disturbance_states>
       auglinsys_;  // full auglinsys
-  Observer<System, n_delay_states, n_disturbance_states>
+  Observer<System, Delays, n_disturbance_states>
       observer_;        // observer of entire state
   State x_;             // current augmented state
   ControlInput u_old_;  // previous applied input
@@ -156,10 +154,10 @@ class NonCooperativeController : public ControllerInterface<System, p> {
   Eigen::Array<int, n_controllers, n_sub_outputs, Eigen::RowMajor>
       sub_output_index_;  // indices of sub controller outputs
 };
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers, int n_sub_outputs>
+template <class System, typename Delays, int n_disturbance_states, int p, int m,
+          int n_controllers, int n_sub_outputs>
 inline void NonCooperativeController<
-    System, n_delay_states, n_disturbance_states, p, m, n_controllers,
+    System, Delays, n_disturbance_states, p, m, n_controllers,
     n_sub_outputs>::SetOutputReference(const OutputPrediction& y_ref) {
   // Resize output prediction by rows
   Eigen::MatrixXd initial_prediction = y_ref;

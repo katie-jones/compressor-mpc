@@ -4,7 +4,7 @@
 #include "distributed_controller.h"
 #include "parallel_compressors.h"
 
-template class DistributedController<ParallelCompressors, 40, 2, 100, 2, 2>;
+template class DistributedController<ParallelCompressors, 2, 40, 2, 100, 2, 2>;
 
 
 #endif

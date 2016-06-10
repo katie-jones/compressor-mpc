@@ -72,6 +72,10 @@ class AugmentedLinearizedSystem {
   /// Return current derivative of system
   const State GetDerivative() const { return f; }
 
+  /// Get Su_other matrix generated with prediction
+  // TODO: implement this
+  Eigen::MatrixXd GetSuOther() const { return Eigen::MatrixXd(); }
+
  protected:
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;

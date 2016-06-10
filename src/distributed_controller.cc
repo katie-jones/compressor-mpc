@@ -3,11 +3,10 @@
 /*
  * Constructor
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers>
-DistributedController<System, n_delay_states, n_disturbance_states, p, m,
-                      n_controllers>::
-    DistributedController(const System& sys, const int index, const double Ts,
+template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
+DistributedController<System, n_control_inputs, n_delay_states,
+                      n_disturbance_states, p, m, n_controllers>::
+    DistributedController(const System& sys, const double Ts,
                           const ControlInputIndex& n_delay,
                           const InputConstraints<n_control_inputs>& constraints,
                           const ObserverMatrix& M)
@@ -17,7 +16,7 @@ DistributedController<System, n_delay_states, n_disturbance_states, p, m,
           AugmentedLinearizedSystem<System, n_delay_states,
                                     n_disturbance_states>(sys, Ts, n_delay)),
       qp_solver_(DistributedSolver<n_total_states, n_outputs, n_control_inputs,
-                                   p, m, n_controllers>(index, constraints)) {
+                                   p, m, n_controllers>(0, constraints)) {
   static_assert(n_delay_states >= 0,
                 "Number of delay states should be positive.");
   static_assert(n_disturbance_states >= 0,
@@ -35,10 +34,9 @@ DistributedController<System, n_delay_states, n_disturbance_states, p, m,
 /*
  * Initialize output, input, state
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers>
+template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
 void DistributedController<
-    System, n_delay_states, n_disturbance_states, p, m,
+    System, n_control_inputs, n_delay_states, n_disturbance_states, p, m,
     n_controllers>::Initialize(const Output& y_init, const ControlInput& u_init,
                                const Input& full_u_old, const State& x_init,
                                const AugmentedState& dx_init) {
@@ -68,24 +66,20 @@ void DistributedController<
   }
 
   Prediction pred;
-  for (int i = 0; i < n_controllers; i++) {
-    pred = auglinsys_.GeneratePrediction(p, m);
+  pred = auglinsys_.GeneratePrediction(p, m);
 
-    qp_solver_.GenerateDistributedQP(qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
-                                     n_aug_states, y_init);
-    qp_solver_.InitializeQPProblem(qp, u_old_);
-  }
+  qp_solver_.GenerateDistributedQP(qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
+                                   n_aug_states, y_init);
+  qp_solver_.InitializeQPProblem(qp, u_old_);
 }
 
 /*
  * Get solution based on previous iteration's outputs
  */
-template <class System, int n_delay_states, int n_disturbance_states, int p,
-          int m, int n_controllers>
-auto DistributedController<System, n_delay_states, n_disturbance_states, p, m,
-                           n_controllers>::GenerateInitialQP(const Output& y,
-                                                             const Input&
-                                                                 full_u_old)
+template <class System, int n_control_inputs, int n_delay_states, int n_disturbance_states, int p, int m, int n_controllers>
+auto DistributedController<
+    System, n_control_inputs, n_delay_states, n_disturbance_states, p, m,
+    n_controllers>::GenerateInitialQP(const Output& y, const Input& full_u_old)
     -> QP {
   // Observe and update linearization
   x_ += observer_.ObserveAPosteriori(y);
@@ -111,12 +105,9 @@ auto DistributedController<System, n_delay_states, n_disturbance_states, p, m,
   // Generate QP to solve
   QP qp;
   Prediction pred;
-  for (int i = 0; i < n_controllers; i++) {
-    pred = auglinsys_.GeneratePrediction(p, m);
-    qp_solver_.GenerateDistributedQP(qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
-                                     n_aug_states,
-                                     observer_.GetPreviousOutput());
-  }
+  pred = auglinsys_.GeneratePrediction(p, m);
+  qp_solver_.GenerateDistributedQP(qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
+                                   n_aug_states, observer_.GetPreviousOutput());
   return qp;
 }
 

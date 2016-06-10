@@ -1,13 +1,13 @@
-#include <iostream>
-#include <fstream>
 #include <boost/timer/timer.hpp>
-#include "parallel_compressors.h"
-#include "simulation_system.h"
+#include <fstream>
+#include <iostream>
 #include "aug_lin_sys.h"
-#include "observer.h"
-#include "print_matrix.h"
 #include "input_constraints.h"
 #include "noncooperative_controller.h"
+#include "observer.h"
+#include "parallel_compressors.h"
+#include "print_matrix.h"
+#include "simulation_system.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -65,8 +65,7 @@ void Callback(ParallelCompressors::State x, double t) {
       p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
+  output_file << u.transpose() << std::endl << std::endl;
 }
 
 int main(void) {
@@ -93,14 +92,16 @@ int main(void) {
       (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
-                     compressor.n_outputs>::Identity()).finished();
+                     compressor.n_outputs>::Identity())
+          .finished();
 
   // index of outputs per subcontroller
   const Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>
       output_index =
           (Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>()
                << 0,
-           1, 3, 0, 1, 3).finished();
+           1, 3, 0, 1,
+           3).finished();
 
   Controller::UWeightType uwt = Controller::UWeightType::Zero();
   Controller::YWeightType ywt = Controller::YWeightType::Zero();
@@ -166,8 +167,7 @@ int main(void) {
   output_file.close();
   cpu_times_file.close();
   std::cout << "CPU time: " << elapsed_ns << std::endl;
-  std::cout << "Wall time: " << int_elapsed.wall << std::endl
-            << std::endl;
+  std::cout << "Wall time: " << int_elapsed.wall << std::endl << std::endl;
 
   return 0;
 }

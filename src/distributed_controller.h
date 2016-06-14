@@ -3,31 +3,29 @@
 
 #include <Eigen/Eigen>
 
-#include "aug_lin_sys.h"
 #include "distributed_solver.h"
 #include "input_constraints.h"
 #include "observer.h"
 #include "constexpr_array.h"
 
-template <class System, int n_control_inputs, typename Delays,
-          int n_disturbance_states, int p, int m, int n_controllers>
+template <class AugLinSys, int p, int m>
 class DistributedController {
  private:
-  static constexpr int n_delay_states = Delays::GetSum();
-  static constexpr int n_outputs = System::n_outputs;
-  static constexpr int n_states = System::n_states;
+  static constexpr int n_delay_states = AugLinSys::n_delay_states;
+  static constexpr int n_outputs = AugLinSys::n_outputs;
+  static constexpr int n_states = AugLinSys::n_states;
+  static constexpr int n_control_inputs = AugLinSys::n_control_inputs;
+  static constexpr int n_disturbance_states = AugLinSys::n_disturbance_states;
   static constexpr int n_aug_states = n_delay_states + n_disturbance_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;
   static constexpr int n_total_states = n_states + n_aug_states;
+  static constexpr int n_inputs = AugLinSys::n_inputs;
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
  protected:
-  using AugLinSys = AugmentedLinearizedSystem<System, Delays, n_disturbance_states>;
   using State = Eigen::Matrix<double, n_states, 1>;
-  using Input = Eigen::Matrix<double, System::n_inputs, 1>;
-  using FullControlInputPrediction =
-      Eigen::Matrix<double, m * System::n_control_inputs, 1>;
+  using Input = Eigen::Matrix<double, n_inputs, 1>;
   using ControlInput =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInput;
@@ -49,21 +47,20 @@ class DistributedController {
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
   using ControlInputIndex = typename AugLinSys::ControlInputIndex;
-  using ObserverMatrix =
-      typename Observer<AugLinSys>::ObserverMatrix;
+  using ObserverMatrix = typename Observer<AugLinSys>::ObserverMatrix;
 
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
-  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
-                    n_controllers> qp_solver_;
+  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m, 0
+                    > qp_solver_;
   State x_;                 // current state of system
   ControlInput u_old_;      // previous optimal input to system
   OutputPrediction y_ref_;  // Reference output
-  static constexpr auto n_delay_ = Delays();  // delay states per input
+  static constexpr auto n_delay_ = typename AugLinSys::DelayType();  // delay states per input
 
  public:
   /// Constructor
-  DistributedController(const System& sys, const double Ts,
+  DistributedController(const AugLinSys& sys, const double Ts,
                         const InputConstraints<n_control_inputs>& constraints,
                         const ObserverMatrix& M);
 
@@ -94,12 +91,10 @@ class DistributedController {
 /*
  * Get QP solution based on inputs of other controllers
  */
-template <class System, int n_control_inputs, typename Delays,
-          int n_disturbance_states, int p, int m, int n_controllers>
-void DistributedController<
-    System, n_control_inputs, Delays, n_disturbance_states, p, m,
-    n_controllers>::GetInput(ControlInputPrediction* u_solution, QP* qp,
-                             const Eigen::VectorXd& du_last) {
+template <class AugLinSys, int p, int m>
+void DistributedController<AugLinSys, p, m>::GetInput(
+    ControlInputPrediction* u_solution, QP* qp,
+    const Eigen::VectorXd& du_last) {
   Eigen::MatrixXd Su_other = auglinsys_.GetSuOther();
 
   qp_solver_.UpdateAndSolveQP(qp, u_solution, u_old_, Su_other, du_last);

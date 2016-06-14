@@ -26,6 +26,9 @@ class AugmentedLinearizedSystem {
   static constexpr int n_obs_states = n_states + n_disturbance_states;
   static constexpr int n_total_states = n_aug_states + n_states;
 
+  /// Delays to system
+  using DelayType = Delays;
+
   /// State of the dynamic system
   typedef Eigen::Matrix<double, n_states, 1> State;
 

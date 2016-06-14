@@ -51,16 +51,17 @@ class DistributedController {
 
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
-  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m
-                    > qp_solver_;
+  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m>
+      qp_solver_;
   State x_;                 // current state of system
   ControlInput u_old_;      // previous optimal input to system
   OutputPrediction y_ref_;  // Reference output
-  static constexpr auto n_delay_ = typename AugLinSys::DelayType();  // delay states per input
+  static constexpr auto n_delay_ =
+      typename AugLinSys::DelayType();  // delay states per input
 
  public:
   /// Constructor
-  DistributedController(const AugLinSys& sys, const double Ts,
+  DistributedController(const AugLinSys& sys,
                         const InputConstraints<n_control_inputs>& constraints,
                         const ObserverMatrix& M);
 
@@ -97,7 +98,8 @@ void DistributedController<AugLinSys, p, m>::GetInput(
     const Eigen::VectorXd& du_last) {
   Eigen::MatrixXd Su_other = auglinsys_.GetSuOther();
 
-  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, Su_other, du_last.data());
+  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, Su_other,
+                              du_last.data());
 }
 
 #endif

@@ -5,8 +5,7 @@
  */
 template <class AugLinSys, int p, int m>
 DistributedController<AugLinSys, p, m>::DistributedController(
-    const AugLinSys& sys, const double Ts,
-    const InputConstraints<n_control_inputs>& constraints,
+    const AugLinSys& sys, const InputConstraints<n_control_inputs>& constraints,
     const ObserverMatrix& M)
     : observer_(Observer<AugLinSys>(M, Output::Zero())),
       auglinsys_(sys),

@@ -14,7 +14,7 @@ class DistributedController {
   static constexpr int n_delay_states = AugLinSys::n_delay_states;
   static constexpr int n_outputs = AugLinSys::n_outputs;
   static constexpr int n_states = AugLinSys::n_states;
-  static constexpr int n_control_inputs = AugLinSys::n_control_inputs;
+  static constexpr int n_control_inputs = AugLinSys::n_sub_control_inputs;
   static constexpr int n_disturbance_states = AugLinSys::n_disturbance_states;
   static constexpr int n_aug_states = n_delay_states + n_disturbance_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;

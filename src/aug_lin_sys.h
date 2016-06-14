@@ -9,10 +9,19 @@
 template <class System>
 class Observer;
 
-template <class System, typename Delays, int n_disturbance_states_in>
+struct NullIndexArray {
+  static constexpr int GetEntry(const int i) { return i; }
+};
+
+template <class System, typename Delays, int n_disturbance_states_in,
+          typename ControlInputIndices = NullIndexArray,
+          int n_sub_control_inputs_in = -1>
 class AugmentedLinearizedSystem {
   friend Observer<
-      AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in>>;
+      AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
+                                ControlInputIndices, n_sub_control_inputs_in>>;
+  // tells whether ControlInputIndices is provided or not
+  static constexpr bool is_reduced = (n_sub_control_inputs_in > 0);
 
  public:
   static constexpr int n_delay_states = Delays::GetSum();
@@ -21,6 +30,8 @@ class AugmentedLinearizedSystem {
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_states = System::n_states;
   static constexpr int n_disturbance_states = n_disturbance_states_in;
+  static constexpr int n_sub_control_inputs =
+      is_reduced ? n_sub_control_inputs_in : n_control_inputs;
 
   static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;
@@ -55,24 +66,14 @@ class AugmentedLinearizedSystem {
 
   /// Generate prediction matrices based on current linearization
   const Prediction GeneratePrediction(const int p, const int m) const {
-    return GenerateSubPrediction<n_outputs>(p, m, NULL);
-  }
-
-  /// Generate prediction matrices for a subset of outputs
-  template <int n_sub_outputs>
-  const Prediction GenerateSubPrediction(const int p, const int m,
-                                         const int* output_index) const {
     Prediction pred;
-    GenerateSubPrediction<n_sub_outputs>(&pred.Su, &pred.Sx, &pred.Sf, p, m,
-                                         output_index);
+    GeneratePrediction(&pred.Su, &pred.Sx, &pred.Sf, p, m);
     return pred;
   }
 
   /// Generate prediction matrices for a subset of outputs
-  template <int n_sub_outputs>
-  void GenerateSubPrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
-                             Eigen::MatrixXd* Sf, const int p, const int m,
-                             const int* output_index) const;
+  void GeneratePrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
+                          Eigen::MatrixXd* Sf, const int p, const int m) const;
 
   /// Return current derivative of system
   const State GetDerivative() const { return f; }
@@ -126,12 +127,16 @@ class AugmentedLinearizedSystem {
 /*
  * Operator x_out = A*x
  */
-template <class System, typename Delays, int n_disturbance_states>
-inline typename AugmentedLinearizedSystem<System, Delays,
-                                          n_disturbance_states>::AugmentedState
-    AugmentedLinearizedSystem<System, Delays,
-                              n_disturbance_states>::AComposite::
-    operator*(const AugmentedState& x) const {
+template <class System, typename Delays, int n_disturbance_states_in,
+          typename ControlInputIndices, int n_sub_control_inputs_in>
+inline
+    typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
+                                       ControlInputIndices,
+                                       n_sub_control_inputs_in>::AugmentedState
+        AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
+                                  ControlInputIndices,
+                                  n_sub_control_inputs_in>::AComposite::
+        operator*(const AugmentedState& x) const {
   // multiply by augmented part of matrix
   AugmentedState x_out = TimesAugmentedOnly(x.template tail<n_aug_states>());
 

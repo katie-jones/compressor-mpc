@@ -11,9 +11,9 @@ DistributedController<System, n_control_inputs, Delays, n_disturbance_states, p,
                           const InputConstraints<n_control_inputs>& constraints,
                           const ObserverMatrix& M)
     : observer_(
-          Observer<System, Delays, n_disturbance_states>(M, Output::Zero())),
+          Observer<AugLinSys>(M, Output::Zero())),
       auglinsys_(
-          AugmentedLinearizedSystem<System, Delays, n_disturbance_states>(
+          AugLinSys(
               sys, Ts)),
       qp_solver_(DistributedSolver<n_total_states, n_outputs, n_control_inputs,
                                    p, m, n_controllers>(0, constraints)) {

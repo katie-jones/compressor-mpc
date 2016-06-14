@@ -20,8 +20,8 @@ template class ConstexprArray<0, 40, 0, 40>;
 
 extern template class AugmentedLinearizedSystem<
     ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
-extern template class Observer<ParallelCompressors,
-                               ConstexprArray<0, 40, 0, 40>, 4>;
+extern template class Observer<AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>>;
 template class MpcQpSolver<95, 4, 4, 100, 2>;
 template class MpcController<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
                              4, 100, 2>;

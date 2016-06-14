@@ -27,6 +27,9 @@ class NonCooperativeController : public ControllerInterface<System, Delays, p> {
   using ControllerInterface<System, Delays, p>::n_delay_;
   using ControllerInterface<System, Delays, p>::control_input_index_;
 
+  using AugLinSys = AugmentedLinearizedSystem<System, Delays,
+                                      n_disturbance_states>;
+
  public:
   /// Number of states in augmented system
   static constexpr int n_total_states = n_aug_states + n_states;
@@ -63,9 +66,8 @@ class NonCooperativeController : public ControllerInterface<System, Delays, p> {
 
   /// Constructor
   NonCooperativeController(
-      const AugmentedLinearizedSystem<System, Delays,
-                                      n_disturbance_states>& sys,
-      const Observer<System, Delays, n_disturbance_states>& observer,
+      const AugLinSys& sys,
+      const Observer<AugLinSys>& observer,
       const Input& u_offset, const OutputPrediction& y_ref,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
@@ -77,9 +79,8 @@ class NonCooperativeController : public ControllerInterface<System, Delays, p> {
 
   /// Constructor with different YWeights for each sub-controller
   NonCooperativeController(
-      const AugmentedLinearizedSystem<System, Delays,
-                                      n_disturbance_states>& sys,
-      const Observer<System, Delays, n_disturbance_states>& observer,
+      const AugLinSys& sys,
+      const Observer<AugLinSys>& observer,
       const Input& u_offset, const OutputPrediction& y_ref,
       const ControlInputIndex& control_input_index,
       const int n_solver_iterations,
@@ -142,9 +143,9 @@ class NonCooperativeController : public ControllerInterface<System, Delays, p> {
       const InputConstraints<n_control_inputs>& constraints,
       const UWeightType& u_weight);
 
-  AugmentedLinearizedSystem<System, Delays, n_disturbance_states>
+  AugLinSys
       auglinsys_;  // full auglinsys
-  Observer<System, Delays, n_disturbance_states>
+  Observer<AugLinSys>
       observer_;        // observer of entire state
   State x_;             // current augmented state
   ControlInput u_old_;  // previous applied input

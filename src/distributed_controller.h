@@ -23,6 +23,7 @@ class DistributedController {
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
  protected:
+  using AugLinSys = AugmentedLinearizedSystem<System, Delays, n_disturbance_states>;
   using State = Eigen::Matrix<double, n_states, 1>;
   using Input = Eigen::Matrix<double, System::n_inputs, 1>;
   using FullControlInputPrediction =
@@ -47,13 +48,12 @@ class DistributedController {
   using OutputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
-  using ControlInputIndex = typename AugmentedLinearizedSystem<
-      System, Delays, n_disturbance_states>::ControlInputIndex;
+  using ControlInputIndex = typename AugLinSys::ControlInputIndex;
   using ObserverMatrix =
-      typename Observer<System, Delays, n_disturbance_states>::ObserverMatrix;
+      typename Observer<AugLinSys>::ObserverMatrix;
 
-  AugmentedLinearizedSystem<System, Delays, n_disturbance_states> auglinsys_;
-  Observer<System, Delays, n_disturbance_states> observer_;
+  AugLinSys auglinsys_;
+  Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
                     n_controllers> qp_solver_;
   State x_;                 // current state of system

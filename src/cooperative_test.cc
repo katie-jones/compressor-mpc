@@ -8,6 +8,7 @@
 #include "parallel_compressors.h"
 #include "print_matrix.h"
 #include "simulation_system.h"
+#include "constexpr_array.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -22,29 +23,30 @@ constexpr int n_sub_control_inputs = 2;
 using namespace Control;
 
 extern template class AugmentedLinearizedSystem<
-    ParallelCompressors, n_delay_states, n_disturbance_states>;
-extern template class Observer<ParallelCompressors, n_delay_states,
-                               n_disturbance_states>;
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
+extern template class Observer<AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>>;
 extern template class NonCooperativeController<
-    ParallelCompressors, n_delay_states, n_disturbance_states, p, m,
-    n_controllers, n_sub_outputs>;
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4, 100, 2, 2, 3>;
 
 extern template class MpcQpSolver<n_delay_states + n_disturbance_states +
                                       ParallelCompressors::n_states,
                                   n_sub_outputs, n_sub_control_inputs, p, m>;
 
 using AugmentedSystem =
-    AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
-                              Control::n_disturbance_states>;
+    AugmentedLinearizedSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+                              4>;
 
-using Obsv = Observer<ParallelCompressors, Control::n_delay_states,
-                      Control::n_disturbance_states>;
+using Obsv =
+    Observer<AugmentedLinearizedSystem<ParallelCompressors,
+                                       ConstexprArray<0, 40, 0, 40>, 4>>;
 
-using Controller = NonCooperativeController<ParallelCompressors, n_delay_states,
-                                            n_disturbance_states, p, m, 2, 3>;
+using Controller =
+    NonCooperativeController<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+                             4, 100, 2, 2, 3>;
 
 using SimSystem =
-    SimulationSystem<ParallelCompressors, Control::n_delay_states>;
+    SimulationSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -65,7 +67,8 @@ void Callback(ParallelCompressors::State x, double t) {
       p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl << std::endl;
+  output_file << u.transpose() << std::endl
+              << std::endl;
 }
 
 int main(void) {
@@ -83,7 +86,7 @@ int main(void) {
   const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
                                                0, Control::n_delay_states / 2};
 
-  SimSystem sim_comp(p_compressor, u_default, index, delay, x_init);
+  SimSystem sim_comp(p_compressor, u_default, delay, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
@@ -92,16 +95,14 @@ int main(void) {
       (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
-                     compressor.n_outputs>::Identity())
-          .finished();
+                     compressor.n_outputs>::Identity()).finished();
 
   // index of outputs per subcontroller
   const Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>
       output_index =
           (Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>()
                << 0,
-           1, 3, 0, 1,
-           3).finished();
+           1, 3, 0, 1, 3).finished();
 
   Controller::UWeightType uwt = Controller::UWeightType::Zero();
   Controller::YWeightType ywt = Controller::YWeightType::Zero();
@@ -167,7 +168,8 @@ int main(void) {
   output_file.close();
   cpu_times_file.close();
   std::cout << "CPU time: " << elapsed_ns << std::endl;
-  std::cout << "Wall time: " << int_elapsed.wall << std::endl << std::endl;
+  std::cout << "Wall time: " << int_elapsed.wall << std::endl
+            << std::endl;
 
   return 0;
 }

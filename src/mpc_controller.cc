@@ -7,8 +7,8 @@
  */
 template <class System, typename Delays, int n_disturbance_states, int p, int m>
 MpcController<System, Delays, n_disturbance_states, p, m>::MpcController(
-    const AugmentedLinearizedSystem<System, Delays, n_disturbance_states>& sys,
-    const Observer<System, Delays, n_disturbance_states>& observer,
+    const AugLinSys& sys,
+    const Observer<AugLinSys>& observer,
     const Input& u_offset, const OutputPrediction& y_ref,
     const ControlInputIndex& control_input_index, const UWeightType& u_weight,
     const YWeightType& y_weight,

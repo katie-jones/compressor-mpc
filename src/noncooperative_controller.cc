@@ -9,9 +9,8 @@ template <class System, typename Delays, int n_disturbance_states, int p, int m,
 NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugmentedLinearizedSystem<System, Delays,
-                                        n_disturbance_states>& sys,
-        const Observer<System, Delays, n_disturbance_states>& observer,
+        const AugLinSys& sys,
+        const Observer<AugLinSys>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,
@@ -40,9 +39,8 @@ template <class System, typename Delays, int n_disturbance_states, int p, int m,
 NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugmentedLinearizedSystem<System, Delays,
-                                        n_disturbance_states>& sys,
-        const Observer<System, Delays, n_disturbance_states>& observer,
+        const AugLinSys& sys,
+        const Observer<AugLinSys>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,

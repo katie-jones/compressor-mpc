@@ -3,10 +3,10 @@
 /*
  * Predict next state of system based on input value to be applied
  */
-template <class System, typename Delays, int n_total_states>
-void Observer<System, Delays, n_total_states>::ObserveAPriori(
-    const typename System::ControlInput& du_in, const typename System::ControlInput& u_old) {
-  typename System::ControlInput du = System::ControlInput::Zero();
+template <class AugLinSys>
+void Observer<AugLinSys>::ObserveAPriori(
+    const ControlInput& du_in, const ControlInput& u_old) {
+  ControlInput du = ControlInput::Zero();
   AugmentedState dx = dx_aug_;
 
   dx.template head<n_states>().setZero();
@@ -29,16 +29,16 @@ void Observer<System, Delays, n_total_states>::ObserveAPriori(
 /*
  * Observe system given new output values from plant
  */
-template <class System, typename Delays, int n_total_states>
-typename Observer<System, Delays, n_total_states>::State
-Observer<System, Delays, n_total_states>::ObserveAPosteriori(
-    const typename System::Output& y_in) {
+template <class AugLinSys>
+typename Observer<AugLinSys>::State
+Observer<AugLinSys>::ObserveAPosteriori(
+    const Output& y_in) {
   // apply observer to non-delay states
   dx_aug_.template head<n_obs_states>() =
       dx_aug_.template head<n_obs_states>() +
       M_ *
           (y_in - y_old_ -
-           static_cast<typename System::Output>(
+           static_cast<Output>(
                p_auglinsys_->C * (dx_aug_.template head<n_obs_states>())))
               .matrix();
 

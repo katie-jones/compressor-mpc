@@ -6,12 +6,13 @@
 
 #include "prediction.h"
 
-template <class System, typename Delays, int n_disturbance_states>
+template <class System>
 class Observer;
 
-template <class System, typename Delays, int n_disturbance_states>
+template <class System, typename Delays, int n_disturbance_states_in>
 class AugmentedLinearizedSystem {
-  friend Observer<System, Delays, n_disturbance_states>;
+  friend Observer<
+      AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in>>;
 
  public:
   static constexpr int n_delay_states = Delays::GetSum();
@@ -19,6 +20,7 @@ class AugmentedLinearizedSystem {
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_states = System::n_states;
+  static constexpr int n_disturbance_states = n_disturbance_states_in;
 
   static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;

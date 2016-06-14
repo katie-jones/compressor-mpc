@@ -9,6 +9,7 @@
 #include "input_constraints.h"
 #include "noncooperative_controller.h"
 #include "prediction.h"
+#include "constexpr_array.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -19,29 +20,32 @@ constexpr int n_controllers = 2;
 constexpr int n_sub_outputs = 2;
 }
 
-extern template class AugmentedLinearizedSystem<ParallelCompressors, 80, 4>;
-extern template class Observer<ParallelCompressors, 80, 4>;
-extern template class NonCooperativeController<ParallelCompressors, 80, 4, 100,
-                                               2, 2, 2>;
+extern template class AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
+extern template class Observer<AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>>;
+extern template class NonCooperativeController<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4, 100, 2, 2, 2>;
 extern template class MpcQpSolver<95, 2, 2, 100, 2>;
 
-extern template const Prediction
-AugmentedLinearizedSystem<ParallelCompressors, 80, 4>::GenerateSubPrediction<2>(
-    const int p, const int m, const int* output_index) const;
+extern template const Prediction AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+    4>::GenerateSubPrediction<2>(const int p, const int m,
+                                 const int* output_index) const;
 
 using AugmentedSystem =
-    AugmentedLinearizedSystem<ParallelCompressors, Control::n_delay_states,
-                              Control::n_disturbance_states>;
+    AugmentedLinearizedSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+                              4>;
 
-using Obsv = Observer<ParallelCompressors, Control::n_delay_states,
-                      Control::n_disturbance_states>;
+using Obsv =
+    Observer<AugmentedLinearizedSystem<ParallelCompressors,
+                                       ConstexprArray<0, 40, 0, 40>, 4>>;
 
 using Controller = NonCooperativeController<
-    ParallelCompressors, Control::n_delay_states, Control::n_disturbance_states,
-    Control::p, Control::m, Control::n_controllers, Control::n_sub_outputs>;
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4, 100, 2, 2, 2>;
 
 using SimSystem =
-    SimulationSystem<ParallelCompressors, Control::n_delay_states>;
+    SimulationSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -88,7 +92,7 @@ int main(void) {
                << 0,
            3, 1, 3).finished();
 
-  SimSystem sim_comp(p_compressor, u_default, index, delay, x_init);
+  SimSystem sim_comp(p_compressor, u_default, delay, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;

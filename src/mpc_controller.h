@@ -59,10 +59,13 @@ class MpcController
                     m>::qp_problem_;
 
  public:
+  using AugLinSys =
+      AugmentedLinearizedSystem<System, Delays, n_disturbance_states>;
   using State = typename ControllerInterface<System, Delays, p>::State;
   using Output = typename ControllerInterface<System, Delays, p>::Output;
   using Input = typename ControllerInterface<System, Delays, p>::Input;
-  using ControlInput = typename ControllerInterface<System, Delays, p>::ControlInput;
+  using ControlInput =
+      typename ControllerInterface<System, Delays, p>::ControlInput;
   using ControlInputIndex =
       typename ControllerInterface<System, Delays, p>::ControlInputIndex;
   using OutputPrediction =
@@ -81,10 +84,9 @@ class MpcController
                            m>::ControlInputPrediction;
 
   /// Constructor -- doesn't initialize state or input/output
-  MpcController(const AugmentedLinearizedSystem<System, Delays,
-                                                n_disturbance_states>& sys,
-                const Observer<System, Delays, n_disturbance_states>& observer,
-                const Input& u_offset, const OutputPrediction& y_ref,
+  MpcController(const AugLinSys& sys,
+                const Observer<AugLinSys>& observer, const Input& u_offset,
+                const OutputPrediction& y_ref,
                 const ControlInputIndex& control_input_index,
                 const UWeightType& u_weight = UWeightType().setIdentity(),
                 const YWeightType& y_weight = YWeightType().setIdentity(),
@@ -122,8 +124,8 @@ class MpcController
   }
 
  protected:
-  AugmentedLinearizedSystem<System, Delays, n_disturbance_states> auglinsys_;
-  Observer<System, Delays, n_disturbance_states> observer_;
+  AugLinSys auglinsys_;
+  Observer<AugLinSys> observer_;
   State x_;  // augmented state
   ControlInput u_old_;
 };

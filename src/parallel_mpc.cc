@@ -19,19 +19,21 @@ constexpr int p = 100;
 constexpr int m = 2;
 }
 
-extern template class AugmentedLinearizedSystem<ParallelCompressors,
-                                                Control::Delays, 4>;
-extern template class Observer<ParallelCompressors, Control::Delays, 4>;
+extern template class AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
+extern template class Observer<AugmentedLinearizedSystem<
+    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>>;
 extern template class MpcController<ParallelCompressors, Control::Delays, 4,
                                     100, 2>;
 extern template class MpcQpSolver<95, 4, 4, 100, 2>;
 
 using AugmentedSystem =
-    AugmentedLinearizedSystem<ParallelCompressors, Control::Delays,
-                              Control::n_disturbance_states>;
+    AugmentedLinearizedSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
+                              4>;
 
-using Obsv = Observer<ParallelCompressors, Control::Delays,
-                      Control::n_disturbance_states>;
+using Obsv =
+    Observer<AugmentedLinearizedSystem<ParallelCompressors,
+                                       ConstexprArray<0, 40, 0, 40>, 4>>;
 
 using Controller =
     MpcController<ParallelCompressors, Control::Delays, 4, 100, 2>;

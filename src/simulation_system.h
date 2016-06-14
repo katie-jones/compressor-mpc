@@ -14,12 +14,9 @@
  * derivative. Defines a function to integrate the system for a given
  * time range.
  */
-template <class System, typename Delays>
+template <class System, typename Delays, typename InputIndices>
 class SimulationSystem {
  public:
-  /// Vector of indices for a ControlInput
-  typedef std::array<int, System::n_control_inputs> ControlInputIndex;
-
   /// Total number of delay states
   static constexpr int n_delay_states = Delays::GetSum();
 
@@ -44,23 +41,18 @@ class SimulationSystem {
   System* p_sys_;  // system to simulate
   TimeDelay<Delays> delayed_inputs_;
 
-  // index such that ControlInput[i] -> Input[control_input_index_[i]]
-  const ControlInputIndex control_input_index_;
   const Delays n_delay_;  // time delays of each input
 
  public:
   /// Function pointer used for callback when integrating system.
   typedef void (*IntegrationCallbackPtr)(const State, const double);
 
-  SimulationSystem(System* p_sys, Input u_offset, ControlInputIndex input_index,
-                   State x_in,
+  SimulationSystem(System* p_sys, Input u_offset, State x_in,
                    ControlInput u_init = ControlInput::Zero())
       : p_sys_(p_sys),
         x_(x_in),
         u_offset_(u_offset),
-        control_input_index_(input_index),
-        delayed_inputs_(
-            TimeDelay<Delays>()) {
+        delayed_inputs_(TimeDelay<Delays>()) {
     u_ = GetPlantInput(u_init);
   }
 
@@ -85,7 +77,7 @@ class SimulationSystem {
   const Input GetPlantInput(const ControlInput& u_control) const {
     Input u = u_offset_;
     for (int i = 0; i < System::n_control_inputs; i++) {
-      u(control_input_index_[i]) += u_control(i);
+      u(InputIndices::GetEntry(i)) += u_control(i);
     }
     return u;
   }

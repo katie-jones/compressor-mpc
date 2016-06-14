@@ -36,7 +36,7 @@ class NonCooperativeController : public ControllerInterface<System, Delays, p> {
 
   using SubSolver =
       DistributedSolver<n_total_states, n_sub_outputs,
-                        n_control_inputs / n_controllers, p, m, n_controllers>;
+                        n_control_inputs / n_controllers, p, m>;
   static constexpr int n_sub_control_inputs = SubSolver::n_control_inputs_;
 
   using State = typename ControllerInterface<System, Delays, p>::State;

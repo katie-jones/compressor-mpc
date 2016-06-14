@@ -4,8 +4,7 @@
 #include <Eigen/Eigen>
 #include "mpc_qp_solver.h"
 
-template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m,
-          int n_controllers>
+template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 class DistributedSolver
     : public MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m> {
   using MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
@@ -40,8 +39,6 @@ class DistributedSolver
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
 
-  using TotalControlInput =
-      Eigen::Matrix<double, n_controllers * m * n_control_inputs, 1>;
   static constexpr int n_control_inputs_ = n_control_inputs;
 
   /// Constructor
@@ -57,13 +54,14 @@ class DistributedSolver
   /// Return solution of QP generated based on prediction matrices given
   void UpdateAndSolveQP(QP* qp, ControlInputPrediction& du_out,
                         const ControlInput u_old, const Eigen::MatrixXd Su_full,
-                        const ControlInputPrediction du_full[n_controllers]);
-  
+                        const double* du_full);
+
   /// Return solution of QP generated based on prediction matrices given
   void UpdateAndSolveQP(QP* qp, ControlInputPrediction* du_out,
-                        const ControlInput u_old, const Eigen::MatrixXd Su_other,
+                        const ControlInput u_old,
+                        const Eigen::MatrixXd Su_other,
                         const Eigen::VectorXd du_other) {
-    ApplyOtherInput(qp, Su_other, du_other);
+    ApplyOtherInput(qp, du_other.data(), Su_other);
     *du_out = this->SolveQP(*qp, u_old);
   }
 
@@ -78,37 +76,31 @@ class DistributedSolver
 
     // Get original QP
     *qp = this->GenerateQP(Su, Sx, Sf, delta_x0, n_aug_states, y_prev,
-                          y_pred_weight_);
+                           y_pred_weight_);
   }
 
  private:
   /// Add effect of another systems input on QP
-  template <typename Derived>
-  void ApplyOtherInput(QP* qp, const Eigen::MatrixBase<Derived>& du_other,
+  void ApplyOtherInput(QP* qp, const double* du_other,
                        const Eigen::MatrixXd& Su_other) {
-    qp->f += (du_other.transpose() * Su_other.transpose()) * y_pred_weight_;
+    const Eigen::VectorXd du_other_vec =
+        Eigen::Map<const Eigen::VectorXd>(du_other, Su_other.cols(), 1);
+    qp->f += (du_other_vec.transpose() * Su_other.transpose()) * y_pred_weight_;
   }
 
   Eigen::MatrixXd y_pred_weight_;  // = y_weight_ * Su
   const int index_;                // index of current solver
 };
 
-template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m,
-          int n_controllers>
-void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m,
-                       n_controllers>::
-    UpdateAndSolveQP(QP* qp, ControlInputPrediction& du_out,
-                     const ControlInput u_old, const Eigen::MatrixXd Su_full,
-                     const ControlInputPrediction du_full[n_controllers]) {
+template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
+void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p,
+                       m>::UpdateAndSolveQP(QP* qp,
+                                            ControlInputPrediction& du_out,
+                                            const ControlInput u_old,
+                                            const Eigen::MatrixXd Su_full,
+                                            const double* du_full) {
   // Add effect of other subcontrollers' inputs
-  for (int i = 0; i < n_controllers; i++) {
-    if (i != index_) {
-      ApplyOtherInput(
-          qp, du_full[i],
-          Su_full.template block<p * n_outputs, m * n_control_inputs>(
-              0, i * m * n_control_inputs));
-    }
-  }
+  ApplyOtherInput(qp, du_full, Su_full);
 
   // Solve QP and return solution
   du_out = this->SolveQP(*qp, u_old);

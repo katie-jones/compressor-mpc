@@ -9,8 +9,7 @@ template <class System, typename Delays, int n_disturbance_states, int p, int m,
 NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugLinSys& sys,
-        const Observer<AugLinSys>& observer,
+        const AugLinSys& sys, const Observer<AugLinSys>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,
@@ -39,8 +38,7 @@ template <class System, typename Delays, int n_disturbance_states, int p, int m,
 NonCooperativeController<System, Delays, n_disturbance_states, p, m,
                          n_controllers, n_sub_outputs>::
     NonCooperativeController(
-        const AugLinSys& sys,
-        const Observer<AugLinSys>& observer,
+        const AugLinSys& sys, const Observer<AugLinSys>& observer,
         const Input& u_offset, const OutputPrediction& y_ref,
         const ControlInputIndex& control_input_index,
         const int n_solver_iterations,
@@ -61,8 +59,8 @@ NonCooperativeController<System, Delays, n_disturbance_states, p, m,
  */
 template <class System, typename Delays, int n_disturbance_states, int p, int m,
           int n_controllers, int n_sub_outputs>
-void NonCooperativeController<System, Delays, n_disturbance_states, p,
-                              m, n_controllers, n_sub_outputs>::
+void NonCooperativeController<System, Delays, n_disturbance_states, p, m,
+                              n_controllers, n_sub_outputs>::
     InitializeArguments(const OutputPrediction& y_ref,
                         const std::array<YWeightType, n_controllers>& y_weights,
                         const InputConstraints<n_control_inputs>& constraints,
@@ -177,9 +175,9 @@ void NonCooperativeController<
  */
 template <class System, typename Delays, int n_disturbance_states, int p, int m,
           int n_controllers, int n_sub_outputs>
-const typename NonCooperativeController<
-    System, Delays, n_disturbance_states, p, m, n_controllers,
-    n_sub_outputs>::ControlInput
+const typename NonCooperativeController<System, Delays, n_disturbance_states, p,
+                                        m, n_controllers,
+                                        n_sub_outputs>::ControlInput
 NonCooperativeController<
     System, Delays, n_disturbance_states, p, m, n_controllers,
     n_sub_outputs>::GetNextInput(const Output& y, std::ofstream& cpu_time_out) {
@@ -242,13 +240,18 @@ NonCooperativeController<
   }
 
   for (int n_iter = 0; n_iter < n_solver_iterations_; n_iter++) {
+    ControlInputPrediction du_prev_vec;
+    for (int i = 0; i < n_controllers; i++) {
+      du_prev_vec.template segment<m* n_sub_control_inputs>(
+          i * m * n_sub_control_inputs) = du_prev_[i];
+    }
     // Re-solve QP with new inputs
     for (int i = 0; i < n_controllers; i++) {
       if (i == 0) integrate_timer.resume();
       sub_solvers_[i].UpdateAndSolveQP(
           &qp[i], du_out[i], u_old_.template segment<n_sub_control_inputs>(
-                                i * n_sub_control_inputs),
-          sub_Su[i], du_prev_);
+                                 i * n_sub_control_inputs),
+          sub_Su[i], du_prev_vec.data());
       if (i == 0) integrate_timer.stop();
     }
 

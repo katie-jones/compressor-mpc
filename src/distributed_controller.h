@@ -51,7 +51,7 @@ class DistributedController {
 
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
-  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m, 0
+  DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m
                     > qp_solver_;
   State x_;                 // current state of system
   ControlInput u_old_;      // previous optimal input to system
@@ -97,7 +97,7 @@ void DistributedController<AugLinSys, p, m>::GetInput(
     const Eigen::VectorXd& du_last) {
   Eigen::MatrixXd Su_other = auglinsys_.GetSuOther();
 
-  qp_solver_.UpdateAndSolveQP(qp, u_solution, u_old_, Su_other, du_last);
+  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, Su_other, du_last.data());
 }
 
 #endif

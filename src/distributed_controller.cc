@@ -10,8 +10,9 @@ DistributedController<AugLinSys, p, m>::DistributedController(
     const ObserverMatrix& M)
     : observer_(Observer<AugLinSys>(M, Output::Zero())),
       auglinsys_(sys),
-      qp_solver_(DistributedSolver<n_total_states, n_outputs, n_control_inputs,
-                                   p, m, 0>(0, constraints)) {
+      qp_solver_(
+          DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m>(
+              0, constraints)) {
   static_assert(n_disturbance_states >= 0,
                 "Number of disturbance states should be positive.");
   static_assert(p >= 0, "Prediction horizon should be positive.");

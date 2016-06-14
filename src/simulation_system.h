@@ -21,7 +21,7 @@ class SimulationSystem {
   typedef std::array<int, System::n_control_inputs> ControlInputIndex;
 
   /// Total number of delay states
-  static constexpr int n_delay_states = Delays::GetTotalDelay();
+  static constexpr int n_delay_states = Delays::GetSum();
 
  private:
   typedef typename System::State State;

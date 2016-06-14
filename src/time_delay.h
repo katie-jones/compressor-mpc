@@ -8,7 +8,7 @@
 template <typename Delays>
 class TimeDelay {
  public:
-  constexpr static int n_inputs = Delays::n_inputs;
+  constexpr static int n_inputs = Delays::size;
   constexpr static int n_delay_states = Delays::GetSum();
 
   typedef Eigen::Matrix<double, n_inputs, 1> Input;

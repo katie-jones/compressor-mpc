@@ -29,6 +29,7 @@ void DistributedController<AugLinSys, p, m>::Initialize(
   auglinsys_.Update(x_init, full_u_old);
   u_old_ = u_init;
   x_ = x_init;
+  observer_.InitializeSystem(&auglinsys_);
   observer_.SetIntialOutput(y_init);
   observer_.SetInitialAugmentedState(dx_init);
 

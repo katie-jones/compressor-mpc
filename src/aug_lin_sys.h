@@ -52,6 +52,9 @@ class AugmentedLinearizedSystem {
   /// Controlled inputs of dynamic system
   typedef Eigen::Matrix<double, n_control_inputs, 1> ControlInput;
 
+  /// Controlled inputs for given controller
+  typedef Eigen::Matrix<double, n_sub_control_inputs, 1> SubControlInput;
+
   /// Output of dynamic system
   typedef Eigen::Matrix<double, n_outputs, 1> Output;
 

@@ -9,6 +9,7 @@
 #include "print_matrix.h"
 #include "simulation_system.h"
 #include "constexpr_array.h"
+#include "distributed_controller.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -18,39 +19,48 @@ constexpr int m = 2;
 constexpr int n_controllers = 2;
 constexpr int n_sub_outputs = 3;
 constexpr int n_sub_control_inputs = 2;
+
+using Delays = ConstexprArray<0, 40, 0, 40>;
+using OutputIndices = ConstexprArray<0, 1, 3>;
+using StateIndices = ConstexprArray<0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10>;
+using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
+using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;
+using InputIndices = ConstexprArray<0, 3, 4, 7>;
 }
 
 using namespace Control;
 
+using AugmentedSystem1 =
+    AugmentedLinearizedSystem<ParallelCompressors, Delays, n_disturbance_states,
+                              ControlInputIndices1, n_sub_control_inputs>;
+using AugmentedSystem2 =
+    AugmentedLinearizedSystem<ParallelCompressors, Delays, n_disturbance_states,
+                              ControlInputIndices2, n_sub_control_inputs>;
+
+using Obsv1 = Observer<AugmentedSystem1>;
+using Obsv2 = Observer<AugmentedSystem2>;
+
+using Controller1 = DistributedController<AugmentedSystem1, p, m>;
+using Controller2 = DistributedController<AugmentedSystem2, p, m>;
+
+using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
+
 extern template class AugmentedLinearizedSystem<
-    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>;
-extern template class Observer<AugmentedLinearizedSystem<
-    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4>>;
-extern template class NonCooperativeController<
-    ParallelCompressors, ConstexprArray<0, 40, 0, 40>, 4, 100, 2, 2, 3>;
+    ParallelCompressors, Delays, n_disturbance_states, ControlInputIndices1,
+    n_sub_control_inputs>;
+extern template class AugmentedLinearizedSystem<
+    ParallelCompressors, Delays, n_disturbance_states, ControlInputIndices2,
+    n_sub_control_inputs>;
 
-extern template class MpcQpSolver<n_delay_states + n_disturbance_states +
-                                      ParallelCompressors::n_states,
-                                  n_sub_outputs, n_sub_control_inputs, p, m>;
+extern template class Observer<AugmentedSystem1>;
+extern template class Observer<AugmentedSystem2>;
 
-using AugmentedSystem =
-    AugmentedLinearizedSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
-                              4>;
-
-using Obsv =
-    Observer<AugmentedLinearizedSystem<ParallelCompressors,
-                                       ConstexprArray<0, 40, 0, 40>, 4>>;
-
-using Controller =
-    NonCooperativeController<ParallelCompressors, ConstexprArray<0, 40, 0, 40>,
-                             4, 100, 2, 2, 3>;
-
-using SimSystem =
-    SimulationSystem<ParallelCompressors, ConstexprArray<0, 40, 0, 40>>;
+extern template class DistributedController<AugmentedSystem1, p, m>;
+extern template class DistributedController<AugmentedSystem2, p, m>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
-Controller *p_controller;
+// Controller *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
 
@@ -58,17 +68,17 @@ void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
 
-  Controller::Output y = p_compressor->GetOutput(x);
+  ParallelCompressors::Output y = p_compressor->GetOutput(x);
 
   output_file << y.transpose() << std::endl;
 
   // Get and apply next input
-  Controller::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
-  p_sim_compressor->SetInput(u);
+  // Controller::ControlInput u =
+  // p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
+  // p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
+  // output_file << u.transpose() << std::endl
+  // << std::endl;
 }
 
 int main(void) {
@@ -81,95 +91,66 @@ int main(void) {
   ParallelCompressors::Input u_default = ParallelCompressors::GetDefaultInput();
   ParallelCompressors::State x_init = ParallelCompressors::GetDefaultState();
 
-  // index of controlled inputs
-  const Controller::ControlInputIndex index = {0, 3, 4, 7};
-  const Controller::ControlInputIndex delay = {0, Control::n_delay_states / 2,
-                                               0, Control::n_delay_states / 2};
-
-  SimSystem sim_comp(p_compressor, u_default, delay, x_init);
+  SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
 
-  const Obsv::ObserverMatrix M =
-      (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
-                                               compressor.n_outputs>::Zero(),
+  const Obsv1::ObserverMatrix M =
+      (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
+                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, Control::n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  // index of outputs per subcontroller
-  const Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>
-      output_index =
-          (Eigen::Matrix<int, Control::n_controllers, Control::n_sub_outputs>()
-               << 0,
-           1, 3, 0, 1, 3).finished();
+  // Controller::UWeightType uwt = Controller::UWeightType::Zero();
+  // Controller::YWeightType ywt = Controller::YWeightType::Zero();
 
-  Controller::UWeightType uwt = Controller::UWeightType::Zero();
-  Controller::YWeightType ywt = Controller::YWeightType::Zero();
+  // std::ifstream weight_file;
+  // weight_file.open("uweight_coop");
+  // for (int i = 0; i < uwt.rows(); i++) {
+  // weight_file >> uwt(i, i);
+  // }
+  // weight_file.close();
 
-  std::ifstream weight_file;
-  weight_file.open("uweight_coop");
-  for (int i = 0; i < uwt.rows(); i++) {
-    weight_file >> uwt(i, i);
-  }
-  weight_file.close();
+  // weight_file.open("yweight_coop");
+  // for (int i = 0; i < ywt.rows(); i++) {
+  // weight_file >> ywt(i, i);
+  // }
+  // weight_file.close();
 
-  weight_file.open("yweight_coop");
-  for (int i = 0; i < ywt.rows(); i++) {
-    weight_file >> ywt(i, i);
-  }
-  weight_file.close();
+  const AugmentedSystem1::Input u_offset = u_default;
 
-  const Controller::Input offset = u_default;
-
-  const Controller::OutputPrediction y_ref =
-      (Controller::Output() << 4.5, 4.5, 0, 1.12)
-          .finished()
-          .replicate<Control::p, 1>();
+  const Controller1::OutputPrediction y_ref =
+      (Controller1::Output() << 4.5, 4.5, 0, 1.12).finished().replicate<p, 1>();
 
   // Input constraints
-  InputConstraints<ParallelCompressors::n_control_inputs> constraints;
-  constraints.lower_bound << -0.3, 0, -0.3, 0;
-  constraints.upper_bound << 0.3, 1, 0.3, 1;
-  constraints.lower_rate_bound << -0.1, -0.1, -0.1, -0.1;
-  constraints.upper_rate_bound << 0.1, 1, 0.1, 1;
+  InputConstraints<n_sub_control_inputs> constraints;
+  constraints.lower_bound << -0.3, 0;
+  constraints.upper_bound << 0.3, 1;
+  constraints.lower_rate_bound << -0.1, -0.1;
+  constraints.upper_rate_bound << 0.1, 1;
   constraints.use_rate_constraints = true;
 
   // Setup controller
-  AugmentedSystem sys(compressor, sampling_time, delay);
-  Obsv observer(M, compressor.GetOutput(x_init));
+  AugmentedSystem1 sys1(compressor, sampling_time);
+  AugmentedSystem2 sys2(compressor, sampling_time);
+  Controller1 ctrl1(sys1, constraints, M);
+  Controller2 ctrl2(sys2, constraints, M);
 
-  const int n_solver_iterations = 6;
+  // Test functions
+  ctrl1.Initialize(compressor.GetOutput(x_init),
+                   AugmentedSystem1::SubControlInput::Zero(), u_offset, x_init);
+  ctrl2.Initialize(compressor.GetOutput(x_init),
+                   AugmentedSystem2::SubControlInput::Zero(), u_offset, x_init);
+  ctrl1.SetOutputReference(y_ref);
+  ctrl2.SetOutputReference(y_ref);
 
-  Controller ctrl(sys, observer, u_default, y_ref, delay, index,
-                  n_solver_iterations, output_index, constraints, uwt, ywt);
-  p_controller = &ctrl;
+  MpcQpSolver<
+      n_disturbance_states + n_delay_states + ParallelCompressors::n_states,
+      ParallelCompressors::n_outputs, n_sub_control_inputs, p, m>::QP qp =
+      ctrl1.GenerateInitialQP(compressor.GetOutput(x_init), u_offset);
 
-  ctrl.SetOutputReference(y_ref);
-  const ParallelCompressors::Output y_init = compressor.GetOutput(x_init);
-  ctrl.SetInitialState(x_init, y_init);
-
-  // Integrate system and time it
-  boost::timer::cpu_timer integrate_timer;
-  sim_comp.Integrate(0, 50, sampling_time, &Callback);
-  integrate_timer.stop();
-
-  // Apply disturbance
-  ParallelCompressors::Input u_disturbance = u_default;
-  u_disturbance(8) -= 0.3;
-
-  sim_comp.SetOffset(u_disturbance);
-  integrate_timer.resume();
-  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
-  integrate_timer.stop();
-  boost::timer::cpu_times int_elapsed = integrate_timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
-                                           int_elapsed.user);
   output_file.close();
   cpu_times_file.close();
-  std::cout << "CPU time: " << elapsed_ns << std::endl;
-  std::cout << "Wall time: " << int_elapsed.wall << std::endl
-            << std::endl;
-
   return 0;
 }

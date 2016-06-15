@@ -3,30 +3,14 @@
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::MpcQpSolver(
     const InputConstraints<n_control_inputs>& u_constraints,
-    const OutputPrediction y_ref,
-    const UWeightType& u_weight, const YWeightType& y_weight)
+    const OutputPrediction y_ref, const UWeightType& u_weight,
+    const YWeightType& y_weight)
     : y_ref_(y_ref),
       u_constraints_(u_constraints),
       Ain_(GetConstraintMatrix()),
       qp_problem_(
           qpOASES::SQProblem(m * n_control_inputs, m * n_control_inputs)) {
-  y_weight_ = Eigen::SparseMatrix<double>(p * n_outputs, p * n_outputs);
-  const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
-      Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
-  y_weight_.reserve(reserve_values);
-  for (int i = 0; i < p; i++) {
-    for (int j = 0; j < n_outputs * n_outputs; j++) {
-      y_weight_.insert(i * n_outputs + j % n_outputs,
-                       i * n_outputs + j / n_outputs) =
-          y_weight(j % n_outputs, j / n_outputs);
-    }
-  }
-
-  u_weight_.setZero();
-  for (int i = 0; i < m; i++) {
-    u_weight_.template block<n_control_inputs, n_control_inputs>(
-        i * n_control_inputs, i * n_control_inputs) = u_weight;
-  }
+  SetWeights(u_weight, y_weight);
 }
 
 /*

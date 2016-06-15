@@ -41,6 +41,27 @@ class MpcQpSolver {
   /// Initialize QP Problem so hotstart method can be used
   void InitializeQPProblem(const QP& qp, const ControlInput& u_old);
 
+  /// Set QP weights
+  void SetWeights(const UWeightType& uwt, const YWeightType& ywt) {
+    y_weight_ = Eigen::SparseMatrix<double>(p * n_outputs, p * n_outputs);
+    const Eigen::Matrix<double, p * n_outputs, 1> reserve_values =
+        Eigen::Matrix<double, p * n_outputs, 1>::Constant(n_outputs);
+    y_weight_.reserve(reserve_values);
+    for (int i = 0; i < p; i++) {
+      for (int j = 0; j < n_outputs * n_outputs; j++) {
+        y_weight_.insert(i * n_outputs + j % n_outputs,
+                         i * n_outputs + j / n_outputs) =
+            ywt(j % n_outputs, j / n_outputs);
+      }
+    }
+
+    u_weight_.setZero();
+    for (int i = 0; i < m; i++) {
+      u_weight_.template block<n_control_inputs, n_control_inputs>(
+          i * n_control_inputs, i * n_control_inputs) = uwt;
+    }
+  }
+
   /// generate QP matrices based on linearization
   QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
                 const int n_aug_states, const Output& y_prev) const {

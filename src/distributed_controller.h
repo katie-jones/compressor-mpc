@@ -23,7 +23,7 @@ class DistributedController {
 
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
- protected:
+ public:
   using State = Eigen::Matrix<double, n_states, 1>;
   using Input = Eigen::Matrix<double, n_inputs, 1>;
   using ControlInput =
@@ -49,13 +49,13 @@ class DistributedController {
   using ControlInputIndex = typename AugLinSys::ControlInputIndex;
   using ObserverMatrix = typename Observer<AugLinSys>::ObserverMatrix;
 
+ protected:
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_outputs, n_control_inputs, p, m>
       qp_solver_;
-  State x_;                 // current state of system
-  ControlInput u_old_;      // previous optimal input to system
-  OutputPrediction y_ref_;  // Reference output
+  State x_;             // current state of system
+  ControlInput u_old_;  // previous optimal input to system
   static constexpr auto n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
 
@@ -68,7 +68,17 @@ class DistributedController {
   /// Set initial output, input and state
   void Initialize(const Output& y_init, const ControlInput& u_init,
                   const Input& full_u_old, const State& x_init,
-                  const AugmentedState& dx_init);
+                  const AugmentedState& dx_init = AugmentedState::Zero());
+
+  /// Set QP weights
+  void SetWeights(const UWeightType& uwt, const YWeightType& ywt) {
+    qp_solver_.SetWeights(uwt, ywt);
+  }
+
+  /// Set reference output
+  void SetOutputReference(const OutputPrediction& y_ref) {
+    qp_solver_.SetOutputReference(y_ref);
+  }
 
   /// Linearize and solve QP for initial input solution
   QP GenerateInitialQP(const Output& y, const Input& full_u_old);
@@ -76,9 +86,6 @@ class DistributedController {
   /// Re-solve QP based on updated inputs from other controllers
   void GetInput(ControlInputPrediction* u_solution, QP* qp,
                 const Eigen::VectorXd& du_last);
-
-  /// Set output reference to track
-  void SetReferenceOutput(const OutputPrediction& y_ref) { y_ref_ = y_ref; }
 
   /// Return estimate of current state
   State GetStateEstimate() { return x_; }

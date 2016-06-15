@@ -52,7 +52,7 @@ void DistributedController<AugLinSys, p, m>::Initialize(
   }
 
   Prediction pred;
-  pred = auglinsys_.GeneratePrediction(p, m);
+  pred = auglinsys_.GeneratePrediction(&su_other_, p, m);
 
   qp_solver_.GenerateDistributedQP(&qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
                                    n_aug_states, y_init);
@@ -89,7 +89,7 @@ auto DistributedController<AugLinSys, p, m>::GenerateInitialQP(
   // Generate QP to solve
   QP qp;
   Prediction pred;
-  pred = auglinsys_.GeneratePrediction(p, m);
+  auglinsys_.GeneratePrediction(&pred.Su, &pred.Sx, &pred.Sf, &su_other_, p, m);
   qp_solver_.GenerateDistributedQP(&qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
                                    n_aug_states, observer_.GetPreviousOutput());
   return qp;

@@ -58,40 +58,7 @@ class ConstexprArray {
 template <int... Ints>
 constexpr std::array<int, sizeof...(Ints)> ConstexprArray<Ints...>::data_;
 
-template <typename... Arrays>
-class ConstexprArrayList {
- private:
-  static constexpr auto list_ = std::tuple<Arrays...>();
-
- public:
-  constexpr ConstexprArrayList() {}
-
-  /// Number of control inputs
-  static constexpr int size = static_cast<int>(sizeof...(Arrays));
-
-  /// Get type of entry i
-  template <int i>
-  using type = typename std::tuple_element<i, std::tuple<Arrays...>>::type;
-
-  /// Sum of all entries
-  static constexpr int GetSum() {
-    int sum = 0;
-    int dummy[]{(AddEntry<Arrays>())...};
-    for (int i = 0; i < size; i++) {
-      sum += dummy[i];
-    }
-    return sum;
-  }
-
-  template <typename Array>
-  static constexpr int AddEntry() {
-    return Array::GetSum();
-  }
-};
-
-// template <typename... Arrays>
-// constexpr auto ConstexprArrayList<Arrays...>::list_;
-
+// Return an array from an integer sequence
 template <int... Ints>
 constexpr ConstexprArray<Ints...> MakeConstexprArray(
     const std::integer_sequence<int, Ints...>&) {

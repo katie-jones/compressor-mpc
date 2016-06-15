@@ -7,8 +7,7 @@
  */
 template <class System, typename Delays, int n_disturbance_states, int p, int m>
 MpcController<System, Delays, n_disturbance_states, p, m>::MpcController(
-    const AugLinSys& sys,
-    const Observer<AugLinSys>& observer,
+    const AugLinSys& sys, const Observer<AugLinSys>& observer,
     const Input& u_offset, const OutputPrediction& y_ref,
     const ControlInputIndex& control_input_index, const UWeightType& u_weight,
     const YWeightType& y_weight,
@@ -32,7 +31,8 @@ MpcController<System, Delays, n_disturbance_states, p, m>::GetNextInput(
   boost::timer::cpu_timer integrate_timer;
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
+  Eigen::MatrixXd dummy;
+  const Prediction pred = auglinsys_.GeneratePrediction(&dummy, p, m);
 
   AugmentedState delta_x0;
   delta_x0 << auglinsys_.GetDerivative(),
@@ -96,7 +96,8 @@ void MpcController<System, Delays, n_disturbance_states, p, m>::SetInitialState(
     }
   }
 
-  const Prediction pred = auglinsys_.GeneratePrediction(p, m);
+  Eigen::MatrixXd dummy;
+  const Prediction pred = auglinsys_.GeneratePrediction(&dummy, p, m);
   const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
   this->InitializeQPProblem(qp, u_old_);

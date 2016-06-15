@@ -63,4 +63,8 @@ class TimeDelay {
   int current_input_[n_inputs];
 };
 
+// Definition of constexpr static member
+template<typename Delays>
+constexpr Delays TimeDelay<Delays>::n_delay_;
+
 #endif

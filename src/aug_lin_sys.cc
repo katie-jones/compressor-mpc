@@ -5,10 +5,9 @@
  */
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
-AugmentedLinearizedSystem<
-    System, Delays, n_disturbance_states_in,
-    ControlInputIndices, n_sub_control_inputs_in>::AugmentedLinearizedSystem(const System& sys,
-                                                    const double sampling_time)
+AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
+                          ControlInputIndices, n_sub_control_inputs_in>::
+    AugmentedLinearizedSystem(const System& sys, const double sampling_time)
     : sys_(sys),
       sampling_time_(sampling_time),
       A(AComposite()),
@@ -25,7 +24,8 @@ AugmentedLinearizedSystem<
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                          ControlInputIndices, n_sub_control_inputs_in>::AComposite::AComposite()
+                          ControlInputIndices,
+                          n_sub_control_inputs_in>::AComposite::AComposite()
     : Aaug(Eigen::SparseMatrix<bool>(n_aug_states, n_aug_states)),
       Aorig(Eigen::Matrix<double, n_states, n_states>::Zero()),
       Adelay(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()) {
@@ -58,8 +58,9 @@ template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 template <int n_sub_outputs>
 void AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                               ControlInputIndices, n_sub_control_inputs_in>::AComposite::
-    MultiplyC(Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const {
+                               ControlInputIndices, n_sub_control_inputs_in>::
+    AComposite::MultiplyC(
+        Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const {
   const Eigen::Matrix<double, n_sub_outputs, n_states> temp =
       C->template leftCols<n_states>();
 
@@ -83,8 +84,8 @@ template <class System, typename Delays, int n_disturbance_states_in,
 template <int n_sub_outputs>
 Eigen::Matrix<double, n_sub_outputs, System::n_control_inputs>
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                          ControlInputIndices, n_sub_control_inputs_in>::BComposite::
-    MultiplyC(
+                          ControlInputIndices, n_sub_control_inputs_in>::
+    BComposite::MultiplyC(
         const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const {
   Eigen::Matrix<double, n_sub_outputs, n_control_inputs> output =
       C.template leftCols<n_states>() * Borig;
@@ -99,10 +100,12 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                                   ControlInputIndices, n_sub_control_inputs_in>::AugmentedState
+                                   ControlInputIndices,
+                                   n_sub_control_inputs_in>::AugmentedState
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                          ControlInputIndices, n_sub_control_inputs_in>::AComposite::
-    TimesAugmentedOnly(const Eigen::Matrix<double, n_aug_states, 1> x) const {
+                          ControlInputIndices, n_sub_control_inputs_in>::
+    AComposite::TimesAugmentedOnly(
+        const Eigen::Matrix<double, n_aug_states, 1> x) const {
   // Augmented part
   AugmentedState x_out = AugmentedState::Zero();
   x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
@@ -125,9 +128,9 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
  */
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
-void AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                               ControlInputIndices, n_sub_control_inputs_in>::Update(const State x,
-                                                            const Input& u) {
+void AugmentedLinearizedSystem<
+    System, Delays, n_disturbance_states_in, ControlInputIndices,
+    n_sub_control_inputs_in>::Update(const State x, const Input& u) {
   typename System::Linearized sys_continuous = sys_.GetLinearizedSystem(x, u);
 
   // linearize and discretize dynamic system
@@ -159,7 +162,8 @@ void AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                          ControlInputIndices, n_sub_control_inputs_in>::BComposite::BComposite()
+                          ControlInputIndices,
+                          n_sub_control_inputs_in>::BComposite::BComposite()
     : Baug(Eigen::SparseMatrix<bool>(n_delay_states, n_control_inputs)),
       Borig(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()) {
   Eigen::Matrix<double, n_control_inputs, 1> reserve_b;
@@ -183,9 +187,11 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                                   ControlInputIndices, n_sub_control_inputs_in>::AugmentedState
+                                   ControlInputIndices,
+                                   n_sub_control_inputs_in>::AugmentedState
     AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
-                              ControlInputIndices, n_sub_control_inputs_in>::BComposite::
+                              ControlInputIndices,
+                              n_sub_control_inputs_in>::BComposite::
     operator*(const ControlInput& u) const {
   AugmentedState x_out;
   x_out.template head<n_states>() = Borig * u;
@@ -201,10 +207,10 @@ typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 const typename System::Linearized AugmentedLinearizedSystem<
-    System, Delays, n_disturbance_states_in,
-    ControlInputIndices, n_sub_control_inputs_in>::DiscretizeRK4(const typename System::Linearized&
-                                            sys_continuous,
-                                        const double Ts) {
+    System, Delays, n_disturbance_states_in, ControlInputIndices,
+    n_sub_control_inputs_in>::DiscretizeRK4(const typename System::Linearized&
+                                                sys_continuous,
+                                            const double Ts) {
   typename System::Linearized sys_discrete;
   Eigen::Matrix<double, n_states, n_states> A2, A3, Acommon;
 
@@ -229,24 +235,28 @@ const typename System::Linearized AugmentedLinearizedSystem<
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
 void AugmentedLinearizedSystem<
-    System, Delays, n_disturbance_states_in,
-    ControlInputIndices, n_sub_control_inputs_in>::GeneratePrediction(Eigen::MatrixXd* Su,
-                                             Eigen::MatrixXd* Sx,
-                                             Eigen::MatrixXd* Sf, const int p,
-                                             const int m) const {
+    System, Delays, n_disturbance_states_in, ControlInputIndices,
+    n_sub_control_inputs_in>::GeneratePrediction(Eigen::MatrixXd* Su,
+                                                 Eigen::MatrixXd* Sx,
+                                                 Eigen::MatrixXd* Sf,
+                                                 Eigen::MatrixXd* Su_other,
+                                                 const int p,
+                                                 const int m) const {
   // Initialize c_times_a to C (with only desired outputs)
   Eigen::Matrix<double, n_outputs, n_total_states> c_times_a;
   c_times_a.template rightCols<n_delay_states>().setZero();
   c_times_a.template leftCols<n_obs_states>() = C.template topRows<n_outputs>();
 
   // Initialize prediction to zero
-  Su->resize(p * n_outputs, m * n_control_inputs);
+  Su->resize(p * n_outputs, m * n_sub_control_inputs);
   Sx->resize(p * n_outputs, n_aug_states);
   Sf->resize(p * n_outputs, n_states);
+  if (is_reduced) Su_other->resize(p * n_outputs, m * n_other_control_inputs);
 
   Su->setZero();
   Sx->setZero();
   Sf->setZero();
+  if (is_reduced) Su_other->setZero();
 
   Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
@@ -269,8 +279,15 @@ void AugmentedLinearizedSystem<
       else
         ind_col = m - 1;
 
-      Su->template block<n_outputs, n_control_inputs>(
-          ind_row * n_outputs, ind_col * n_control_inputs) += to_add;
+      // Split Su matrix: first own inputs, then other controllers'
+      Su->template block<n_outputs, n_sub_control_inputs>(
+          ind_row * n_outputs, ind_col * n_sub_control_inputs) +=
+          to_add.template leftCols<n_sub_control_inputs>();
+
+      if (is_reduced)
+        Su_other->template block<n_outputs, n_other_control_inputs>(
+            ind_row * n_outputs, ind_col * n_other_control_inputs) +=
+            to_add.template rightCols<n_other_control_inputs>();
     }
     A.MultiplyC(&c_times_a);
     Sx->template block<n_outputs, n_aug_states>(i * n_outputs, 0) =

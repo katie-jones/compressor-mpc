@@ -56,8 +56,9 @@ class DistributedController {
       qp_solver_;
   State x_;             // current state of system
   ControlInput u_old_;  // previous optimal input to system
-  static constexpr auto n_delay_ =
+  static constexpr typename AugLinSys::DelayType n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
+  Eigen::MatrixXd su_other_;            // effect of other inputs
 
  public:
   /// Constructor
@@ -96,6 +97,12 @@ class DistributedController {
   }
 };
 
+// Declaration of static constexpr member
+template <class AugLinSys, int p, int m>
+constexpr typename AugLinSys::DelayType
+    // constexpr auto
+    DistributedController<AugLinSys, p, m>::n_delay_;
+
 /*
  * Get QP solution based on inputs of other controllers
  */
@@ -103,9 +110,8 @@ template <class AugLinSys, int p, int m>
 void DistributedController<AugLinSys, p, m>::GetInput(
     ControlInputPrediction* u_solution, QP* qp,
     const Eigen::VectorXd& du_last) {
-  Eigen::MatrixXd Su_other = auglinsys_.GetSuOther();
 
-  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, Su_other,
+  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, su_other_,
                               du_last.data());
 }
 

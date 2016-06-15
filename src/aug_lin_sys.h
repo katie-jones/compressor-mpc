@@ -32,6 +32,8 @@ class AugmentedLinearizedSystem {
   static constexpr int n_disturbance_states = n_disturbance_states_in;
   static constexpr int n_sub_control_inputs =
       is_reduced ? n_sub_control_inputs_in : n_control_inputs;
+  static constexpr int n_other_control_inputs =
+      n_control_inputs - n_sub_control_inputs;
 
   static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
   static constexpr int n_obs_states = n_states + n_disturbance_states;
@@ -68,22 +70,22 @@ class AugmentedLinearizedSystem {
   void Update(const State x, const Input& u);
 
   /// Generate prediction matrices based on current linearization
-  const Prediction GeneratePrediction(const int p, const int m) const {
+  const Prediction GeneratePrediction(Eigen::MatrixXd* Su_other,
+                                      const int p, const int m) const {
     Prediction pred;
-    GeneratePrediction(&pred.Su, &pred.Sx, &pred.Sf, p, m);
+    GeneratePrediction(&pred.Su, &pred.Sx, &pred.Sf, Su_other, p, m);
     return pred;
   }
 
   /// Generate prediction matrices for a subset of outputs
-  void GeneratePrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
-                          Eigen::MatrixXd* Sf, const int p, const int m) const;
+  void GeneratePrediction(Eigen::MatrixXd* Su,
+                          Eigen::MatrixXd* Sx,
+                          Eigen::MatrixXd* Sf,
+                          Eigen::MatrixXd* Su_other, const int p,
+                          const int m) const;
 
   /// Return current derivative of system
   const State GetDerivative() const { return f; }
-
-  /// Get Su_other matrix generated with prediction
-  // TODO: implement this
-  Eigen::MatrixXd GetSuOther() const { return Eigen::MatrixXd(); }
 
  protected:
   struct AComposite {
@@ -124,8 +126,15 @@ class AugmentedLinearizedSystem {
   State f;            // Derivative of system at current operating point
   const System sys_;  // Continuous time system to represent
   const double sampling_time_;  // Sampling time of the discretization
-  static constexpr auto n_delay_ = Delays();
+  static constexpr Delays n_delay_ = Delays();
 };
+
+// Definition of static constexpr member
+template <class System, typename Delays, int n_disturbance_states_in,
+          typename ControlInputIndices, int n_sub_control_inputs_in>
+constexpr Delays AugmentedLinearizedSystem<
+    System, Delays, n_disturbance_states_in, ControlInputIndices,
+    n_sub_control_inputs_in>::n_delay_;
 
 /*
  * Operator x_out = A*x

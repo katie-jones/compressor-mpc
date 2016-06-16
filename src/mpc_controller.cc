@@ -32,7 +32,8 @@ MpcController<System, Delays, n_disturbance_states, p, m>::GetNextInput(
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, this->GetPlantInput(u_old_));
   Eigen::MatrixXd dummy;
-  const Prediction pred = auglinsys_.GeneratePrediction(&dummy, p, m);
+  const Prediction pred =
+      auglinsys_.template GeneratePrediction<NullIndexArray>(&dummy, p, m);
 
   AugmentedState delta_x0;
   delta_x0 << auglinsys_.GetDerivative(),
@@ -97,7 +98,8 @@ void MpcController<System, Delays, n_disturbance_states, p, m>::SetInitialState(
   }
 
   Eigen::MatrixXd dummy;
-  const Prediction pred = auglinsys_.GeneratePrediction(&dummy, p, m);
+  const Prediction pred =
+      auglinsys_.template GeneratePrediction<NullIndexArray>(&dummy, p, m);
   const QP qp = this->GenerateQP(pred, delta_x0, n_aug_states,
                                  observer_.GetPreviousOutput());
   this->InitializeQPProblem(qp, u_old_);

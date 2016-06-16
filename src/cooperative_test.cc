@@ -26,6 +26,7 @@ using StateIndices = ConstexprArray<0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10>;
 using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
+using ControlledOutputIndices = ConstexprArray<0, 1, 3>;
 }
 
 using namespace Control;
@@ -40,8 +41,10 @@ using AugmentedSystem2 =
 using Obsv1 = Observer<AugmentedSystem1>;
 using Obsv2 = Observer<AugmentedSystem2>;
 
-using Controller1 = DistributedController<AugmentedSystem1, p, m>;
-using Controller2 = DistributedController<AugmentedSystem2, p, m>;
+using Controller1 =
+    DistributedController<AugmentedSystem1, ControlledOutputIndices, p, m>;
+using Controller2 =
+    DistributedController<AugmentedSystem2, ControlledOutputIndices, p, m>;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
@@ -55,8 +58,10 @@ extern template class AugmentedLinearizedSystem<
 extern template class Observer<AugmentedSystem1>;
 extern template class Observer<AugmentedSystem2>;
 
-extern template class DistributedController<AugmentedSystem1, p, m>;
-extern template class DistributedController<AugmentedSystem2, p, m>;
+extern template class DistributedController<AugmentedSystem1,
+                                            ControlledOutputIndices, p, m>;
+extern template class DistributedController<AugmentedSystem2,
+                                            ControlledOutputIndices, p, m>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -121,7 +126,7 @@ int main(void) {
   const AugmentedSystem1::Input u_offset = u_default;
 
   const Controller1::OutputPrediction y_ref =
-      (Controller1::Output() << 4.5, 4.5, 0, 1.12).finished().replicate<p, 1>();
+      (Controller1::ControlOutput() << 4.5, 4.5, 1.12).finished().replicate<p, 1>();
 
   // Input constraints
   InputConstraints<n_sub_control_inputs> constraints;
@@ -147,7 +152,7 @@ int main(void) {
 
   MpcQpSolver<
       n_disturbance_states + n_delay_states + ParallelCompressors::n_states,
-      ParallelCompressors::n_outputs, n_sub_control_inputs, p, m>::QP qp =
+      ControlledOutputIndices::size, n_sub_control_inputs, p, m>::QP qp =
       ctrl1.GenerateInitialQP(compressor.GetOutput(x_init), u_offset);
 
   output_file.close();

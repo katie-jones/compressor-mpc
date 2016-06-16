@@ -234,6 +234,7 @@ const typename System::Linearized AugmentedLinearizedSystem<
  */
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices, int n_sub_control_inputs_in>
+template <typename ControlledOutputIndices>
 void AugmentedLinearizedSystem<
     System, Delays, n_disturbance_states_in, ControlInputIndices,
     n_sub_control_inputs_in>::GeneratePrediction(Eigen::MatrixXd* Su,
@@ -242,32 +243,44 @@ void AugmentedLinearizedSystem<
                                                  Eigen::MatrixXd* Su_other,
                                                  const int p,
                                                  const int m) const {
+  // number of outputs being controlled
+  constexpr int n_controlled_outputs = ControlledOutputIndices::size;
+
   // Initialize c_times_a to C (with only desired outputs)
-  Eigen::Matrix<double, n_outputs, n_total_states> c_times_a;
+  Eigen::Matrix<double, n_controlled_outputs, n_total_states> c_times_a;
   c_times_a.template rightCols<n_delay_states>().setZero();
-  c_times_a.template leftCols<n_obs_states>() = C.template topRows<n_outputs>();
+
+  // TODO: take only desired rows from C
+  for (int i = 0; i < ControlledOutputIndices::size; i++) {
+    c_times_a.template block<1, n_obs_states>(i, 0) =
+        C.row(ControlledOutputIndices::GetEntry(i));
+  }
 
   // Initialize prediction to zero
-  Su->resize(p * n_outputs, m * n_sub_control_inputs);
-  Sx->resize(p * n_outputs, n_aug_states);
-  Sf->resize(p * n_outputs, n_states);
-  if (is_reduced) Su_other->resize(p * n_outputs, m * n_other_control_inputs);
+  Su->resize(p * n_controlled_outputs, m * n_sub_control_inputs);
+  Sx->resize(p * n_controlled_outputs, n_aug_states);
+  Sf->resize(p * n_controlled_outputs, n_states);
+  if (is_reduced)
+    Su_other->resize(p * n_controlled_outputs, m * n_other_control_inputs);
 
   Su->setZero();
   Sx->setZero();
   Sf->setZero();
   if (is_reduced) Su_other->setZero();
 
-  Eigen::Matrix<double, n_outputs, n_control_inputs> to_add;
+  Eigen::Matrix<double, n_controlled_outputs, n_control_inputs> to_add;
   int ind_col, ind_row;
 
-  Sf->template topRows<n_outputs>() = c_times_a.template leftCols<n_states>();
+  Sf->template topRows<n_controlled_outputs>() =
+      c_times_a.template leftCols<n_states>();
 
   for (int i = 0; i < p; i++) {
     if (i > 0) {
       // Sf is additive
-      Sf->template block<n_outputs, n_states>(i * n_outputs, 0) =
-          Sf->template block<n_outputs, n_states>((i - 1) * n_outputs, 0) +
+      Sf->template block<n_controlled_outputs, n_states>(
+          i * n_controlled_outputs, 0) =
+          Sf->template block<n_controlled_outputs, n_states>(
+              (i - 1) * n_controlled_outputs, 0) +
           c_times_a.template leftCols<n_states>();
     }
 
@@ -280,17 +293,18 @@ void AugmentedLinearizedSystem<
         ind_col = m - 1;
 
       // Split Su matrix: first own inputs, then other controllers'
-      Su->template block<n_outputs, n_sub_control_inputs>(
-          ind_row * n_outputs, ind_col * n_sub_control_inputs) +=
+      Su->template block<n_controlled_outputs, n_sub_control_inputs>(
+          ind_row * n_controlled_outputs, ind_col * n_sub_control_inputs) +=
           to_add.template leftCols<n_sub_control_inputs>();
 
       if (is_reduced)
-        Su_other->template block<n_outputs, n_other_control_inputs>(
-            ind_row * n_outputs, ind_col * n_other_control_inputs) +=
+        Su_other->template block<n_controlled_outputs, n_other_control_inputs>(
+            ind_row * n_controlled_outputs, ind_col * n_other_control_inputs) +=
             to_add.template rightCols<n_other_control_inputs>();
     }
     A.MultiplyC(&c_times_a);
-    Sx->template block<n_outputs, n_aug_states>(i * n_outputs, 0) =
+    Sx->template block<n_controlled_outputs, n_aug_states>(
+        i * n_controlled_outputs, 0) =
         c_times_a.template rightCols<n_aug_states>();
   }
 }

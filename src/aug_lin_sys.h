@@ -70,19 +70,20 @@ class AugmentedLinearizedSystem {
   void Update(const State x, const Input& u);
 
   /// Generate prediction matrices based on current linearization
-  const Prediction GeneratePrediction(Eigen::MatrixXd* Su_other,
-                                      const int p, const int m) const {
+  template <typename ControlledOutputIndices>
+  const Prediction GeneratePrediction(Eigen::MatrixXd* Su_other, const int p,
+                                      const int m) const {
     Prediction pred;
-    GeneratePrediction(&pred.Su, &pred.Sx, &pred.Sf, Su_other, p, m);
+    GeneratePrediction<ControlledOutputIndices>(&pred.Su, &pred.Sx, &pred.Sf,
+                                                Su_other, p, m);
     return pred;
   }
 
   /// Generate prediction matrices for a subset of outputs
-  void GeneratePrediction(Eigen::MatrixXd* Su,
-                          Eigen::MatrixXd* Sx,
-                          Eigen::MatrixXd* Sf,
-                          Eigen::MatrixXd* Su_other, const int p,
-                          const int m) const;
+  template <typename ControlledOutputIndices>
+  void GeneratePrediction(Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx,
+                          Eigen::MatrixXd* Sf, Eigen::MatrixXd* Su_other,
+                          const int p, const int m) const;
 
   /// Return current derivative of system
   const State GetDerivative() const { return f; }

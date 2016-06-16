@@ -17,7 +17,7 @@ class Observer {
   typedef Eigen::Matrix<double, n_obs_states, AugLinSys::n_outputs>
       ObserverMatrix;
 
- protected:
+ public:
   /// Augmented state of system
   using AugmentedState = typename AugLinSys::AugmentedState;
 
@@ -32,7 +32,6 @@ class Observer {
   Output y_old_;                  // past output
   AugmentedState dx_aug_;         // differential augmented state
 
- public:
   /// Constructor
   Observer(const ObserverMatrix& M, const Output& y_init,
            const ControlInput& u_init = AugLinSys::ControlInput::Zero(),

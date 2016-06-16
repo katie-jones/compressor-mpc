@@ -43,6 +43,21 @@ class ConstexprArray {
     }
   }
 
+  /// Sub-array of current array with indices SubInts...
+  template <int... SubInts>
+  using ConstexprSubArray = ConstexprArray<(data_[SubInts])...>;
+
+  /// Return sub-array of current array based on array given
+  template <int... SubInts>
+  static constexpr ConstexprSubArray<SubInts...> GetConstexprSubArray(
+      ConstexprArray<SubInts...>) {
+    return ConstexprSubArray<SubInts...>();
+  }
+
+  /// Sub-array of current array
+  template <typename Indices>
+  using IndicesSubArray = decltype(GetConstexprSubArray(Indices()));
+
   /// Return the entries of x_in as entries Ints... in larger array x_out.
   /// Entries of x_out not contained in Ints... are not modified.
   template <typename T>

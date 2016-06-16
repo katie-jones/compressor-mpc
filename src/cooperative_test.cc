@@ -10,6 +10,7 @@
 #include "simulation_system.h"
 #include "constexpr_array.h"
 #include "distributed_controller.h"
+#include "nerve_center.h"
 
 namespace Control {
 constexpr int n_delay_states = 80;
@@ -27,6 +28,9 @@ using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
 using ControlledOutputIndices = ConstexprArray<0, 1, 3>;
+
+using OutputIndexList = ConstexprArrayList<OutputIndices, OutputIndices>;
+using StateIndexList = ConstexprArrayList<StateIndices, StateIndices>;
 }
 
 using namespace Control;
@@ -47,6 +51,9 @@ using Controller2 =
     DistributedController<AugmentedSystem2, ControlledOutputIndices, p, m>;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
+
+using NvCtr = NerveCenter<ParallelCompressors, StateIndexList, OutputIndexList,
+                          Controller1, Controller2>;
 
 extern template class AugmentedLinearizedSystem<
     ParallelCompressors, Delays, n_disturbance_states, ControlInputIndices1,
@@ -126,7 +133,9 @@ int main(void) {
   const AugmentedSystem1::Input u_offset = u_default;
 
   const Controller1::OutputPrediction y_ref =
-      (Controller1::ControlOutput() << 4.5, 4.5, 1.12).finished().replicate<p, 1>();
+      (Controller1::ControlOutput() << 4.5, 4.5, 1.12)
+          .finished()
+          .replicate<p, 1>();
 
   // Input constraints
   InputConstraints<n_sub_control_inputs> constraints;
@@ -143,17 +152,31 @@ int main(void) {
   Controller2 ctrl2(sys2, constraints, M);
 
   // Test functions
-  ctrl1.Initialize(compressor.GetOutput(x_init),
-                   AugmentedSystem1::SubControlInput::Zero(), u_offset, x_init);
-  ctrl2.Initialize(compressor.GetOutput(x_init),
-                   AugmentedSystem2::SubControlInput::Zero(), u_offset, x_init);
-  ctrl1.SetOutputReference(y_ref);
-  ctrl2.SetOutputReference(y_ref);
+  // ctrl1.Initialize(compressor.GetOutput(x_init),
+  // AugmentedSystem1::SubControlInput::Zero(), u_offset, x_init);
+  // ctrl2.Initialize(compressor.GetOutput(x_init),
+  // AugmentedSystem2::SubControlInput::Zero(), u_offset, x_init);
+  // ctrl1.SetOutputReference(y_ref);
+  // ctrl2.SetOutputReference(y_ref);
 
-  MpcQpSolver<
-      n_disturbance_states + n_delay_states + ParallelCompressors::n_states,
-      ControlledOutputIndices::size, n_sub_control_inputs, p, m>::QP qp =
-      ctrl1.GenerateInitialQP(compressor.GetOutput(x_init), u_offset);
+  // Generate a QP
+  // MpcQpSolver<
+  // n_disturbance_states + n_delay_states + ParallelCompressors::n_states,
+  // ControlledOutputIndices::size, n_sub_control_inputs, p, m>::QP qp =
+  // ctrl1.GenerateInitialQP(compressor.GetOutput(x_init), u_offset);
+
+  // Test QP solver
+  // Controller1::ControlInputPrediction u_sol;
+  // for (int i = 0; i < 20; i++) {
+  // ctrl1.GetInput(&u_sol, &qp,
+  // Eigen::Matrix<double, n_sub_control_inputs * m, 1>::Zero());
+
+  // std::cout << u_sol << std::endl;
+  // }
+
+  // Create a nerve center
+  std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
+  NvCtr nerve_center(compressor, ctrl_tuple);
 
   output_file.close();
   cpu_times_file.close();

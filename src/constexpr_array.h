@@ -10,6 +10,8 @@ class ConstexprArray {
  public:
   constexpr ConstexprArray() {}
 
+  using type = ConstexprArray<Ints...>;
+
   /// Number of control inputs
   static constexpr int size = static_cast<int>(sizeof...(Ints));
 
@@ -38,9 +40,8 @@ class ConstexprArray {
   /// Return the entries of x_in given in Ints... as smaller array x_out
   template <typename T>
   static void GetSubArray(T* x_out, const T* x_in) {
-    for (int i = 0; i < size; i++) {
-      x_out[i] = x_in[data_[i]];
-    }
+    using expander = T[];
+    (void) expander{(*(x_out++) = x_in[Ints])...};
   }
 
   /// Sub-array of current array with indices SubInts...
@@ -62,18 +63,18 @@ class ConstexprArray {
   /// Entries of x_out not contained in Ints... are not modified.
   template <typename T>
   static void ExpandArray(T* x_out, const T* x_in) {
-    for (int i = 0; i < size; i++) {
-      x_out[data_[i]] = x_in[i];
-    }
+    using expander = T[];
+    (void) expander{(x_out[Ints] = *(x_in++))...};
   }
 
   constexpr int operator[](const int i) const { return data_[i]; }
 };
 
+// Declaration of constexpr static member
 template <int... Ints>
 constexpr std::array<int, sizeof...(Ints)> ConstexprArray<Ints...>::data_;
 
-// Return an array from an integer sequence
+// Function to return a ConstexprArray from an integer sequence
 template <int... Ints>
 constexpr ConstexprArray<Ints...> MakeConstexprArray(
     const std::integer_sequence<int, Ints...>&) {

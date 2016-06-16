@@ -4,22 +4,27 @@
 #include "dynamic_system.h"
 #include "compressor.h"
 #include "tank.h"
+#include "constexpr_array.h"
 
-class ParallelCompressors : public virtual DynamicSystem<11, 9, 4, 4> {
+// TODO: make n_compressors a template argument
+class ParallelCompressors
+    : public virtual DynamicSystem<11, 9, 4, ConstexprArray<0, 3, 4, 7>> {
  public:
   constexpr static int n_states = 11;
   constexpr static int n_inputs = 9;
   constexpr static int n_outputs = 4;
   constexpr static int n_control_inputs = 4;
-
   constexpr static int n_compressors = 2;
 
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+  using ControlInputIndex = ConstexprArray<0, 3, 4, 7>;
+
+
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
-      Output;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs,
+                        ControlInputIndex>::Output Output;
 
   ParallelCompressors(const double p_in, const double p_out,
                       const Compressor comps[n_compressors],

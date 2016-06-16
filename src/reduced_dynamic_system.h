@@ -4,22 +4,28 @@
 #include "dynamic_system.h"
 #include <Eigen/Eigen>
 
-template <int n_states, int n_outputs, int n_control_inputs,
+template <int n_states, int n_outputs, typename SubControlInputIndex,
           class OriginalSystem>
 class ReducedDynamicSystem
     : public DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                           n_control_inputs> {
+                           typename OriginalSystem::ControlInputIndex::
+                               template IndicesSubArray<SubControlInputIndex>> {
  public:
+  constexpr static int n_control_inputs = SubControlInputIndex::size;
+  using ControlInputIndex =
+      typename OriginalSystem::ControlInputIndex::template IndicesSubArray<
+          SubControlInputIndex>;
+
   typedef typename DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                                 n_control_inputs>::State State;
+                                 ControlInputIndex>::State State;
   typedef typename DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                                 n_control_inputs>::Output Output;
+                                 ControlInputIndex>::Output Output;
   typedef typename DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                                 n_control_inputs>::Input Input;
+                                 ControlInputIndex>::Input Input;
   typedef typename DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                                 n_control_inputs>::ControlInput ControlInput;
+                                 ControlInputIndex>::ControlInput ControlInput;
   typedef typename DynamicSystem<n_states, OriginalSystem::n_inputs, n_outputs,
-                                 n_control_inputs>::Linearized Linearized;
+                                 ControlInputIndex>::Linearized Linearized;
 
   // Get state of full system based on x_full_ and input x
   const typename OriginalSystem::State GetFullState(const State& x) const {

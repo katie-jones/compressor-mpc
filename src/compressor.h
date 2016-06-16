@@ -3,10 +3,11 @@
 
 #include "dynamic_system.h"
 #include "global.h"
+#include "constexpr_array.h"
 
 class ParallelCompressors;
 
-class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
+class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   friend ParallelCompressors;
 
  public:
@@ -14,12 +15,13 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   static constexpr int n_inputs = 6;
   static constexpr int n_outputs = 2;
   static constexpr int n_control_inputs = 2;
+  using ControlInputIndex = ConstexprArray<0,3>;
 
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Output
       Output;
 
   /// Parameters describing dynamics of compressor.
@@ -37,7 +39,7 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, 2> {
   Compressor(Parameters params = Parameters()) : params_(params) {}
 
   /// Copy constructor
-  Compressor(const Compressor& x) : params_(x.params_) {}
+  Compressor(const Compressor &x) : params_(x.params_) {}
 
   /// Equals operator
   Compressor &operator=(const Compressor &x) {

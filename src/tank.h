@@ -3,10 +3,11 @@
 
 #include "dynamic_system.h"
 #include "global.h"
+#include "constexpr_array.h"
 
 class ParallelCompressors;
 
-class Tank : public DynamicSystem<1, 3, 1, 0> {
+class Tank : public DynamicSystem<1, 3, 1, ConstexprArray<>> {
   friend ParallelCompressors;
 
  public:
@@ -14,12 +15,13 @@ class Tank : public DynamicSystem<1, 3, 1, 0> {
   constexpr static int n_inputs = 3;
   constexpr static int n_outputs = 1;
   constexpr static int n_control_inputs = 0;
+  using ControlInputIndex = ConstexprArray<>;
 
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::State
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Input
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, n_control_inputs>::Output
+  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Output
       Output;
 
   /// Parameters determining dynamics of tank.

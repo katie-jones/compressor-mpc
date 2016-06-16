@@ -10,9 +10,11 @@
  * inputs), n_outputs (number of outputs), n_control_inputs (number of inputs
  * used for control).
  */
-template <int n_states, int n_inputs, int n_outputs, int n_control_inputs>
+template <int n_states, int n_inputs, int n_outputs, typename ControlInputIndex>
 class DynamicSystem {
  public:
+  constexpr static int n_control_inputs = ControlInputIndex::size;
+
   /// Type describing system state.
   typedef Eigen::Array<double, n_states, 1> State;
 
@@ -52,6 +54,13 @@ class DynamicSystem {
 
   /// Return system output at given state.
   virtual Output GetOutput(const State x) const = 0;
+
+  /// Add inputs given in u_ctrl to plant input u
+  void ApplyControlInput(Input* u, const ControlInput& u_ctrl) {
+    Input du;
+    ControlInputIndex::ExpandArray(du.data(), u_ctrl.data());
+    u += du;
+  }
 };
 
 #endif

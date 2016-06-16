@@ -4,12 +4,14 @@
 
 #include "parallel_compressors.h"
 #include "reduced_dynamic_system.h"
+#include "constexpr_array.h"
 
 constexpr int n_states = 6;
 constexpr int n_outputs = 2;
 constexpr int n_inputs = 2;
-using RedSys =
-    ReducedDynamicSystem<n_states, n_outputs, n_inputs, ParallelCompressors>;
+
+using RedSys = ReducedDynamicSystem<n_states, n_outputs, ConstexprArray<0, 3>,
+                                    ParallelCompressors>;
 
 int main(void) {
   ParallelCompressors compressor;

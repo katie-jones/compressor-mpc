@@ -10,7 +10,7 @@
 #include "qpOASES.hpp"
 #include "input_constraints.h"
 
-template <class System, typename Delays, int p>
+template <class System, int p>
 class ControllerInterface {
  protected:
   static constexpr int n_control_inputs = System::n_control_inputs;
@@ -34,14 +34,8 @@ class ControllerInterface {
   /// Output of dynamic system for p time steps
   typedef Eigen::Matrix<double, n_outputs * p, 1> OutputPrediction;
 
-  /// Vector of indices for a ControlInput
-  typedef std::array<int, n_control_inputs> ControlInputIndex;
-
   /// Constructor
-  ControllerInterface(const Input& u_offset, 
-                      const ControlInputIndex& control_input_index)
-      : u_offset_(u_offset),
-        control_input_index_(control_input_index) {}
+  ControllerInterface(const Input& u_offset) : u_offset_(u_offset) {}
 
   /**
    * Compute the next input to apply to the system.
@@ -50,31 +44,8 @@ class ControllerInterface {
    */
   virtual const ControlInput GetNextInput(const Output& y) = 0;
 
-  /// output plant input based on control input and offset
-  const Input GetPlantInput(const ControlInput& u_control) const {
-    Input u = u_offset_;
-    for (int i = 0; i < n_control_inputs; i++) {
-      u(control_input_index_[i]) += u_control(i);
-    }
-    return u;
-  }
-
-  /// output control input based on plant input and offset
-  const ControlInput GetControlInput(const Input& u) const {
-    ControlInput u_control;
-    for (int i = 0; i < n_control_inputs; i++) {
-      u_control(i) =
-          u(control_input_index_[i]) - u_offset_(control_input_index_[i]);
-    }
-    return u_control;
-  }
-
  protected:
-  const Input u_offset_;             // offset applied to control input
-  static constexpr auto n_delay_ = Delays();  // delay states per input
-  const ControlInputIndex
-      control_input_index_;  // index such that ControlInput[i] ->
-                             // Input[control_input_index_[i]]
+  const Input u_offset_;  // offset applied to control input
 };
 
 #endif

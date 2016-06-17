@@ -2,7 +2,6 @@
 #define DYNAMIC_SYSTEM_H
 
 #include <Eigen/Eigen>
-#include "print_matrix.h"
 
 /**
  * Abstract class describing a dynamic system.
@@ -33,14 +32,6 @@ class DynamicSystem {
     Eigen::Matrix<double, n_states, n_control_inputs, Eigen::RowMajor> B;
     Eigen::Matrix<double, n_outputs, n_states, Eigen::RowMajor> C;
     Eigen::Matrix<double, n_states, 1> f;
-    friend std::ostream& operator<<(std::ostream& os,
-                                    const Linearized& linsys) {
-      print_matrix(os, linsys.A, "A");
-      print_matrix(os, linsys.B, "B");
-      print_matrix(os, linsys.C, "C");
-      print_matrix(os, linsys.f, "f");
-      return os;
-    }
   };
 
   virtual ~DynamicSystem() {}
@@ -55,11 +46,17 @@ class DynamicSystem {
   /// Return system output at given state.
   virtual Output GetOutput(const State x) const = 0;
 
-  /// Add inputs given in u_ctrl to plant input u
-  void ApplyControlInput(Input* u, const ControlInput& u_ctrl) {
-    Input du;
-    ControlInputIndex::ExpandArray(du.data(), u_ctrl.data());
-    u += du;
+  /// output plant input based on control input and offset
+  const Input GetPlantInput(const ControlInput& u_control,
+                            const Input& u_offset) const {
+    Input u = u_offset;
+    ControlInputIndex::ExpandArray(u.data(), u_control.data());
+    return u;
+  }
+
+  /// output control input based on plant input and offset
+  const ControlInput GetControlInput(const Input& u) const {
+    return ControlInputIndex::GetSubVector(u);
   }
 };
 

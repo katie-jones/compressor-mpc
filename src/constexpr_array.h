@@ -1,6 +1,7 @@
 #ifndef CONSTEXPR_ARRAY_H
 #define CONSTEXPR_ARRAY_H
 #include <utility>
+#include <Eigen/Eigen>
 
 template <int... Ints>
 class ConstexprArray {
@@ -41,7 +42,7 @@ class ConstexprArray {
   template <typename T>
   static void GetSubArray(T* x_out, const T* x_in) {
     using expander = T[];
-    (void) expander{(*(x_out++) = x_in[Ints])...};
+    (void)expander{(*(x_out++) = x_in[Ints])...};
   }
 
   /// Sub-array of current array with indices SubInts...
@@ -59,12 +60,22 @@ class ConstexprArray {
   template <typename Indices>
   using IndicesSubArray = decltype(GetConstexprSubArray(Indices()));
 
-  /// Return the entries of x_in as entries Ints... in larger array x_out.
+  /// Add the entries of x_in to entries Ints... in larger array x_out.
   /// Entries of x_out not contained in Ints... are not modified.
   template <typename T>
   static void ExpandArray(T* x_out, const T* x_in) {
     using expander = T[];
-    (void) expander{(x_out[Ints] = *(x_in++))...};
+    (void)expander{(x_out[Ints] += *(x_in++))...};
+  }
+
+  // Function to get subvector from an Eigen vector
+  template <typename Derived>
+  Eigen::Matrix<double, size, 1> GetSubVector(
+      const Eigen::MatrixBase<Derived>& x) {
+    static_assert(x.cols() == 1, "Input should be a vector.");
+    Eigen::Matrix<double, size, 1> x_reduced;
+    GetSubArray(x_reduced.data(), x.data());
+    return x_reduced;
   }
 
   constexpr int operator[](const int i) const { return data_[i]; }

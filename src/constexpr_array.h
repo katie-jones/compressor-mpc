@@ -55,6 +55,13 @@ class ConstexprArray {
       ConstexprArray<SubInts...>) {
     return ConstexprSubArray<SubInts...>();
   }
+  
+  /// Return sub-array of current array based on array given
+  template <int... SubInts>
+  static constexpr ConstexprSubArray<SubInts...> GetConstexprSubArray(
+      std::integer_sequence<int, SubInts...>) {
+    return ConstexprSubArray<SubInts...>();
+  }
 
   /// Sub-array of current array
   template <typename Indices>
@@ -75,6 +82,41 @@ class ConstexprArray {
     Eigen::Matrix<double, size, 1> x_reduced;
     GetSubArray(x_reduced.data(), x.data());
     return x_reduced;
+  }
+
+  // Function to get subvector from an Eigen vector
+  template <int N>
+  static void GetSubVector(Eigen::Matrix<double, size, 1>* x_reduced,
+                           const Eigen::Matrix<double, N, 1>& x) {
+    GetSubArray(x_reduced->data(), x.data());
+  }
+
+  // Function to get submatrix from an Eigen matrix
+  template <int N, typename T>
+  static void GetSubMatrix(Eigen::Matrix<T, size, size>* x_reduced,
+                           const Eigen::Matrix<T, N, N>& x) {
+    T* new_data = x_reduced->data();
+    const T* old_data = x.data();
+
+    auto get_sub_row = [](T*& a, const T* b) {
+      GetSubArray(a, b);
+      a += size;
+      return 0;
+    };
+
+    int dummy[]{get_sub_row(new_data, old_data + (N * Ints))...};
+  }
+
+  // Function to get submatrix from an Eigen matrix
+  template <int N, typename T>
+  static void GetSubMatrix(T* new_data, const T* old_data) {
+    auto get_sub_row = [](T*& a, const T* b) {
+      GetSubArray(a, b);
+      a += size;
+      return 0;
+    };
+
+    int dummy[]{get_sub_row(new_data, old_data + (N * Ints))...};
   }
 
   constexpr int operator[](const int i) const { return data_[i]; }
@@ -122,6 +164,5 @@ class ConstexprArrayList {
     return Array::GetSum();
   }
 };
-
 
 #endif

@@ -3,72 +3,36 @@
 #include <iostream>
 #include "aug_lin_sys.h"
 #include "input_constraints.h"
-#include "noncooperative_controller.h"
 #include "observer.h"
 #include "parallel_compressors.h"
-#include "print_matrix.h"
 #include "simulation_system.h"
 #include "constexpr_array.h"
+#include "null_index_array.h"
 #include "distributed_controller.h"
 #include "nerve_center.h"
+#include "parallel_compressors_constants.h"
 
-namespace Control {
-constexpr int n_delay_states = 80;
-constexpr int n_disturbance_states = 4;
-constexpr int p = 100;
-constexpr int m = 2;
-constexpr int n_controllers = 2;
-constexpr int n_sub_outputs = 3;
-constexpr int n_sub_control_inputs = 2;
-
-using Delays = ConstexprArray<0, 40, 0, 40>;
-using OutputIndices = ConstexprArray<0, 1, 3>;
-using StateIndices = ConstexprArray<0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10>;
-using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
-using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;
-using InputIndices = ConstexprArray<0, 3, 4, 7>;
-using ControlledOutputIndices = ConstexprArray<0, 1, 3>;
-
-using OutputIndexList = ConstexprArrayList<OutputIndices, OutputIndices>;
-using StateIndexList = ConstexprArrayList<StateIndices, StateIndices>;
-}
-
-using namespace Control;
-
-using AugmentedSystem1 =
-    AugmentedLinearizedSystem<ParallelCompressors, Delays, n_disturbance_states,
-                              ControlInputIndices1, n_sub_control_inputs>;
-using AugmentedSystem2 =
-    AugmentedLinearizedSystem<ParallelCompressors, Delays, n_disturbance_states,
-                              ControlInputIndices2, n_sub_control_inputs>;
-
-using Obsv1 = Observer<AugmentedSystem1>;
-using Obsv2 = Observer<AugmentedSystem2>;
-
-using Controller1 =
-    DistributedController<AugmentedSystem1, ControlledOutputIndices, p, m>;
-using Controller2 =
-    DistributedController<AugmentedSystem2, ControlledOutputIndices, p, m>;
+using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
-using NvCtr = NerveCenter<ParallelCompressors, StateIndexList, OutputIndexList,
-                          Controller1, Controller2>;
+using NvCtr =
+    NerveCenter<ParallelCompressors, n_total_states, CONTROLLER1, CONTROLLER2>;
 
-extern template class AugmentedLinearizedSystem<
-    ParallelCompressors, Delays, n_disturbance_states, ControlInputIndices1,
-    n_sub_control_inputs>;
-extern template class AugmentedLinearizedSystem<
-    ParallelCompressors, Delays, n_disturbance_states, ControlInputIndices2,
-    n_sub_control_inputs>;
+using AugmentedSystem1 = AUGMENTEDSYSTEM1;
+using AugmentedSystem2 = AUGMENTEDSYSTEM2;
 
-extern template class Observer<AugmentedSystem1>;
-extern template class Observer<AugmentedSystem2>;
+using Obsv1 = OBSERVER1;
+using Obsv2 = OBSERVER2;
 
-extern template class DistributedController<AugmentedSystem1,
-                                            ControlledOutputIndices, p, m>;
-extern template class DistributedController<AugmentedSystem2,
-                                            ControlledOutputIndices, p, m>;
+using Controller1 = CONTROLLER1;
+using Controller2 = CONTROLLER2;
+
+extern template class AUGMENTEDSYSTEM1;
+extern template class AUGMENTEDSYSTEM1;
+
+extern template class OBSERVER1;
+extern template class OBSERVER2;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -111,7 +75,7 @@ int main(void) {
   const Obsv1::ObserverMatrix M =
       (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                 compressor.n_outputs>::Zero(),
-       Eigen::Matrix<double, Control::n_disturbance_states,
+       Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
   // Controller::UWeightType uwt = Controller::UWeightType::Zero();

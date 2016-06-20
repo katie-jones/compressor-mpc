@@ -28,7 +28,4 @@ int main(void) {
                       index_states, index_outputs, index_inputs);
   RedSys::State x;
   x << x_default.head<5>(), x_default(10);
-
-  std::cout << comp_reduced.GetLinearizedSystem(
-                   x, ParallelCompressors::GetDefaultInput()) << std::endl;
 }

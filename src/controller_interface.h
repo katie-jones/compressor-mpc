@@ -9,7 +9,7 @@
 #include "qpOASES.hpp"
 #include "input_constraints.h"
 
-template <class System, int p>
+template <class System>
 class ControllerInterface {
  protected:
   static constexpr int n_control_inputs = System::n_control_inputs;
@@ -30,9 +30,6 @@ class ControllerInterface {
   /// Output of dynamic system
   typedef Eigen::Matrix<double, n_outputs, 1> Output;
 
-  /// Output of dynamic system for p time steps
-  typedef Eigen::Matrix<double, n_outputs * p, 1> OutputPrediction;
-
   /// Constructor
   ControllerInterface(const Input& u_offset) : u_offset_(u_offset) {}
 
@@ -44,7 +41,7 @@ class ControllerInterface {
   virtual const ControlInput GetNextInput(const Output& y) = 0;
 
  protected:
-  const Input u_offset_;  // offset applied to control input
+  Input u_offset_;  // offset applied to control input
 };
 
 #endif

@@ -6,7 +6,6 @@
 #include "dynamic_system.h"
 #include "aug_lin_sys.h"
 #include "observer.h"
-#include "mpc_exceptions.h"
 #include "qpOASES.hpp"
 #include "input_constraints.h"
 

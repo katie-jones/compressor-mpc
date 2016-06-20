@@ -3,7 +3,6 @@
 
 #include <Eigen/Eigen>
 #include <iostream>
-#include "mpc_exceptions.h"
 
 template <typename Delays>
 class TimeDelay {

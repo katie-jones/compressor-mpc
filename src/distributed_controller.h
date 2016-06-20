@@ -8,7 +8,9 @@
 #include "observer.h"
 #include "constexpr_array.h"
 
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
 class DistributedController {
  private:
   static constexpr int n_delay_states = AugLinSys::n_delay_states;
@@ -30,8 +32,10 @@ class DistributedController {
   using ControlInput =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::ControlInput;
-  using ControlOutput = typename MpcQpSolver<n_total_states, n_controlled_outputs,
-                                      n_control_inputs, p, m>::Output;
+  using FullControlInput = typename AugLinSys::ControlInput;
+  using ControlOutput =
+      typename MpcQpSolver<n_total_states, n_controlled_outputs,
+                           n_control_inputs, p, m>::Output;
   using Output = typename Observer<AugLinSys>::Output;
   using AugmentedState =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
@@ -69,10 +73,27 @@ class DistributedController {
                         const ObserverMatrix& M);
 
   /// Set initial output, input and state
-  void Initialize(const Output& y_init, const ControlInput& u_init,
-                  const Input& full_u_old, const State& x_init,
+  void Initialize(const State& x_init, const ControlInput& u_init,
+                  const Input& full_u_old, const Output& y_init,
                   const AugmentedState& dx_init = AugmentedState::Zero());
 
+  /// Set initial output, input and state based on those of full system
+  template <int n_states_full, int n_outputs_full, int n_total_states_full>
+  int InitializeFull(
+      const Eigen::Matrix<double, n_states_full, 1>& x_init_full,
+      const FullControlInput& u_init_full, const Input& full_u_old,
+      const Eigen::Matrix<double, n_outputs_full, 1>& y_init_full,
+      const Eigen::Matrix<double, n_total_states_full, 1> dx_init_full =
+          Eigen::Matrix<double, n_total_states_full, 1>::Zero()) {
+    State x_init = StateIndices::template IndicesSubArray<
+        std::make_integer_sequence<int, n_states>>::GetSubVector(x_init_full);
+
+    ControlInput u_init = AugLinSys::ControlInputIndexType::GetSubVector(
+                              u_init_full).template head<n_control_inputs>();
+    Output y_init = ObserverOutputIndices::GetSubVector(y_init_full);
+    AugmentedState dx_init = StateIndices::GetSubVector(dx_init_full);
+    Initialize(x_init, u_init, full_u_old, y_init, dx_init);
+  }
   /// Set QP weights
   void SetWeights(const UWeightType& uwt, const YWeightType& ywt) {
     qp_solver_.SetWeights(uwt, ywt);
@@ -100,18 +121,25 @@ class DistributedController {
 };
 
 // Declaration of static constexpr member
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
 constexpr typename AugLinSys::DelayType
     // constexpr auto
-    DistributedController<AugLinSys, ControlledOutputIndices, p, m>::n_delay_;
+    DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+                          ControlledOutputIndices, p, m>::n_delay_;
 
 /*
  * Get QP solution based on inputs of other controllers
  */
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
-void DistributedController<AugLinSys, ControlledOutputIndices, p, m>::GetInput(
-    ControlInputPrediction* u_solution, QP* qp,
-    const Eigen::VectorXd& du_last) {
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
+void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+                           ControlledOutputIndices, p,
+                           m>::GetInput(ControlInputPrediction* u_solution,
+                                        QP* qp,
+                                        const Eigen::VectorXd& du_last) {
   qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, su_other_,
                               du_last.data());
 }

@@ -178,6 +178,11 @@ int main(void) {
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
   NvCtr nerve_center(compressor, ctrl_tuple);
 
+  nerve_center.Initialize(compressor.GetDefaultState(),
+                          AugmentedSystem1::ControlInput::Zero(),
+                          compressor.GetDefaultInput(),
+                          compressor.GetOutput(compressor.GetDefaultState()));
+
   output_file.close();
   cpu_times_file.close();
   return 0;

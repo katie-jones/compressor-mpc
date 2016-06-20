@@ -3,16 +3,18 @@
 /*
  * Constructor
  */
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
-DistributedController<AugLinSys, ControlledOutputIndices, p, m>::
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
+DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+                      ControlledOutputIndices, p, m>::
     DistributedController(const AugLinSys& sys,
                           const InputConstraints<n_control_inputs>& constraints,
                           const ObserverMatrix& M)
     : observer_(Observer<AugLinSys>(M, Output::Zero())),
       auglinsys_(sys),
-      qp_solver_(
-          DistributedSolver<n_total_states, n_controlled_outputs, n_control_inputs, p, m>(
-              0, constraints)) {
+      qp_solver_(DistributedSolver<n_total_states, n_controlled_outputs,
+                                   n_control_inputs, p, m>(0, constraints)) {
   static_assert(n_disturbance_states >= 0,
                 "Number of disturbance states should be positive.");
   static_assert(p >= 0, "Prediction horizon should be positive.");
@@ -22,12 +24,15 @@ DistributedController<AugLinSys, ControlledOutputIndices, p, m>::
 /*
  * Initialize output, input, state
  */
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
-void DistributedController<AugLinSys, ControlledOutputIndices, p,
-                           m>::Initialize(const Output& y_init,
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
+void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+                           ControlledOutputIndices, p,
+                           m>::Initialize(const State& x_init,
                                           const ControlInput& u_init,
                                           const Input& full_u_old,
-                                          const State& x_init,
+                                          const Output& y_init,
                                           const AugmentedState& dx_init) {
   // Set arguments
   auglinsys_.Update(x_init, full_u_old);
@@ -71,8 +76,11 @@ void DistributedController<AugLinSys, ControlledOutputIndices, p,
 /*
  * Get solution based on previous iteration's outputs
  */
-template <class AugLinSys, typename ControlledOutputIndices, int p, int m>
-auto DistributedController<AugLinSys, ControlledOutputIndices, p,
+template <class AugLinSys, typename StateIndices,
+          typename ObserverOutputIndices, typename ControlledOutputIndices,
+          int p, int m>
+auto DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+                           ControlledOutputIndices, p,
                            m>::GenerateInitialQP(const Output& y,
                                                  const Input& full_u_old)
     -> QP {

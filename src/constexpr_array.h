@@ -69,10 +69,9 @@ class ConstexprArray {
   }
 
   // Function to get subvector from an Eigen vector
-  template <typename Derived>
-  Eigen::Matrix<double, size, 1> GetSubVector(
-      const Eigen::MatrixBase<Derived>& x) {
-    static_assert(x.cols() == 1, "Input should be a vector.");
+  template <int N>
+  static Eigen::Matrix<double, size, 1> GetSubVector(
+      const Eigen::Matrix<double, N, 1>& x) {
     Eigen::Matrix<double, size, 1> x_reduced;
     GetSubArray(x_reduced.data(), x.data());
     return x_reduced;
@@ -123,5 +122,6 @@ class ConstexprArrayList {
     return Array::GetSum();
   }
 };
+
 
 #endif

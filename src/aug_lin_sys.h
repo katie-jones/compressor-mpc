@@ -5,16 +5,14 @@
 #include <Eigen/SparseCore>
 
 #include "prediction.h"
+#include "null_index_array.h"
 
 template <class System>
 class Observer;
 
-struct NullIndexArray {
-  static constexpr int GetEntry(const int i) { return i; }
-};
-
 template <class System, typename Delays, int n_disturbance_states_in,
-          typename ControlInputIndices = NullIndexArray,
+          typename ControlInputIndices =
+              NullIndexArray<System::n_control_inputs>,
           int n_sub_control_inputs_in = -1>
 class AugmentedLinearizedSystem {
   friend Observer<
@@ -41,6 +39,7 @@ class AugmentedLinearizedSystem {
 
   /// Delays to system
   using DelayType = Delays;
+  using ControlInputIndexType = ControlInputIndices;
 
   /// State of the dynamic system
   typedef Eigen::Matrix<double, n_states, 1> State;

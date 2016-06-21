@@ -30,8 +30,10 @@ class NullIndexArray {
 
   /// Return the entries of x_in given in Ints... as smaller array x_out
   template <typename T>
-  static void GetSubArray(const T* x_out, const T* x_in) {
-    x_out = x_in;
+  static void GetSubArray(T* x_out, const T* x_in) {
+    for (int i = 0; i < size; i++) {
+      x_out[i] = x_in[i];
+    }
   }
 
   /// Sub-array of current array with indices SubInts...
@@ -70,10 +72,10 @@ class NullIndexArray {
       const Eigen::Matrix<double, size, 1>& x) {
     return x;
   }
-  
+
   // Function to get subvector from an Eigen vector
-  static void GetSubVector(Eigen::Matrix<double, size, 1>* x_out, 
-      const Eigen::Matrix<double, size, 1>& x) {
+  static void GetSubVector(Eigen::Matrix<double, size, 1>* x_out,
+                           const Eigen::Matrix<double, size, 1>& x) {
     *x_out = x;
   }
 

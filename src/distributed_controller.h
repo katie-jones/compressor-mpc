@@ -75,6 +75,7 @@ class DistributedController {
   static constexpr typename AugLinSys::DelayType n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
   Eigen::MatrixXd su_other_;            // effect of other inputs
+  QP qp_;
 
  public:
   /// Constructor
@@ -97,11 +98,11 @@ class DistributedController {
     qp_solver_.SetOutputReference(y_ref);
   }
 
-  /// Linearize and solve QP for initial input solution
-  QP GenerateInitialQP(const Output& y, const Input& full_u_old);
+  /// Linearize QP for initial input solution
+  void GenerateInitialQP(const Output& y, const Input& full_u_old);
 
   /// Re-solve QP based on updated inputs from other controllers
-  void GetInput(ControlInputPrediction* u_solution, QP* qp,
+  void GetInput(ControlInputPrediction* u_solution,
                 const Eigen::VectorXd& du_last);
 
   /// Return estimate of current state
@@ -131,9 +132,9 @@ template <class AugLinSys, typename StateIndices,
 void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            ControlledOutputIndices, p,
                            m>::GetInput(ControlInputPrediction* u_solution,
-                                        QP* qp,
                                         const Eigen::VectorXd& du_last) {
-  qp_solver_.UpdateAndSolveQP(qp, *u_solution, u_old_, su_other_,
+  QP qp_new = qp_;
+  qp_solver_.UpdateAndSolveQP(&qp_new, u_solution, u_old_, su_other_,
                               du_last.data());
 }
 

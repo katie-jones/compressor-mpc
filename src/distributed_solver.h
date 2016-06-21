@@ -52,7 +52,7 @@ class DistributedSolver
         index_(index) {}
 
   /// Return solution of QP generated based on prediction matrices given
-  void UpdateAndSolveQP(QP* qp, ControlInputPrediction& du_out,
+  void UpdateAndSolveQP(QP* qp, ControlInputPrediction* du_out,
                         const ControlInput u_old, const Eigen::MatrixXd Su_full,
                         const double* du_full);
 
@@ -95,7 +95,7 @@ class DistributedSolver
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p,
                        m>::UpdateAndSolveQP(QP* qp,
-                                            ControlInputPrediction& du_out,
+                                            ControlInputPrediction* du_out,
                                             const ControlInput u_old,
                                             const Eigen::MatrixXd Su_full,
                                             const double* du_full) {
@@ -103,7 +103,7 @@ void DistributedSolver<n_total_states, n_outputs, n_control_inputs, p,
   ApplyOtherInput(qp, du_full, Su_full);
 
   // Solve QP and return solution
-  du_out = this->SolveQP(*qp, u_old);
+  *du_out = this->SolveQP(*qp, u_old);
 }
 
 #endif

@@ -79,11 +79,11 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
 template <class AugLinSys, typename StateIndices,
           typename ObserverOutputIndices, typename ControlledOutputIndices,
           int p, int m>
-auto DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
+void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            ControlledOutputIndices, p,
                            m>::GenerateInitialQP(const Output& y,
                                                  const Input& full_u_old)
-    -> QP {
+    {
   // Observe and update linearization
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, full_u_old);
@@ -106,7 +106,6 @@ auto DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   }
 
   // Generate QP to solve
-  QP qp;
   Prediction pred;
   auglinsys_.template GeneratePrediction<ControlledOutputIndices>(
       &pred.Su, &pred.Sx, &pred.Sf, &su_other_, p, m);
@@ -115,9 +114,8 @@ auto DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   ControlOutput y_controlled;
   ControlledOutputIndices::GetSubArray(y_controlled.data(), y.data());
 
-  qp_solver_.GenerateDistributedQP(&qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
+  qp_solver_.GenerateDistributedQP(&qp_, pred.Su, pred.Sx, pred.Sf, delta_x0,
                                    n_aug_states, y_controlled);
-  return qp;
 }
 
 #include "distributed_controller_list.h"

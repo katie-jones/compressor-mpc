@@ -36,7 +36,7 @@ extern template class OBSERVER2;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
-// Controller *p_controller;
+NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
 
@@ -49,12 +49,12 @@ void Callback(ParallelCompressors::State x, double t) {
   output_file << y.transpose() << std::endl;
 
   // Get and apply next input
-  // Controller::ControlInput u =
-  // p_controller->GetNextInput(p_compressor->GetOutput(x), cpu_times_file);
-  // p_sim_compressor->SetInput(u);
+  NvCtr::ControlInput u =
+      p_controller->GetNextInput(p_compressor->GetOutput(x));
+  p_sim_compressor->SetInput(u);
 
-  // output_file << u.transpose() << std::endl
-  // << std::endl;
+  output_file << u.transpose() << std::endl
+              << std::endl;
 }
 
 int main(void) {
@@ -97,9 +97,7 @@ int main(void) {
   const AugmentedSystem1::Input u_offset = u_default;
 
   const NvCtr::OutputPrediction y_ref =
-      (NvCtr::Output() << 4.5, 4.5, 0, 1.12)
-          .finished()
-          .replicate<p, 1>();
+      (NvCtr::Output() << 4.5, 4.5, 0, 1.12).finished().replicate<p, 1>();
 
   // Input constraints
   InputConstraints<n_sub_control_inputs> constraints;
@@ -115,40 +113,27 @@ int main(void) {
   Controller1 ctrl1(sys1, constraints, M);
   Controller2 ctrl2(sys2, constraints, M);
 
-  // Test functions
-  // ctrl1.Initialize(compressor.GetOutput(x_init),
-  // AugmentedSystem1::SubControlInput::Zero(), u_offset, x_init);
-  // ctrl2.Initialize(compressor.GetOutput(x_init),
-  // AugmentedSystem2::SubControlInput::Zero(), u_offset, x_init);
-  // ctrl1.SetOutputReference(y_ref);
-  // ctrl2.SetOutputReference(y_ref);
-
-  // Generate a QP
-  // MpcQpSolver<
-  // n_disturbance_states + n_delay_states + ParallelCompressors::n_states,
-  // ControlledOutputIndices::size, n_sub_control_inputs, p, m>::QP qp =
-  // ctrl1.GenerateInitialQP(compressor.GetOutput(x_init), u_offset);
-
-  // Test QP solver
-  // Controller1::ControlInputPrediction u_sol;
-  // for (int i = 0; i < 20; i++) {
-  // ctrl1.GetInput(&u_sol, &qp,
-  // Eigen::Matrix<double, n_sub_control_inputs * m, 1>::Zero());
-
-  // std::cout << u_sol << std::endl;
-  // }
-
   // Create a nerve center
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
   NvCtr nerve_center(compressor, ctrl_tuple);
+  p_controller = &nerve_center;
+
+  // Test functions
+  nerve_center.SetWeights(uwt, ywt);
+  nerve_center.SetOutputReference(y_ref);
 
   nerve_center.Initialize(compressor.GetDefaultState(),
                           AugmentedSystem1::ControlInput::Zero(),
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
 
-  nerve_center.SetWeights(uwt, ywt);
-  nerve_center.SetOutputReference(y_ref);
+  NvCtr::ControlInput u_new = nerve_center.GetNextInput(
+      compressor.GetOutput(compressor.GetDefaultState()));
+
+  std::cout << "New Input: " << u_new << std::endl;
+
+  // Integrate system
+  sim_comp.Integrate(0, 50, sampling_time, &Callback);
 
   output_file.close();
   cpu_times_file.close();

@@ -14,8 +14,20 @@ class NerveCenter : public ControllerInterface<System> {
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_controllers = sizeof...(SubControllers);
+  // TODO: make this variable
+  static constexpr int n_solver_iterations = 2;
 
   using expander = int[];
+
+  static constexpr int GetPredictionControlInputs() {
+    int u_total = 0;
+    int dummy[]{
+        (u_total += SubControllers::m * SubControllers::n_control_inputs)...};
+    return u_total;
+  }
+
+  static constexpr int n_prediction_control_inputs =
+      GetPredictionControlInputs();
 
  public:
   using State = Eigen::Matrix<double, System::n_states, 1>;
@@ -23,6 +35,8 @@ class NerveCenter : public ControllerInterface<System> {
   using Input = Eigen::Matrix<double, System::n_inputs, 1>;
   using Output = Eigen::Matrix<double, System::n_outputs, 1>;
   using ControlInput = Eigen::Matrix<double, System::n_control_inputs, 1>;
+  using ControlInputPrediction =
+      Eigen::Matrix<double, n_prediction_control_inputs, 1>;
 
  protected:
   using ControllerInterface<System>::u_offset_;
@@ -41,8 +55,11 @@ class NerveCenter : public ControllerInterface<System> {
   // Current state estimate
   State x_;
 
-  // Previous applied input
+  // Previous applied control input
   ControlInput u_old_;
+
+  // Previous control input predictions
+  ControlInputPrediction du_old_;
 
   // Previous output from plant
   Output y_old_;
@@ -58,6 +75,7 @@ class NerveCenter : public ControllerInterface<System> {
   NerveCenter(const System& sys, std::tuple<SubControllers...>& controllers)
       : ControllerInterface<System>(Input::Zero()),
         sys_(sys),
+        du_old_(ControlInputPrediction::Zero()),
         sub_controllers_(controllers) {}
 
   /// Initialize all sub controllers based on given initial conditions
@@ -81,9 +99,38 @@ class NerveCenter : public ControllerInterface<System> {
         &std::get<SubControllers>(sub_controllers_), y_ref)...};
   }
 
-  // TODO: Write this function
+  /// Solve QPs and get next input to apply
   virtual const ControlInput GetNextInput(const Output& y) {
-    return ControlInput::Zero();
+    const Input& u_full_old = System::GetPlantInput(u_old_, u_offset_);
+    // Initialize all QPs
+    expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_), y,
+                                u_full_old)...};
+
+    // Solve QPs n_solver_iterations times
+    ControlInputPrediction du_prev = du_old_;
+    ControlInputPrediction du_new = ControlInputPrediction::Zero();
+
+    int prediction_index = 0;
+    for (int i = 0; i < n_solver_iterations; i++) {
+      expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
+                             &du_new, &prediction_index, du_prev)...};
+      du_prev = du_new;
+      prediction_index = 0;
+    }
+
+    // Update du_old_, u_old_
+    du_old_ = du_prev;
+
+    ControlInput du = -u_old_; // difference between curr and prev solution 
+
+    int input_index = 0;
+    expander{UpdateUOld<SubControllers>(&prediction_index, &input_index)...};
+
+    // Send solutions to subcontrollers
+    du += u_old_;
+    expander{SendUHelper(&std::get<SubControllers>(sub_controllers_),du)...};
+
+    return u_old_;
   }
 
  private:
@@ -138,6 +185,56 @@ class NerveCenter : public ControllerInterface<System> {
     }
 
     controller->SetOutputReference(y_ref_sub);
+  }
+
+  // Initialize QP for each controller
+  template <typename T>
+  int InitializeQPHelper(T* controller, const Output& y,
+                         const Input& u_full_old) {
+    typename T::Output y_sub;
+    T::ObserverOutputIndexType::GetSubArray(y_sub.data(), y.data());
+    controller->GenerateInitialQP(y_sub, u_full_old);
+  }
+
+  // Solve QP for each controller
+  template <typename T>
+  int SolveQPHelper(T* controller, ControlInputPrediction* du_new,
+                    int* prediction_index,
+                    const ControlInputPrediction& du_old) {
+    // Take previous solution from other controllers (not this one)
+    Eigen::Matrix<double,
+                  n_prediction_control_inputs - T::m * T::n_control_inputs,
+                  1> du_old_sub;
+    du_old_sub << du_old.head(*prediction_index),
+        du_old.tail(n_prediction_control_inputs - *prediction_index -
+                    T::m * T::n_control_inputs);
+
+    typename T::ControlInputPrediction du_new_sub;
+
+    // Get next control input from controller
+    controller->GetInput(&du_new_sub, du_old_sub);
+
+    // Copy new values and update index
+    du_new->template segment<T::m* T::n_control_inputs>(*prediction_index) =
+        du_new_sub;
+    *prediction_index += T::m* T::n_control_inputs;
+  }
+
+  // Add new solution (in du_old_) to u_old_
+  template <typename T>
+  int UpdateUOld(int* prediction_index, int* input_index) {
+    u_old_.template segment<T::n_control_inputs>(*input_index) +=
+        du_old_.template segment<T::n_control_inputs>(*prediction_index);
+    *prediction_index += T::m* T::n_control_inputs;
+    *input_index += T::n_control_inputs;
+  }
+
+  // Send new solution to subcontrollers
+  template <typename T>
+  int SendUHelper(T* controller, const ControlInput& du) {
+    ControlInput du_reordered;
+    T::ControlInputIndexType::GetSubArray(du_reordered.data(), du.data());
+    controller->UpdateU(du_reordered);
   }
 };
 

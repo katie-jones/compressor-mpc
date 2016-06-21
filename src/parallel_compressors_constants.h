@@ -49,15 +49,11 @@ constexpr int n_total_states =
     ParallelCompressors::n_states + n_delay_states + n_disturbance_states;
 
 using Delays = ConstexprArray<0, 40, 0, 40>;
-using OutputIndices = ConstexprArray<0, 1, 3>;
 using StateIndices = NullIndexArray<ParallelCompressors::n_states +
                                     n_delay_states + n_disturbance_states>;
 using ObserverOutputIndices = NullIndexArray<ParallelCompressors::n_outputs>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
 using ControlledOutputIndices = ConstexprArray<0, 1, 3>;
-
-using OutputIndexList = ConstexprArrayList<OutputIndices, OutputIndices>;
-using StateIndexList = ConstexprArrayList<StateIndices, StateIndices>;
 
 using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;

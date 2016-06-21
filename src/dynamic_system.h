@@ -47,8 +47,8 @@ class DynamicSystem {
   virtual Output GetOutput(const State x) const = 0;
 
   /// output plant input based on control input and offset
-  const Input GetPlantInput(const ControlInput& u_control,
-                            const Input& u_offset) const {
+  static const Input GetPlantInput(const ControlInput& u_control,
+                            const Input& u_offset) {
     Input u = u_offset;
     ControlInputIndex::ExpandArray(u.data(), u_control.data());
     return u;

@@ -78,26 +78,26 @@ int main(void) {
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  // Controller::UWeightType uwt = Controller::UWeightType::Zero();
-  // Controller::YWeightType ywt = Controller::YWeightType::Zero();
+  NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
+  NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
-  // std::ifstream weight_file;
-  // weight_file.open("uweight_coop");
-  // for (int i = 0; i < uwt.rows(); i++) {
-  // weight_file >> uwt(i, i);
-  // }
-  // weight_file.close();
+  std::ifstream weight_file;
+  weight_file.open("uweight_coop");
+  for (int i = 0; i < uwt.rows(); i++) {
+    weight_file >> uwt(i, i);
+  }
+  weight_file.close();
 
-  // weight_file.open("yweight_coop");
-  // for (int i = 0; i < ywt.rows(); i++) {
-  // weight_file >> ywt(i, i);
-  // }
-  // weight_file.close();
+  weight_file.open("yweight_coop");
+  for (int i = 0; i < ywt.rows(); i++) {
+    weight_file >> ywt(i, i);
+  }
+  weight_file.close();
 
   const AugmentedSystem1::Input u_offset = u_default;
 
-  const Controller1::OutputPrediction y_ref =
-      (Controller1::ControlOutput() << 4.5, 4.5, 1.12)
+  const NvCtr::OutputPrediction y_ref =
+      (NvCtr::Output() << 4.5, 4.5, 0, 1.12)
           .finished()
           .replicate<p, 1>();
 
@@ -146,6 +146,9 @@ int main(void) {
                           AugmentedSystem1::ControlInput::Zero(),
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
+
+  nerve_center.SetWeights(uwt, ywt);
+  nerve_center.SetOutputReference(y_ref);
 
   output_file.close();
   cpu_times_file.close();

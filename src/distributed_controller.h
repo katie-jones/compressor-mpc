@@ -10,12 +10,14 @@
 
 template <class AugLinSys, typename StateIndices,
           typename ObserverOutputIndices, typename ControlledOutputIndices,
-          int p, int m>
+          int p_in, int m_in>
 class DistributedController {
  private:
+  static constexpr int n_wsr_max = 10;  // max working set recalculations
+
+ public:
   static constexpr int n_delay_states = AugLinSys::n_delay_states;
   static constexpr int n_observer_outputs = AugLinSys::n_outputs;
-  static constexpr int n_controlled_outputs = ControlledOutputIndices::size;
   static constexpr int n_states = AugLinSys::n_states;
   static constexpr int n_control_inputs = AugLinSys::n_sub_control_inputs;
   static constexpr int n_disturbance_states = AugLinSys::n_disturbance_states;
@@ -23,10 +25,12 @@ class DistributedController {
   static constexpr int n_obs_states = n_states + n_disturbance_states;
   static constexpr int n_total_states = n_states + n_aug_states;
   static constexpr int n_inputs = AugLinSys::n_inputs;
+  static constexpr int n_full_control_inputs = AugLinSys::n_control_inputs;
 
-  static constexpr int n_wsr_max = 10;  // max working set recalculations
+  static constexpr int n_controlled_outputs = ControlledOutputIndices::size;
+  static constexpr int p = p_in;
+  static constexpr int m = m_in;
 
- public:
   using State = Eigen::Matrix<double, n_states, 1>;
   using Input = Eigen::Matrix<double, n_inputs, 1>;
   using ControlInput =
@@ -52,8 +56,14 @@ class DistributedController {
   using OutputPrediction =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::OutputPrediction;
-  using ControlInputIndex = typename AugLinSys::ControlInputIndex;
   using ObserverMatrix = typename Observer<AugLinSys>::ObserverMatrix;
+
+  using StateIndexType = StateIndices;
+  using ObserverOutputIndexType = ObserverOutputIndices;
+  using ControlledOutputIndexType = ControlledOutputIndices;
+  using ControlInputIndexType =
+      typename AugLinSys::ControlInputIndexType::template IndicesSubArray<
+          std::make_integer_sequence<int, n_control_inputs>>;
 
  protected:
   AugLinSys auglinsys_;
@@ -77,23 +87,6 @@ class DistributedController {
                   const Input& full_u_old, const Output& y_init,
                   const AugmentedState& dx_init = AugmentedState::Zero());
 
-  /// Set initial output, input and state based on those of full system
-  template <int n_states_full, int n_outputs_full, int n_total_states_full>
-  int InitializeFull(
-      const Eigen::Matrix<double, n_states_full, 1>& x_init_full,
-      const FullControlInput& u_init_full, const Input& full_u_old,
-      const Eigen::Matrix<double, n_outputs_full, 1>& y_init_full,
-      const Eigen::Matrix<double, n_total_states_full, 1> dx_init_full =
-          Eigen::Matrix<double, n_total_states_full, 1>::Zero()) {
-    State x_init = StateIndices::template IndicesSubArray<
-        std::make_integer_sequence<int, n_states>>::GetSubVector(x_init_full);
-
-    ControlInput u_init = AugLinSys::ControlInputIndexType::GetSubVector(
-                              u_init_full).template head<n_control_inputs>();
-    Output y_init = ObserverOutputIndices::GetSubVector(y_init_full);
-    AugmentedState dx_init = StateIndices::GetSubVector(dx_init_full);
-    Initialize(x_init, u_init, full_u_old, y_init, dx_init);
-  }
   /// Set QP weights
   void SetWeights(const UWeightType& uwt, const YWeightType& ywt) {
     qp_solver_.SetWeights(uwt, ywt);

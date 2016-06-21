@@ -30,7 +30,7 @@ template <class AugLinSys, typename StateIndices,
 void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            ControlledOutputIndices, p,
                            m>::Initialize(const State& x_init,
-                                          const ControlInput& u_init,
+                                          const FullControlInput& u_init,
                                           const Input& full_u_old,
                                           const Output& y_init,
                                           const AugmentedState& dx_init) {
@@ -51,7 +51,7 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   int index_delay_states = n_obs_states;
-  for (int i = 0; i < n_control_inputs; i++) {
+  for (int i = 0; i < n_full_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       for (int j = 0; j < n_delay_[i]; j++) {
         delta_x0(index_delay_states + j) -= u_old_[i];
@@ -70,7 +70,7 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
 
   qp_solver_.GenerateDistributedQP(&qp, pred.Su, pred.Sx, pred.Sf, delta_x0,
                                    n_aug_states, y_controlled);
-  qp_solver_.InitializeQPProblem(qp, u_old_);
+  qp_solver_.InitializeQPProblem(qp, u_old_.template head<n_control_inputs>());
 }
 
 /*
@@ -82,8 +82,7 @@ template <class AugLinSys, typename StateIndices,
 void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            ControlledOutputIndices, p,
                            m>::GenerateInitialQP(const Output& y,
-                                                 const Input& full_u_old)
-    {
+                                                 const Input& full_u_old) {
   // Observe and update linearization
   x_ += observer_.ObserveAPosteriori(y);
   auglinsys_.Update(x_, full_u_old);
@@ -96,7 +95,7 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
 
   // Adjust delayed inputs to account for linearization before applying
   int index_delay_states = n_obs_states;
-  for (int i = 0; i < n_control_inputs; i++) {
+  for (int i = 0; i < n_full_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       for (int j = 0; j < n_delay_[i]; j++) {
         delta_x0(index_delay_states + j) -= u_old_[i];

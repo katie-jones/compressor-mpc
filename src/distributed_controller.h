@@ -70,8 +70,8 @@ class DistributedController {
   Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_controlled_outputs, n_control_inputs, p,
                     m> qp_solver_;
-  State x_;             // current state of system
-  ControlInput u_old_;  // previous optimal input to system
+  State x_;                 // current state of system
+  FullControlInput u_old_;  // previous optimal input to system
   static constexpr typename AugLinSys::DelayType n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
   Eigen::MatrixXd su_other_;            // effect of other inputs
@@ -84,7 +84,7 @@ class DistributedController {
                         const ObserverMatrix& M);
 
   /// Set initial output, input and state
-  void Initialize(const State& x_init, const ControlInput& u_init,
+  void Initialize(const State& x_init, const FullControlInput& u_init,
                   const Input& full_u_old, const Output& y_init,
                   const AugmentedState& dx_init = AugmentedState::Zero());
 
@@ -96,6 +96,15 @@ class DistributedController {
   /// Set reference output
   void SetOutputReference(const OutputPrediction& y_ref) {
     qp_solver_.SetOutputReference(y_ref);
+  }
+
+  /// Update solution
+  void UpdateU(const FullControlInput& du) {
+    // Observe system
+    observer_.ObserveAPriori(du, u_old_);
+
+    // Update previous input
+    u_old_ += du;
   }
 
   /// Linearize QP for initial input solution
@@ -134,8 +143,9 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            m>::GetInput(ControlInputPrediction* u_solution,
                                         const Eigen::VectorXd& du_last) {
   QP qp_new = qp_;
-  qp_solver_.UpdateAndSolveQP(&qp_new, u_solution, u_old_, su_other_,
-                              du_last.data());
+  qp_solver_.UpdateAndSolveQP(&qp_new, u_solution,
+                              u_old_.template head<n_control_inputs>(),
+                              su_other_, du_last.data());
 }
 
 #endif

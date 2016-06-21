@@ -93,7 +93,7 @@ class NerveCenter : public ControllerInterface<System> {
                        const ControlInput& u_init, const Input& u_init_full,
                        const Output& y_init, const AugmentedState& dx_init) {
     typename T::State x_init_sub;
-    typename T::ControlInput u_init_sub;
+    typename T::FullControlInput u_init_sub;
     typename T::Output y_init_sub;
     typename T::AugmentedState dx_init_sub;
 

@@ -15,4 +15,9 @@ template class MpcQpSolver<PARALLEL_COMPRESSORS_CONSTANTS::n_total_states,
                            PARALLEL_COMPRESSORS_CONSTANTS::p,
                            PARALLEL_COMPRESSORS_CONSTANTS::m>;
 
+template class MpcQpSolver<PARALLEL_COMPRESSORS_CONSTANTS::n_total_states,
+                           PARALLEL_COMPRESSORS_CONSTANTS::n_sub_outputs,
+                           ParallelCompressors::n_control_inputs,
+                           PARALLEL_COMPRESSORS_CONSTANTS::p,
+                           PARALLEL_COMPRESSORS_CONSTANTS::m>;
 #endif

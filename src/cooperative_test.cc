@@ -2,37 +2,31 @@
 #include <fstream>
 #include <iostream>
 #include "aug_lin_sys.h"
+#include "constexpr_array.h"
+#include "distributed_controller.h"
 #include "input_constraints.h"
+#include "nerve_center.h"
+#include "null_index_array.h"
 #include "observer.h"
 #include "parallel_compressors.h"
-#include "simulation_system.h"
-#include "constexpr_array.h"
-#include "null_index_array.h"
-#include "distributed_controller.h"
-#include "nerve_center.h"
 #include "parallel_compressors_constants.h"
+#include "simulation_system.h"
 
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
-using NvCtr =
-    NerveCenter<ParallelCompressors, n_total_states, CONTROLLER1, CONTROLLER2>;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states, CONTROLLER_COOP1,
+                          CONTROLLER_COOP2>;
 
-using AugmentedSystem1 = AUGMENTEDSYSTEM1;
-using AugmentedSystem2 = AUGMENTEDSYSTEM2;
+using AugmentedSystem1 = AUGMENTEDSYSTEM_COOP1;
+using AugmentedSystem2 = AUGMENTEDSYSTEM_COOP2;
 
-using Obsv1 = OBSERVER1;
-using Obsv2 = OBSERVER2;
+using Obsv1 = OBSERVER_COOP1;
+using Obsv2 = OBSERVER_COOP2;
 
-using Controller1 = CONTROLLER1;
-using Controller2 = CONTROLLER2;
-
-extern template class AUGMENTEDSYSTEM1;
-extern template class AUGMENTEDSYSTEM1;
-
-extern template class OBSERVER1;
-extern template class OBSERVER2;
+using Controller1 = CONTROLLER_COOP1;
+using Controller2 = CONTROLLER_COOP2;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -55,15 +49,13 @@ void Callback(ParallelCompressors::State x, double t) {
       p_controller->GetNextInput(&timer, p_compressor->GetOutput(x));
 
   boost::timer::cpu_times elapsed = timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(elapsed.system +
-                                           elapsed.user);
+  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
 
   cpu_times_file << elapsed_ns << std::endl;
 
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
+  output_file << u.transpose() << std::endl << std::endl;
 }
 
 int main(void) {
@@ -71,7 +63,7 @@ int main(void) {
 
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system +
-                                           time_offset.user);
+                                          time_offset.user);
 
   output_file.open("coop_output.dat");
   cpu_times_file.open("coop_cpu_times.dat");
@@ -91,7 +83,8 @@ int main(void) {
       (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                 compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
-                     compressor.n_outputs>::Identity()).finished();
+                     compressor.n_outputs>::Identity())
+          .finished();
 
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
@@ -143,12 +136,12 @@ int main(void) {
                           compressor.GetOutput(compressor.GetDefaultState()));
 
   // NvCtr::ControlInput u_new = nerve_center.GetNextInput(
-      // compressor.GetOutput(compressor.GetDefaultState()));
+  // compressor.GetOutput(compressor.GetDefaultState()));
 
   // std::cout << "New Input: " << u_new << std::endl;
-  
+
   NvCtr::ControlInput u;
-  u << 0,1,2,3;
+  u << 0, 1, 2, 3;
 
   NvCtr::ControlInput u_reordered;
 

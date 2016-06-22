@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 project(Compressor_MPC CXX)
 
 # Use gcc 5.2 to get c++14 standard
-set( CMAKE_CXX_COMPILER "/usr/local/bin/g++-5.2" )
+set( CMAKE_CXX_COMPILER "/usr/local/bin/g++" )
 
 # export library path to find correct versions of shit
 set(ENV{LD_LIBRARY_PATH} "/usr/local/lib64" )

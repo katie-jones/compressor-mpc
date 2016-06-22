@@ -8,11 +8,9 @@
 #include "aug_lin_sys.h"
 #include "parallel_compressors_constants.h"
 
-extern template class AUGMENTEDSYSTEM1;
-extern template class AUGMENTEDSYSTEM2;
-
-template class CONTROLLER1; 
-template class CONTROLLER2;
+template class CONTROLLER_COOP1; 
+template class CONTROLLER_COOP2;
+template class CONTROLLER_CENTRALIZED;
 
 
 #endif

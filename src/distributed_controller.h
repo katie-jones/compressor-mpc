@@ -2,6 +2,7 @@
 #define DISTRIBUTED_CONTROLLER_H
 
 #include <Eigen/Eigen>
+#include <boost/timer/timer.hpp>
 
 #include "distributed_solver.h"
 #include "input_constraints.h"
@@ -106,13 +107,37 @@ class DistributedController {
     // Update previous input
     u_old_ += du;
   }
+  
+  /// Update solution
+  void UpdateU(boost::timer::cpu_timer* time_out, const FullControlInput& du) {
+    time_out->resume();
+    UpdateU(du);
+    time_out->stop();
+  }
 
   /// Linearize QP for initial input solution
   void GenerateInitialQP(const Output& y, const Input& full_u_old);
 
+  /// Linearize QP for initial input solution
+  void GenerateInitialQP(boost::timer::cpu_timer* time_out, const Output& y,
+                         const Input& full_u_old) {
+    time_out->resume();
+    GenerateInitialQP(y, full_u_old);
+    time_out->stop();
+  }
+
   /// Re-solve QP based on updated inputs from other controllers
   void GetInput(ControlInputPrediction* u_solution,
                 const Eigen::VectorXd& du_last);
+
+  /// Re-solve QP based on updated inputs from other controllers
+  void GetInput(boost::timer::cpu_timer* time_out,
+                ControlInputPrediction* u_solution,
+                const Eigen::VectorXd& du_last) {
+    time_out->resume();
+    GetInput(u_solution, du_last);
+    time_out->stop();
+  }
 
   /// Return estimate of current state
   State GetStateEstimate() { return x_; }

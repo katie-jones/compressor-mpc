@@ -2,6 +2,7 @@
 #define NERVE_CENTER_H
 
 #include <tuple>
+#include <boost/timer/timer.hpp>
 
 #include "distributed_controller.h"
 #include "controller_interface.h"
@@ -100,11 +101,12 @@ class NerveCenter : public ControllerInterface<System> {
   }
 
   /// Solve QPs and get next input to apply
-  virtual const ControlInput GetNextInput(const Output& y) {
+  const ControlInput GetNextInput(boost::timer::cpu_timer* time_out,
+                                  const Output& y) {
     const Input& u_full_old = System::GetPlantInput(u_old_, u_offset_);
     // Initialize all QPs
-    expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_), y,
-                                u_full_old)...};
+    expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_),
+                                time_out, y, u_full_old)...};
 
     // Solve QPs n_solver_iterations times
     ControlInputPrediction du_prev = du_old_;
@@ -113,7 +115,7 @@ class NerveCenter : public ControllerInterface<System> {
     int prediction_index = 0;
     for (int i = 0; i < n_solver_iterations; i++) {
       expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
-                             &du_new, &prediction_index, du_prev)...};
+                             time_out, &du_new, &prediction_index, du_prev)...};
       du_prev = du_new;
       prediction_index = 0;
     }
@@ -121,16 +123,23 @@ class NerveCenter : public ControllerInterface<System> {
     // Update du_old_, u_old_
     du_old_ = du_prev;
 
-    ControlInput du = -u_old_; // difference between curr and prev solution 
+    ControlInput du = -u_old_;  // difference between curr and prev solution
 
     int input_index = 0;
     expander{UpdateUOld<SubControllers>(&prediction_index, &input_index)...};
 
     // Send solutions to subcontrollers
     du += u_old_;
-    expander{SendUHelper(&std::get<SubControllers>(sub_controllers_),du)...};
+    expander{SendUHelper(&std::get<SubControllers>(sub_controllers_), time_out,
+                         du)...};
 
     return u_old_;
+  }
+
+  /// Solve QPs and get next input to apply
+  virtual const ControlInput GetNextInput(const Output& y) {
+    boost::timer::cpu_timer timer;
+    return GetNextInput(&timer, y);
   }
 
  private:
@@ -189,18 +198,21 @@ class NerveCenter : public ControllerInterface<System> {
 
   // Initialize QP for each controller
   template <typename T>
-  int InitializeQPHelper(T* controller, const Output& y,
-                         const Input& u_full_old) {
+  int InitializeQPHelper(T* controller, boost::timer::cpu_timer* time_out,
+                         const Output& y, const Input& u_full_old) {
+    time_out->resume();
     typename T::Output y_sub;
     T::ObserverOutputIndexType::GetSubArray(y_sub.data(), y.data());
     controller->GenerateInitialQP(y_sub, u_full_old);
+    time_out->stop();
   }
 
   // Solve QP for each controller
   template <typename T>
-  int SolveQPHelper(T* controller, ControlInputPrediction* du_new,
-                    int* prediction_index,
+  int SolveQPHelper(T* controller, boost::timer::cpu_timer* time_out,
+                    ControlInputPrediction* du_new, int* prediction_index,
                     const ControlInputPrediction& du_old) {
+    // time_out->resume();
     // Take previous solution from other controllers (not this one)
     Eigen::Matrix<double,
                   n_prediction_control_inputs - T::m * T::n_control_inputs,
@@ -218,6 +230,8 @@ class NerveCenter : public ControllerInterface<System> {
     du_new->template segment<T::m* T::n_control_inputs>(*prediction_index) =
         du_new_sub;
     *prediction_index += T::m* T::n_control_inputs;
+
+    // time_out->stop();
   }
 
   // Add new solution (in du_old_) to u_old_
@@ -231,10 +245,14 @@ class NerveCenter : public ControllerInterface<System> {
 
   // Send new solution to subcontrollers
   template <typename T>
-  int SendUHelper(T* controller, const ControlInput& du) {
+  int SendUHelper(T* controller, boost::timer::cpu_timer* time_out,
+                  const ControlInput& du) {
+    time_out->resume();
     ControlInput du_reordered;
+    du_reordered.setZero();
     T::ControlInputIndexType::GetSubArray(du_reordered.data(), du.data());
     controller->UpdateU(du_reordered);
+    time_out->stop();
   }
 };
 

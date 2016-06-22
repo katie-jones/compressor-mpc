@@ -18,30 +18,35 @@ int main(void) {
   // for (auto k = 0; k < 1e6; k++) {
   for (auto j = 0; j < 1e2; j++) {
     for (auto i = 0; i < 1e6; i++) {
-      // x.GetSubArray(sub_data, data);
+      x.GetSubArray(sub_data, data);
     }
   }
   // }
+  timer1.stop();
   boost::timer::cpu_times int_elapsed = timer1.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(int_elapsed.wall);  // system +
+  boost::timer::nanosecond_type elapsed_ns(int_elapsed.system +
+                                           int_elapsed.user);  // system +
 
   std::cout << sub_data[0] << std::endl;
 
   std::cout << "Pre-compiled: " << elapsed_ns << std::endl;
 
+  int n_elem = x.size;
   // Time solution 1
   boost::timer::cpu_timer timer2;
   // for (auto k = 0; k < 1e6; k++) {
   for (auto j = 0; j < 1e2; j++) {
     for (auto i = 0; i < 1e6; i++) {
       for (auto n = 0; n < x.size; n++) {
-        // sub_data[n] = data[x[n]];
+        sub_data[n] = data[x[n]];
       }
     }
   }
   // }
+  timer2.stop();
   int_elapsed = timer2.elapsed();
-  boost::timer::nanosecond_type elapsed_ns2(int_elapsed.wall);  // system +
+  boost::timer::nanosecond_type elapsed_ns2(int_elapsed.system +
+                                            int_elapsed.user);  // system +
 
   std::cout << "Runtime: " << elapsed_ns2 << std::endl;
 

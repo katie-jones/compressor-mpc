@@ -40,6 +40,8 @@ NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
 
+boost::timer::cpu_timer timer;
+
 void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
@@ -50,7 +52,14 @@ void Callback(ParallelCompressors::State x, double t) {
 
   // Get and apply next input
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller->GetNextInput(&timer, p_compressor->GetOutput(x));
+
+  boost::timer::cpu_times elapsed = timer.elapsed();
+  boost::timer::nanosecond_type elapsed_ns(elapsed.system +
+                                           elapsed.user);
+
+  cpu_times_file << elapsed_ns << std::endl;
+
   p_sim_compressor->SetInput(u);
 
   output_file << u.transpose() << std::endl
@@ -58,6 +67,12 @@ void Callback(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
+  timer.stop();
+
+  boost::timer::cpu_times time_offset = timer.elapsed();
+  boost::timer::nanosecond_type offset_ns(time_offset.system +
+                                           time_offset.user);
+
   output_file.open("coop_output.dat");
   cpu_times_file.open("coop_cpu_times.dat");
 
@@ -127,13 +142,30 @@ int main(void) {
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
 
-  NvCtr::ControlInput u_new = nerve_center.GetNextInput(
-      compressor.GetOutput(compressor.GetDefaultState()));
+  // NvCtr::ControlInput u_new = nerve_center.GetNextInput(
+      // compressor.GetOutput(compressor.GetDefaultState()));
 
-  std::cout << "New Input: " << u_new << std::endl;
+  // std::cout << "New Input: " << u_new << std::endl;
+  
+  NvCtr::ControlInput u;
+  u << 0,1,2,3;
+
+  NvCtr::ControlInput u_reordered;
+
+  ControlInputIndices2::GetSubArray(u_reordered.data(), u.data());
+
+  std::cout << u_reordered << std::endl;
 
   // Integrate system
   sim_comp.Integrate(0, 50, sampling_time, &Callback);
+
+  // Apply disturbance
+  ParallelCompressors::Input u_disturbance = u_default;
+  u_disturbance(8) -= 0.3;
+
+  sim_comp.SetOffset(u_disturbance);
+
+  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
   output_file.close();
   cpu_times_file.close();

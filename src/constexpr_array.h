@@ -41,8 +41,9 @@ class ConstexprArray {
   /// Return the entries of x_in given in Ints... as smaller array x_out
   template <typename T>
   static void GetSubArray(T* x_out, const T* x_in) {
-    using expander = T[];
-    (void)expander{(*(x_out++) = x_in[Ints])...};
+    for (int i = 0; i < size; i++) {
+      x_out[i] = x_in[data_[i]];
+    }
   }
 
   /// Sub-array of current array with indices SubInts...
@@ -55,7 +56,7 @@ class ConstexprArray {
       ConstexprArray<SubInts...>) {
     return ConstexprSubArray<SubInts...>();
   }
-  
+
   /// Return sub-array of current array based on array given
   template <int... SubInts>
   static constexpr ConstexprSubArray<SubInts...> GetConstexprSubArray(

@@ -10,6 +10,10 @@
 
 template class CONTROLLER_COOP1; 
 template class CONTROLLER_COOP2;
+
+template class CONTROLLER_NONCOOP1; 
+template class CONTROLLER_NONCOOP2;
+
 template class CONTROLLER_CENTRALIZED;
 
 

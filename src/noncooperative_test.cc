@@ -12,13 +12,15 @@
 #include "parallel_compressors_constants.h"
 #include "simulation_system.h"
 
+constexpr int n_solver_iterations = 3;
+
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
 using NvCtr =
     NerveCenter<ParallelCompressors, n_total_states, n_solver_iterations,
-                CONTROLLER_COOP1, CONTROLLER_COOP2>;
+                CONTROLLER_NONCOOP1, CONTROLLER_NONCOOP2>;
 
 using AugmentedSystem1 = AUGMENTEDSYSTEM_DIST1;
 using AugmentedSystem2 = AUGMENTEDSYSTEM_DIST2;
@@ -26,8 +28,8 @@ using AugmentedSystem2 = AUGMENTEDSYSTEM_DIST2;
 using Obsv1 = OBSERVER_DIST1;
 using Obsv2 = OBSERVER_DIST2;
 
-using Controller1 = CONTROLLER_COOP1;
-using Controller2 = CONTROLLER_COOP2;
+using Controller1 = CONTROLLER_NONCOOP1;
+using Controller2 = CONTROLLER_NONCOOP2;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -67,8 +69,8 @@ int main(void) {
   boost::timer::nanosecond_type offset_ns(time_offset.system +
                                           time_offset.user);
 
-  output_file.open("coop_output.dat");
-  cpu_times_file.open("coop_cpu_times.dat");
+  output_file.open("noncoop_output.dat");
+  cpu_times_file.open("noncoop_cpu_times.dat");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -91,13 +93,13 @@ int main(void) {
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
   std::ifstream weight_file;
-  weight_file.open("uweight_coop");
+  weight_file.open("uweight_noncoop");
   for (int i = 0; i < uwt.rows(); i++) {
     weight_file >> uwt(i, i);
   }
   weight_file.close();
 
-  weight_file.open("yweight_coop");
+  weight_file.open("yweight_noncoop");
   for (int i = 0; i < ywt.rows(); i++) {
     weight_file >> ywt(i, i);
   }

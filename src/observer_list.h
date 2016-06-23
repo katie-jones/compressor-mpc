@@ -5,8 +5,8 @@
 #include "aug_lin_sys.h"
 #include "parallel_compressors_constants.h"
 
-template class OBSERVER_COOP1;
-template class OBSERVER_COOP2;
+template class OBSERVER_DIST1;
+template class OBSERVER_DIST2;
 template class OBSERVER_CENTRALIZED;
 
 #endif

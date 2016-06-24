@@ -15,6 +15,8 @@ template <class AugLinSys, typename StateIndices,
 class DistributedController {
  private:
   static constexpr int n_wsr_max = 10;  // max working set recalculations
+  static constexpr bool is_reduced = AugLinSys::n_sub_control_inputs !=
+                                     AugLinSys::SystemType::n_control_inputs;
 
  public:
   static constexpr int n_delay_states = AugLinSys::n_delay_states;
@@ -167,10 +169,15 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
                            ControlledOutputIndices, p,
                            m>::GetInput(ControlInputPrediction* u_solution,
                                         const Eigen::VectorXd& du_last) {
-  QP qp_new = qp_;
-  qp_solver_.UpdateAndSolveQP(&qp_new, u_solution,
-                              u_old_.template head<n_control_inputs>(),
-                              su_other_, du_last.data());
+  if (is_reduced) {
+    QP qp_new = qp_;
+    qp_solver_.UpdateAndSolveQP(&qp_new, u_solution,
+                                u_old_.template head<n_control_inputs>(),
+                                su_other_, du_last.data());
+  } else {
+    *u_solution =
+        qp_solver_.SolveQP(qp_, u_old_.template head<n_control_inputs>());
+  }
 }
 
 #endif

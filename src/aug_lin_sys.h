@@ -19,7 +19,8 @@ class AugmentedLinearizedSystem {
       AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                                 ControlInputIndices, n_sub_control_inputs_in>>;
   // tells whether ControlInputIndices is provided or not
-  static constexpr bool is_reduced = (n_sub_control_inputs_in > 0);
+  static constexpr bool is_reduced =
+      (n_sub_control_inputs_in != System::n_control_inputs);
 
  public:
   static constexpr int n_delay_states = Delays::GetSum();
@@ -40,6 +41,7 @@ class AugmentedLinearizedSystem {
   /// Delays to system
   using DelayType = Delays;
   using ControlInputIndexType = ControlInputIndices;
+  using SystemType = System;
 
   /// State of the dynamic system
   typedef Eigen::Matrix<double, n_states, 1> State;

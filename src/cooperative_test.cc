@@ -1,4 +1,5 @@
 #include <boost/timer/timer.hpp>
+#include <sstream>
 #include <fstream>
 #include <iostream>
 #include "aug_lin_sys.h"
@@ -16,9 +17,8 @@ using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
-using NvCtr =
-    NerveCenter<ParallelCompressors, n_total_states, n_solver_iterations,
-                CONTROLLER_COOP1, CONTROLLER_COOP2>;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states, CONTROLLER_COOP1,
+                          CONTROLLER_COOP2>;
 
 using AugmentedSystem1 = AUGMENTEDSYSTEM_DIST1;
 using AugmentedSystem2 = AUGMENTEDSYSTEM_DIST2;
@@ -60,8 +60,20 @@ void Callback(ParallelCompressors::State x, double t) {
               << std::endl;
 }
 
-int main(void) {
-  timer.stop();
+int main(int argc, char **argv) {
+  int n_solver_iterations;
+
+  if (argc < 2) {
+    std::cout << "Number of solver iterations: ";
+    std::cin >> n_solver_iterations;
+  } else {
+    std::istringstream ss(argv[1]);
+    if (!(ss >> n_solver_iterations))
+      std::cerr << "Invalid number " << argv[1] << '\n';
+  }
+
+  std::cout << "Running cooperative simulation using " << n_solver_iterations
+            << " solver iterations... " << std::endl;
 
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system +
@@ -124,7 +136,7 @@ int main(void) {
 
   // Create a nerve center
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
-  NvCtr nerve_center(compressor, ctrl_tuple);
+  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions

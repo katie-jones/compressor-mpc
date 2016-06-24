@@ -15,8 +15,6 @@ class NerveCenter : public ControllerInterface<System> {
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_control_inputs = System::n_control_inputs;
   static constexpr int n_controllers = sizeof...(SubControllers);
-  // TODO: make this variable
-  static constexpr int n_solver_iterations = 2;
 
   using expander = int[];
 
@@ -68,13 +66,18 @@ class NerveCenter : public ControllerInterface<System> {
   // Dynamic system to control
   System sys_;
 
+  // Number of solver iterations
+  const int n_solver_iterations_;
+
  public:
   using UWeightType = Eigen::Matrix<double, n_control_inputs, n_control_inputs>;
   using YWeightType = Eigen::Matrix<double, n_outputs, n_outputs>;
   using OutputPrediction = Eigen::Matrix<double, p_max * n_outputs, 1>;
 
-  NerveCenter(const System& sys, std::tuple<SubControllers...>& controllers)
+  NerveCenter(const System& sys, std::tuple<SubControllers...>& controllers,
+              const int n_solver_iterations)
       : ControllerInterface<System>(Input::Zero()),
+        n_solver_iterations_(n_solver_iterations),
         sys_(sys),
         du_old_(ControlInputPrediction::Zero()),
         sub_controllers_(controllers) {}
@@ -108,12 +111,12 @@ class NerveCenter : public ControllerInterface<System> {
     expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_),
                                 time_out, y, u_full_old)...};
 
-    // Solve QPs n_solver_iterations times
+    // Solve QPs n_solver_iterations_ times
     ControlInputPrediction du_prev = du_old_;
     ControlInputPrediction du_new = ControlInputPrediction::Zero();
 
     int prediction_index = 0;
-    for (int i = 0; i < n_solver_iterations; i++) {
+    for (int i = 0; i < n_solver_iterations_; i++) {
       expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
                              time_out, &du_new, &prediction_index, du_prev)...};
       du_prev = du_new;

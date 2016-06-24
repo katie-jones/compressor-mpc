@@ -1,4 +1,5 @@
 #include <boost/timer/timer.hpp>
+#include <sstream>
 #include <fstream>
 #include <iostream>
 #include "aug_lin_sys.h"
@@ -12,15 +13,12 @@
 #include "parallel_compressors_constants.h"
 #include "simulation_system.h"
 
-constexpr int n_solver_iterations = 3;
-
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
-using NvCtr =
-    NerveCenter<ParallelCompressors, n_total_states, n_solver_iterations,
-                CONTROLLER_NONCOOP1, CONTROLLER_NONCOOP2>;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states,
+                          CONTROLLER_NONCOOP1, CONTROLLER_NONCOOP2>;
 
 using AugmentedSystem1 = AUGMENTEDSYSTEM_DIST1;
 using AugmentedSystem2 = AUGMENTEDSYSTEM_DIST2;
@@ -62,12 +60,17 @@ void Callback(ParallelCompressors::State x, double t) {
               << std::endl;
 }
 
-int main(void) {
-  timer.stop();
+int main(int argc, char **argv) {
+  int n_solver_iterations;
 
-  boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system +
-                                          time_offset.user);
+  if (argc < 2) {
+    std::cout << "Number of solver iterations: ";
+    std::cin >> n_solver_iterations;
+  } else {
+    std::istringstream ss(argv[1]);
+    if (!(ss >> n_solver_iterations))
+      std::cerr << "Invalid number " << argv[1] << '\n';
+  }
 
   output_file.open("noncoop_output.dat");
   cpu_times_file.open("noncoop_cpu_times.dat");
@@ -126,7 +129,7 @@ int main(void) {
 
   // Create a nerve center
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
-  NvCtr nerve_center(compressor, ctrl_tuple);
+  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions
@@ -137,20 +140,6 @@ int main(void) {
                           AugmentedSystem1::ControlInput::Zero(),
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
-
-  // NvCtr::ControlInput u_new = nerve_center.GetNextInput(
-  // compressor.GetOutput(compressor.GetDefaultState()));
-
-  // std::cout << "New Input: " << u_new << std::endl;
-
-  NvCtr::ControlInput u;
-  u << 0, 1, 2, 3;
-
-  NvCtr::ControlInput u_reordered;
-
-  ControlInputIndices2::GetSubArray(u_reordered.data(), u.data());
-
-  std::cout << u_reordered << std::endl;
 
   // Integrate system
   sim_comp.Integrate(0, 50, sampling_time, &Callback);

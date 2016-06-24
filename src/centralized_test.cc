@@ -24,7 +24,7 @@ using Obsv = OBSERVER_CENTRALIZED;
 
 using Controller = CONTROLLER_CENTRALIZED;
 
-using NvCtr = NerveCenter<ParallelCompressors, n_total_states, 1, Controller>;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -119,7 +119,7 @@ int main(void) {
 
   // Create a nerve center
   std::tuple<Controller> ctrl_tuple(ctrl);
-  NvCtr nerve_center(compressor, ctrl_tuple);
+  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions

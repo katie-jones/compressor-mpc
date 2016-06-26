@@ -33,9 +33,6 @@ SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
-std::ofstream cpu_times_file;
-
-boost::timer::cpu_timer timer;
 
 void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
@@ -47,12 +44,7 @@ void Callback(ParallelCompressors::State x, double t) {
 
   // Get and apply next input
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(&timer, p_compressor->GetOutput(x));
-
-  boost::timer::cpu_times elapsed = timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
-
-  cpu_times_file << elapsed_ns << std::endl;
+      p_controller->GetNextInput(p_compressor->GetOutput(x));
 
   p_sim_compressor->SetInput(u);
 
@@ -72,8 +64,14 @@ int main(int argc, char **argv) {
       std::cerr << "Invalid number " << argv[1] << '\n';
   }
 
-  output_file.open("noncoop_output.dat");
-  cpu_times_file.open("noncoop_cpu_times.dat");
+  std::cout << "Running non-cooperative simulation using "
+            << n_solver_iterations << " solver iterations... ";
+
+  // Time entire simulation
+  boost::timer::cpu_timer simulation_timer;
+
+  output_file.open("noncoop_output" + std::to_string(n_solver_iterations) +
+                   ".dat");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -153,6 +151,22 @@ int main(int argc, char **argv) {
   sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
   output_file.close();
-  cpu_times_file.close();
+
+  boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
+  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
+                                              simulation_cpu_time.user);
+
+  std::cout << "Finished." << std::endl
+            << "Total time required:\t"
+            << static_cast<double>(simulation_ns) / 1.0e6 << " ms." << std::endl
+            << std::endl;
+
+  std::ofstream info_file;
+  info_file.open("noncoop_info" + std::to_string(n_solver_iterations) + ".dat");
+  info_file << uwt << std::endl
+            << ywt << std::endl
+            << y_ref;
+  info_file.close();
+
   return 0;
 }

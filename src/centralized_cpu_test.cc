@@ -1,5 +1,4 @@
 #include <boost/timer/timer.hpp>
-#include <sstream>
 #include <fstream>
 #include <iostream>
 #include "aug_lin_sys.h"
@@ -13,26 +12,27 @@
 #include "parallel_compressors_constants.h"
 #include "simulation_system.h"
 
+constexpr int n_solver_iterations = 1;
+
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
-using NvCtr = NerveCenter<ParallelCompressors, n_total_states, CONTROLLER_COOP1,
-                          CONTROLLER_COOP2>;
+using AugmentedSystem = AUGMENTEDSYSTEM_CENTRALIZED;
 
-using AugmentedSystem1 = AUGMENTEDSYSTEM_DIST1;
-using AugmentedSystem2 = AUGMENTEDSYSTEM_DIST2;
+using Obsv = OBSERVER_CENTRALIZED;
 
-using Obsv1 = OBSERVER_DIST1;
-using Obsv2 = OBSERVER_DIST2;
+using Controller = CONTROLLER_CENTRALIZED;
 
-using Controller1 = CONTROLLER_COOP1;
-using Controller2 = CONTROLLER_COOP2;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
+std::ofstream cpu_times_file;
+
+boost::timer::cpu_timer timer;
 
 void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
@@ -43,8 +43,15 @@ void Callback(ParallelCompressors::State x, double t) {
   output_file << y.transpose() << std::endl;
 
   // Get and apply next input
+  timer.resume();
   NvCtr::ControlInput u =
       p_controller->GetNextInput(p_compressor->GetOutput(x));
+  timer.stop();
+
+  boost::timer::cpu_times elapsed = timer.elapsed();
+  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
+
+  cpu_times_file << elapsed_ns << std::endl;
 
   p_sim_compressor->SetInput(u);
 
@@ -52,26 +59,21 @@ void Callback(ParallelCompressors::State x, double t) {
               << std::endl;
 }
 
-int main(int argc, char **argv) {
-  int n_solver_iterations;
+int main(void) {
+  timer.stop();
 
-  if (argc < 2) {
-    std::cout << "Number of solver iterations: ";
-    std::cin >> n_solver_iterations;
-  } else {
-    std::istringstream ss(argv[1]);
-    if (!(ss >> n_solver_iterations))
-      std::cerr << "Invalid number " << argv[1] << '\n';
-  }
+  boost::timer::cpu_times time_offset = timer.elapsed();
+  boost::timer::nanosecond_type offset_ns(time_offset.system + time_offset.user);
 
-  std::cout << "Running cooperative simulation using " << n_solver_iterations
-            << " solver iterations... " << std::endl;
+  std::cout << "Running centralized simulation... ";
+
+  output_file.open("cent_output.dat");
+  cpu_times_file.open("cent_cpu_times.dat");
+
+  cpu_times_file << offset_ns << std::endl;
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
-
-  output_file.open("coop_output" + std::to_string(n_solver_iterations) +
-                   ".dat");
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -84,9 +86,9 @@ int main(int argc, char **argv) {
 
   const double sampling_time = 0.05;
 
-  const Obsv1::ObserverMatrix M =
-      (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
-                                                compressor.n_outputs>::Zero(),
+  const Obsv::ObserverMatrix M =
+      (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
+                                               compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
@@ -94,39 +96,40 @@ int main(int argc, char **argv) {
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
   std::ifstream weight_file;
-  weight_file.open("uweight_coop");
+  weight_file.open("uweight_cent");
   for (int i = 0; i < uwt.rows(); i++) {
     weight_file >> uwt(i, i);
   }
   weight_file.close();
 
-  weight_file.open("yweight_coop");
+  weight_file.open("yweight_cent");
   for (int i = 0; i < ywt.rows(); i++) {
     weight_file >> ywt(i, i);
   }
   weight_file.close();
 
-  const AugmentedSystem1::Input u_offset = u_default;
+  std::cout << "Y Weight:" << std::endl << ywt << std::endl << std::endl;
+  std::cout << "U Weight:" << std::endl << uwt << std::endl << std::endl;
+
+  const AugmentedSystem::Input u_offset = u_default;
 
   const NvCtr::OutputPrediction y_ref =
       (NvCtr::Output() << 4.5, 4.5, 0, 1.12).finished().replicate<p, 1>();
 
   // Input constraints
-  InputConstraints<n_sub_control_inputs> constraints;
-  constraints.lower_bound << -0.3, 0;
-  constraints.upper_bound << 0.3, 1;
-  constraints.lower_rate_bound << -0.1, -0.1;
-  constraints.upper_rate_bound << 0.1, 1;
+  InputConstraints<ParallelCompressors::n_control_inputs> constraints;
+  constraints.lower_bound << -0.3, 0, -0.3, 0;
+  constraints.upper_bound << 0.3, 1, 0.3, 1;
+  constraints.lower_rate_bound << -0.1, -0.1, -0.1, -0.1;
+  constraints.upper_rate_bound << 0.1, 1, 0.1, 1;
   constraints.use_rate_constraints = true;
 
   // Setup controller
-  AugmentedSystem1 sys1(compressor, sampling_time);
-  AugmentedSystem2 sys2(compressor, sampling_time);
-  Controller1 ctrl1(sys1, constraints, M);
-  Controller2 ctrl2(sys2, constraints, M);
+  AugmentedSystem sys(compressor, sampling_time);
+  Controller ctrl(sys, constraints, M);
 
   // Create a nerve center
-  std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
+  std::tuple<Controller> ctrl_tuple(ctrl);
   NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
@@ -135,7 +138,7 @@ int main(int argc, char **argv) {
   nerve_center.SetOutputReference(y_ref);
 
   nerve_center.Initialize(compressor.GetDefaultState(),
-                          AugmentedSystem1::ControlInput::Zero(),
+                          AugmentedSystem::ControlInput::Zero(),
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
 
@@ -148,22 +151,18 @@ int main(int argc, char **argv) {
 
   sim_comp.SetOffset(u_disturbance);
 
-  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+  sim_comp.Integrate(50 + sampling_time, 1000, sampling_time, &Callback);
 
   output_file.close();
+  cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
-  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
-                                              simulation_cpu_time.user);
+  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system + simulation_cpu_time.user);
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"
             << static_cast<double>(simulation_ns) / 1.0e6 << " ms." << std::endl
             << std::endl;
 
-  std::ofstream info_file;
-  info_file.open("coop_info" + std::to_string(n_solver_iterations) + ".dat");
-  info_file << uwt << std::endl << ywt << std::endl << y_ref;
-  info_file.close();
   return 0;
 }

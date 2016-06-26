@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.6)
 project(Compressor_MPC CXX)
 
 # Use gcc 5.2 to get c++14 standard
-set( CMAKE_CXX_COMPILER "/usr/local/bin/g++" )
+set( CMAKE_CXX_COMPILER "/usr/local/bin/g++-5.2" )
 
 # export library path to find correct versions of shit
 set(ENV{LD_LIBRARY_PATH} "/usr/local/lib64" )
@@ -32,6 +32,10 @@ add_executable(cooperative_test cooperative_test.cc)
 add_executable(noncooperative_test noncooperative_test.cc)
 add_executable(centralized_test centralized_test.cc)
 
+add_executable(cooperative_cpu_test cooperative_cpu_test.cc)
+add_executable(noncooperative_cpu_test noncooperative_cpu_test.cc)
+add_executable(centralized_cpu_test centralized_cpu_test.cc)
+
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
 add_library(parcomp parallel_compressors.cc)
@@ -47,11 +51,20 @@ target_link_libraries(cooperative_test parcomp distributed_controller auglinsys 
 target_link_libraries(noncooperative_test parcomp distributed_controller auglinsys observer qpsolver)
 target_link_libraries(centralized_test parcomp distributed_controller auglinsys observer qpsolver)
 
+target_link_libraries(cooperative_cpu_test parcomp distributed_controller auglinsys observer qpsolver)
+target_link_libraries(noncooperative_cpu_test parcomp distributed_controller auglinsys observer qpsolver)
+target_link_libraries(centralized_cpu_test parcomp distributed_controller auglinsys observer qpsolver)
+
 if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})
    target_link_libraries(cooperative_test ${Boost_LIBRARIES})
    target_link_libraries(noncooperative_test ${Boost_LIBRARIES})
    target_link_libraries(centralized_test ${Boost_LIBRARIES})
+
+   target_link_libraries(cooperative_cpu_test ${Boost_LIBRARIES})
+   target_link_libraries(noncooperative_cpu_test ${Boost_LIBRARIES})
+   target_link_libraries(centralized_cpu_test ${Boost_LIBRARIES})
+
    target_link_libraries(indextest ${Boost_LIBRARIES})
 endif()
 

@@ -37,14 +37,14 @@ class DynamicSystem {
   virtual ~DynamicSystem() {}
 
   /// Return system linearized about given operating point.
-  virtual Linearized GetLinearizedSystem(const State x,
-                                         const Input u) const = 0;
+  virtual Linearized GetLinearizedSystem(const State& x,
+                                         const Input& u) const = 0;
 
   /// Return derivative of system about given operating point.
-  virtual State GetDerivative(const State x, const Input u) const = 0;
+  virtual State GetDerivative(const State& x, const Input& u) const = 0;
 
   /// Return system output at given state.
-  virtual Output GetOutput(const State x) const = 0;
+  virtual Output GetOutput(const State& x) const = 0;
 
   /// output plant input based on control input and offset
   static const Input GetPlantInput(const ControlInput& u_control,

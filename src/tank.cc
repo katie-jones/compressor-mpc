@@ -8,7 +8,7 @@ using namespace ValveEqs;
 constexpr double pi = 3.14159265358979323846;
 constexpr double speed_sound = 340.;
 
-Tank::State Tank::GetDerivative(const State x, const Input u) const {
+Tank::State Tank::GetDerivative(const State& x, const Input& u) const {
   State dxdt;
 
   const double p_d = x(0);
@@ -24,7 +24,7 @@ Tank::State Tank::GetDerivative(const State x, const Input u) const {
   return dxdt;
 }
 
-Tank::Linearized Tank::GetLinearizedSystem(const State x, const Input u) const {
+Tank::Linearized Tank::GetLinearizedSystem(const State& x, const Input& u) const {
   Linearized linsys;
 
   const double p_d = x(0);

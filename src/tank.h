@@ -36,13 +36,13 @@ class Tank : public DynamicSystem<1, 3, 1, ConstexprArray<>> {
   Tank(Params params = Params()) : params_(params) {}
 
   /// Get derivative of tank.
-  virtual State GetDerivative(const State x, const Input u) const;
+  virtual State GetDerivative(const State& x, const Input& u) const;
 
   /// Linearize system about operating point.
-  virtual Linearized GetLinearizedSystem(const State x, const Input u) const;
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
 
   /// Get output of tank -- same as state
-  virtual Output GetOutput(const State x) const { return x; }
+  virtual Output GetOutput(const State& x) const { return x; }
 
  protected:
   const Params params_;

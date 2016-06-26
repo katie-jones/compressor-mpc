@@ -88,7 +88,7 @@ class ReducedDynamicSystem
         index_inputs_(index_inputs) {}
 
   /// Return system linearized about given operating point.
-  virtual Linearized GetLinearizedSystem(const State x, const Input u) const {
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const {
     Linearized sys_out;
     typename OriginalSystem::Linearized sys_orig =
         p_sys_->GetLinearizedSystem(GetFullState(x), u);
@@ -105,12 +105,12 @@ class ReducedDynamicSystem
   }
 
   /// Return derivative of system about given operating point.
-  virtual State GetDerivative(const State x, const Input u) const {
+  virtual State GetDerivative(const State& x, const Input& u) const {
     return GetReducedState(p_sys_->GetDerivative(GetFullState(x), u));
   }
 
   /// Return system output at given state.
-  virtual Output GetOutput(const State x) const {
+  virtual Output GetOutput(const State& x) const {
     return GetReducedOutput(p_sys_->GetOutput(GetFullState(x)));
   }
 };

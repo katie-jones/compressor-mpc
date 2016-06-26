@@ -7,25 +7,26 @@ typedef Compressor<true> Cp;
 using namespace ValveEqs;
 
 ParallelCompressors::State ParallelCompressors::GetDerivative(
-    const State x, const Input u) const {
+    const State& x, const Input& u) const {
   State dxdt;
   double mass_flow;
   double mass_flow_total = 0;
 
   for (int i = 0; i < n_compressors; i++) {
-    dxdt.segment<Cp::n_states>(i * Cp::n_states) =
-        comps_[i].GetDerivative(x.segment<Cp::n_states>(i * Cp::n_states),
-                                GetCompressorInput(u, i, x), mass_flow);
+    dxdt.template segment<Cp::n_states>(i * Cp::n_states) =
+        comps_[i].GetDerivative(
+            &mass_flow, x.template segment<Cp::n_states>(i * Cp::n_states),
+            GetCompressorInput(u, i, x));
     mass_flow_total += mass_flow;
   }
-  dxdt.tail<Tank::n_states>() = tank_.GetDerivative(
-      x.tail<Tank::n_states>(),
+  dxdt.template tail<Tank::n_states>() = tank_.GetDerivative(
+      x.template tail<Tank::n_states>(),
       (Tank::Input() << u(n_inputs - 1), p_out_, mass_flow_total).finished());
   return dxdt;
 }
 
 ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
-    const State x, const Input u) const {
+    const State& x, const Input& u) const {
   Linearized linsys;
   double mass_flow, mass_flow_total = 0;
   double p_compressor;
@@ -109,14 +110,13 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
 }
 
 ParallelCompressors::Output ParallelCompressors::GetOutput(
-    const State x) const {
+    const State& x) const {
   Output y;
   Cp::Output y_comp;
   Eigen::Matrix<double, n_compressors, 1> pressures, surge_distances;
 
   for (int i = 0; i < n_compressors; i++) {
-    y_comp = comps_[i].GetOutput(
-        x.segment<Cp::n_states>(i * Cp::n_states));
+    y_comp = comps_[i].GetOutput(x.segment<Cp::n_states>(i * Cp::n_states));
     pressures[i] = y_comp(0);
     surge_distances[i] = y_comp(1);
   }

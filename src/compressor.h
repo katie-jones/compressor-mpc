@@ -16,14 +16,14 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   static constexpr int n_inputs = 6;
   static constexpr int n_outputs = 2;
   static constexpr int n_control_inputs = 2;
-  using ControlInputIndex = ConstexprArray<0,3>;
+  using ControlInputIndex = ConstexprArray<0, 3>;
 
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
-  typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Output
-      Output;
+  typedef DynamicSystem<n_states, n_inputs, n_outputs,
+                        ControlInputIndex>::Output Output;
 
   /// Parameters describing dynamics of compressor.
   struct Parameters {
@@ -37,13 +37,13 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   };
 
   /// Optionally specify pressures, coefficients and flow constants.
-  Compressor(Parameters params = Parameters()) : params_(params) {}
+  Compressor(const Parameters& params = Parameters()) : params_(params) {}
 
   /// Copy constructor
-  Compressor(const Compressor &x) : params_(x.params_) {}
+  Compressor(const Compressor& x) : params_(x.params_) {}
 
   /// Equals operator
-  Compressor &operator=(const Compressor &x) {
+  Compressor& operator=(const Compressor& x) {
     params_ = x.params_;
     return *this;
   }
@@ -56,15 +56,15 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
    * outlet pout. Also return mass flow through the compressor in variable
    * m_out.
    */
-  State GetDerivative(const State x, const Input u, double &m_out) const;
+  State GetDerivative(double* m_out, const State& x, const Input& u) const;
 
   /**
    * Get derivative of compressor about given operating point.
    * Define a local variable to give as m_out argument to GetDerivative.
    */
-  virtual inline State GetDerivative(const State x, const Input u) const {
+  virtual inline State GetDerivative(const State& x, const Input& u) const {
     double m_out = 0;
-    return GetDerivative(x, u, m_out);
+    return GetDerivative(&m_out, x, u);
   }
 
   /// Return default compressor state.
@@ -78,10 +78,10 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   }
 
   /// Linearize system about operating point.
-  virtual Linearized GetLinearizedSystem(const State x, const Input u) const;
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
 
   /// Return system output at given state.
-  virtual Output GetOutput(const State x) const;
+  virtual Output GetOutput(const State& x) const;
 
  protected:
   Parameters params_;

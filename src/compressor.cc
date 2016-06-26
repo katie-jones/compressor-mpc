@@ -13,8 +13,8 @@ using namespace Eigen;
 using namespace ValveEqs;
 
 template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetDerivative(const State x, const Input u,
-                                               double &m_out) const -> State {
+auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State& x,
+                                               const Input& u) const -> State {
   State dxdt;
 
   const double p1 = x(0);
@@ -36,7 +36,7 @@ auto Compressor<has_input_tank>::GetDerivative(const State x, const Input u,
     m_in = u(4);
   }
 
-  m_out = CalculateValveMassFlow(p2, p_out, u_out, params_.D, params_.m_out_c);
+  *m_out = CalculateValveMassFlow(p2, p_out, u_out, params_.D, params_.m_out_c);
 
   double m_rec_ss =
       params_.m_rec_ss_c.dot(
@@ -55,7 +55,7 @@ auto Compressor<has_input_tank>::GetDerivative(const State x, const Input u,
       params_.T_ss_c(0) + params_.T_ss_c(1) * mc + params_.T_ss_c(2);
 
   dxdt(0) = speed_sound * speed_sound / params_.V1 * (m_in + mr - mc) * 1e-5;
-  dxdt(1) = speed_sound * speed_sound / params_.V2 * (mc - mr - m_out) * 1e-5;
+  dxdt(1) = speed_sound * speed_sound / params_.V2 * (mc - mr - *m_out) * 1e-5;
   dxdt(2) = params_.AdivL * (p_ratio * p1 - p2) * 1e5;
   dxdt(3) = (td - T_ss_model) / params_.J;
   dxdt(4) = params_.tau_r * (m_rec_ss - mr);
@@ -64,7 +64,7 @@ auto Compressor<has_input_tank>::GetDerivative(const State x, const Input u,
 }
 
 template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetOutput(const State x) const -> Output {
+auto Compressor<has_input_tank>::GetOutput(const State& x) const -> Output {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
@@ -77,8 +77,8 @@ auto Compressor<has_input_tank>::GetOutput(const State x) const -> Output {
 }
 
 template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetLinearizedSystem(const State x,
-                                                     const Input u) const
+auto Compressor<has_input_tank>::GetLinearizedSystem(const State& x,
+                                                     const Input& u) const
     -> Linearized {
   Linearized linsys;
 

@@ -50,13 +50,13 @@ class ParallelCompressors
   virtual ~ParallelCompressors() {}
 
   /// Get derivative of compressor system about given operating point.
-  virtual State GetDerivative(const State x, const Input u) const;
+  virtual State GetDerivative(const State& x, const Input& u) const;
 
   /// Linearize system about operating point.
-  virtual Linearized GetLinearizedSystem(const State x, const Input u) const;
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
 
   /// Return system output at given state.
-  virtual Output GetOutput(const State x) const;
+  virtual Output GetOutput(const State& x) const;
 
   /// Return default compressor state.
   static const inline State GetDefaultState() {

@@ -97,6 +97,9 @@ class CompressorBase
   virtual Linearized GetLinearizedSystem(const State& x,
                                          const Input& u) const = 0;
 
+  virtual Linearized GetLinearizedSystem(double *m_out, const State& x,
+                                         const Input& u) const = 0;
+
   /// Return system output at given state.
   virtual Output GetOutput(const State& x) const;
 
@@ -143,7 +146,13 @@ class Compressor : public CompressorBase {
                               const Input& u) const;
 
   /// Linearize system about operating point.
-  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const {
+    double m_out;
+    return GetLinearizedSystem(&m_out, x, u);
+  }
+
+  virtual Linearized GetLinearizedSystem(double *m_out, const State& x,
+                                         const Input& u) const;
 };
 
 #endif

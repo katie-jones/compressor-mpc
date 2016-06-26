@@ -13,8 +13,8 @@ using namespace Eigen;
 using namespace ValveEqs;
 
 template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State& x,
-                                               const Input& u) const -> State {
+auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State &x,
+                                               const Input &u) const -> State {
   State dxdt;
 
   const double p1 = x(0);
@@ -63,7 +63,7 @@ auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State& x,
   return dxdt;
 }
 
-auto CompressorBase::GetOutput(const State& x) const -> Output {
+auto CompressorBase::GetOutput(const State &x) const -> Output {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
@@ -76,8 +76,9 @@ auto CompressorBase::GetOutput(const State& x) const -> Output {
 }
 
 template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetLinearizedSystem(const State& x,
-                                                     const Input& u) const
+auto Compressor<has_input_tank>::GetLinearizedSystem(double *m_out,
+                                                     const State &x,
+                                                     const Input &u) const
     -> Linearized {
   Linearized linsys;
 
@@ -166,7 +167,7 @@ auto Compressor<has_input_tank>::GetLinearizedSystem(const State& x,
   linsys.C << 0, 1, 0, 0, 0, 100 * p2 / (params_.SD_c(0) * p1 * p1),
       -100. / (params_.SD_c(0) * p1), 100, 0, 0;
 
-  linsys.f = GetDerivative(x, u);
+  linsys.f = GetDerivative(m_out, x, u);
 
   return linsys;
 }

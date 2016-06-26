@@ -6,10 +6,15 @@
 #include "constexpr_array.h"
 
 class ParallelCompressors;
+class SerialCompressors;
 
 template <bool has_input_tank>
-class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
+class Compressor;
+
+class CompressorBase
+    : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   friend ParallelCompressors;
+  friend SerialCompressors;
 
  public:
   static constexpr int n_states = 5;
@@ -37,18 +42,28 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   };
 
   /// Optionally specify pressures, coefficients and flow constants.
-  Compressor(const Parameters& params = Parameters()) : params_(params) {}
+  CompressorBase(const Parameters& params = Parameters()) : params_(params) {}
 
   /// Copy constructor
-  Compressor(const Compressor& x) : params_(x.params_) {}
+  CompressorBase(const CompressorBase& x) : params_(x.params_) {}
+
+  /// Casting constructor
+  template <bool has_input_tank>
+  CompressorBase(const Compressor<has_input_tank>& x)
+      : params_(x.params_) {}
 
   /// Equals operator
-  Compressor& operator=(const Compressor& x) {
+  CompressorBase& operator=(const CompressorBase& x) {
     params_ = x.params_;
     return *this;
   }
 
-  virtual ~Compressor() {}
+  template <bool has_input_tank>
+  CompressorBase& operator=(const Compressor<has_input_tank>& x) {
+    return *this;
+  }
+
+  virtual ~CompressorBase() {}
 
   /**
    * Get derivative and mass flow of compressor about given operating point.
@@ -56,7 +71,8 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
    * outlet pout. Also return mass flow through the compressor in variable
    * m_out.
    */
-  State GetDerivative(double* m_out, const State& x, const Input& u) const;
+  virtual State GetDerivative(double* m_out, const State& x,
+                              const Input& u) const = 0;
 
   /**
    * Get derivative of compressor about given operating point.
@@ -64,7 +80,7 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
    */
   virtual inline State GetDerivative(const State& x, const Input& u) const {
     double m_out = 0;
-    return GetDerivative(&m_out, x, u);
+    return this->GetDerivative(&m_out, x, u);
   }
 
   /// Return default compressor state.
@@ -78,13 +94,56 @@ class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   }
 
   /// Linearize system about operating point.
-  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
+  virtual Linearized GetLinearizedSystem(const State& x,
+                                         const Input& u) const = 0;
 
   /// Return system output at given state.
   virtual Output GetOutput(const State& x) const;
 
  protected:
   Parameters params_;
+};
+
+// Compressor implementation with input tank or without
+template <bool has_input_tank>
+class Compressor : public CompressorBase {
+ public:
+  /// Type of this object
+  using type = Compressor<has_input_tank>;
+
+  using CompressorBase::GetOutput;
+  using CompressorBase::GetDerivative;
+  using CompressorBase::GetDefaultInput;
+  using CompressorBase::GetDefaultState;
+
+  /// Optionally specify pressures, coefficients and flow constants.
+  Compressor(const Parameters& params = Parameters())
+      : CompressorBase(params) {}
+
+  /// Copy constructor
+  Compressor(const CompressorBase& x) : CompressorBase(x) {}
+
+  /// Equals operator
+  Compressor& operator=(const Compressor& x) {
+    params_ = x.params_;
+    return *this;
+  }
+
+  Compressor& operator=(const CompressorBase& x) { return *this; }
+
+  virtual ~Compressor() {}
+
+  /**
+   * Get derivative and mass flow of compressor about given operating point.
+   * Return derivative of compressor about state x, input u and pressure at the
+   * outlet pout. Also return mass flow through the compressor in variable
+   * m_out.
+   */
+  virtual State GetDerivative(double* m_out, const State& x,
+                              const Input& u) const;
+
+  /// Linearize system about operating point.
+  virtual Linearized GetLinearizedSystem(const State& x, const Input& u) const;
 };
 
 #endif

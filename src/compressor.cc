@@ -63,8 +63,7 @@ auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State& x,
   return dxdt;
 }
 
-template <bool has_input_tank>
-auto Compressor<has_input_tank>::GetOutput(const State& x) const -> Output {
+auto CompressorBase::GetOutput(const State& x) const -> Output {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
@@ -172,8 +171,7 @@ auto Compressor<has_input_tank>::GetLinearizedSystem(const State& x,
   return linsys;
 }
 
-template <bool has_input_tank>
-Compressor<has_input_tank>::Parameters::Parameters() {
+CompressorBase::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;
   tau_r = 1 / 0.5;
   A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,

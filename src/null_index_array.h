@@ -34,6 +34,23 @@ class NullIndexArray {
       x_out[i] = x_in[i];
     }
   }
+  
+  // Function to get submatrix from an Eigen matrix
+  static void GetSubMatrix(Eigen::Matrix<double, size, size>* x_reduced,
+                           const Eigen::Matrix<double, size, size>& x) {
+    x_reduced = &x;
+  }
+
+  // Function to get submatrix from an Eigen matrix
+  template <int N, typename T>
+  static void GetSubMatrix(T* new_data, const T* old_data) {
+    int n = size*size;
+    for (int i=0; i<n; i++) {
+      *new_data = *old_data;
+      new_data++;
+      old_data++;
+    }
+  }
 
   /// Sub-array of current array with indices SubInts...
   template <int... SubInts>
@@ -75,7 +92,7 @@ class NullIndexArray {
   // Function to get subvector from an Eigen vector
   static void GetSubVector(Eigen::Matrix<double, size, 1>* x_out,
                            const Eigen::Matrix<double, size, 1>& x) {
-    *x_out = x;
+    x_out = &x;
   }
 
   constexpr int operator[](const int i) const { return i; }

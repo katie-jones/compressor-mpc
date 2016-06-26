@@ -12,8 +12,9 @@ constexpr double speed_sound = 340.;
 using namespace Eigen;
 using namespace ValveEqs;
 
-Compressor::State Compressor::GetDerivative(const State x, const Input u,
-                                            double &m_out) const {
+template <bool has_input_tank>
+auto Compressor<has_input_tank>::GetDerivative(const State x, const Input u,
+                                               double &m_out) const -> State {
   State dxdt;
 
   const double p1 = x(0);
@@ -26,11 +27,14 @@ Compressor::State Compressor::GetDerivative(const State x, const Input u,
   const double u_input = u(1);
   const double u_out = u(2);
   const double u_rec = u(3);
-  const double p_in = u(4);
   const double p_out = u(5);
 
-  const double m_in =
-      CalculateValveMassFlow(p_in, p1, u_input, params_.C, params_.m_in_c);
+  double m_in;
+  if (has_input_tank) {
+    m_in = CalculateValveMassFlow(u(4), p1, u_input, params_.C, params_.m_in_c);
+  } else {
+    m_in = u(4);
+  }
 
   m_out = CalculateValveMassFlow(p2, p_out, u_out, params_.D, params_.m_out_c);
 
@@ -59,20 +63,23 @@ Compressor::State Compressor::GetDerivative(const State x, const Input u,
   return dxdt;
 }
 
-Compressor::Output Compressor::GetOutput(const State x) const {
+template <bool has_input_tank>
+auto Compressor<has_input_tank>::GetOutput(const State x) const -> Output {
   const double p1 = x(0);
   const double p2 = x(1);
   const double mass_flow = x(2);
   const double surge_distance =
       params_.SD_multiplier * (-(p2 / p1) / params_.SD_c(0) +
                                params_.SD_c(1) / params_.SD_c(0) + mass_flow);
-  Compressor::Output y;
+  Output y;
   y << p2, surge_distance;
   return y;
 }
 
-Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
-                                                       const Input u) const {
+template <bool has_input_tank>
+auto Compressor<has_input_tank>::GetLinearizedSystem(const State x,
+                                                     const Input u) const
+    -> Linearized {
   Linearized linsys;
 
   const double p1 = x(0);
@@ -85,14 +92,17 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   const double u_input = u(1);
   const double u_out = u(2);
   const double u_rec = u(3);
-  const double p_in = u(4);
   const double p_out = u(5);
 
   // Partial derivatives of p1
-  linsys.A.row(0) << -CalculateValveDerivative(p_in, p1, u_input, params_.C,
-                                               params_.V1),
-      0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
+  linsys.A.row(0) << -1, 0, -speed_sound * speed_sound / params_.V1 * 1e-5, 0,
       speed_sound * speed_sound / params_.V1 * 1e-5;
+
+  // if there's an input tank, calculate the derivative
+  if (has_input_tank) {
+    linsys.A(0, 0) =
+        -CalculateValveDerivative(u(4), p1, u_input, params_.C, params_.V1);
+  }
 
   // Partial derivatives of p2
   linsys.A.row(1) << 0,
@@ -162,7 +172,8 @@ Compressor::Linearized Compressor::GetLinearizedSystem(const State x,
   return linsys;
 }
 
-Compressor::Parameters::Parameters() {
+template <bool has_input_tank>
+Compressor<has_input_tank>::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;
   tau_r = 1 / 0.5;
   A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,
@@ -202,3 +213,5 @@ Compressor::Parameters::Parameters() {
 
   AdivL = pi * (0.08 / 2) * (0.08 / 2) / 3 * 0.1;
 }
+
+#include "compressor_list.h"

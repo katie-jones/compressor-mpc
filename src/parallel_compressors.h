@@ -18,6 +18,9 @@ class ParallelCompressors
 
   using ControlInputIndex = ConstexprArray<0, 3, 4, 7>;
 
+  /// Compressor with input tank
+  using Comp = Compressor<true>;
+
 
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
@@ -27,7 +30,7 @@ class ParallelCompressors
                         ControlInputIndex>::Output Output;
 
   ParallelCompressors(const double p_in, const double p_out,
-                      const Compressor comps[n_compressors],
+                      const Comp comps[n_compressors],
                       const Tank tank = Tank())
       : p_in_(p_in), p_out_(p_out), tank_(tank) {
     for (int i = 0; i < n_compressors; i++) {
@@ -36,7 +39,7 @@ class ParallelCompressors
   }
 
   ParallelCompressors(const double p_in = 1.0, const double p_out = 1.0,
-                      const Compressor comp = Compressor(),
+                      const Comp comp = Comp(),
                       const Tank tank = Tank())
       : p_in_(p_in), p_out_(p_out), tank_(tank) {
     for (int i = 0; i < n_compressors; i++) {
@@ -57,8 +60,8 @@ class ParallelCompressors
 
   /// Return default compressor state.
   static const inline State GetDefaultState() {
-    const Compressor::State x =
-        ((Compressor::State() << 0.916, 1.145, 0.152, 440, 0).finished());
+    const Comp::State x =
+        ((Comp::State() << 0.916, 1.145, 0.152, 440, 0).finished());
     return ((State() << x.replicate(n_compressors, 1), 1.12).finished());
   }
 
@@ -71,14 +74,14 @@ class ParallelCompressors
   }
 
  protected:
-  Compressor comps_[n_compressors];
+  Comp comps_[n_compressors];
   Tank tank_;
   const double p_in_;
   const double p_out_;
   constexpr static int n_comp_inputs = 4;
-  inline Compressor::Input GetCompressorInput(Input u_in, int i,
+  inline Comp::Input GetCompressorInput(Input u_in, int i,
                                               State x) const {
-    Compressor::Input u;
+    Comp::Input u;
     u << u_in.segment<n_comp_inputs>(i * n_comp_inputs), p_in_, x.tail<1>();
     return u;
   }

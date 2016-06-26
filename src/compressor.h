@@ -7,6 +7,7 @@
 
 class ParallelCompressors;
 
+template <bool has_input_tank>
 class Compressor : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   friend ParallelCompressors;
 

@@ -2,7 +2,7 @@
 
 #include "valve_eqs.h"
 
-typedef Compressor Cp;
+typedef Compressor<true> Cp;
 
 using namespace ValveEqs;
 
@@ -111,12 +111,12 @@ ParallelCompressors::Linearized ParallelCompressors::GetLinearizedSystem(
 ParallelCompressors::Output ParallelCompressors::GetOutput(
     const State x) const {
   Output y;
-  Compressor::Output y_comp;
+  Cp::Output y_comp;
   Eigen::Matrix<double, n_compressors, 1> pressures, surge_distances;
 
   for (int i = 0; i < n_compressors; i++) {
     y_comp = comps_[i].GetOutput(
-        x.segment<Compressor::n_states>(i * Compressor::n_states));
+        x.segment<Cp::n_states>(i * Cp::n_states));
     pressures[i] = y_comp(0);
     surge_distances[i] = y_comp(1);
   }

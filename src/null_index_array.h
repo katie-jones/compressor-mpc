@@ -12,7 +12,6 @@ class NullIndexArray {
   }
 
   static constexpr int GetEntry(const int i) {
-    static_assert(i < size, "Index out of bounds");
     return i;
   }
 

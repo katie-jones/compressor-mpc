@@ -3,11 +3,14 @@
 
 #include "distributed_controller.h"
 #include "parallel_compressors.h"
+#include "serial_compressors.h"
 #include "constexpr_array.h"
 #include "null_index_array.h"
 #include "aug_lin_sys.h"
 #include "parallel_compressors_constants.h"
+#include "serial_compressors_constants.h"
 
+// Parallel
 template class CONTROLLER_COOP1; 
 template class CONTROLLER_COOP2;
 
@@ -16,5 +19,13 @@ template class CONTROLLER_NONCOOP2;
 
 template class CONTROLLER_CENTRALIZED;
 
+// Serial
+template class SERIAL_CTRL_COOP1;
+template class SERIAL_CTRL_COOP2;
+
+template class SERIAL_CTRL_NONCOOP1;
+template class SERIAL_CTRL_NONCOOP2;
+
+template class SERIAL_CTRL_CENT;
 
 #endif

@@ -48,6 +48,9 @@ add_library(distributed_controller distributed_controller.cc)
 target_link_libraries(parallel_compressors compressor tank)
 target_link_libraries(serial_compressors compressor)
 target_link_libraries(qpsolver qpOASES)
+
+target_link_libraries(auglinsys serial_compressors parallel_compressors)
+
 target_link_libraries(reduced_system_test parallel_compressors)
 target_link_libraries(cooperative_test parallel_compressors distributed_controller auglinsys observer qpsolver)
 target_link_libraries(noncooperative_test parallel_compressors distributed_controller auglinsys observer qpsolver)

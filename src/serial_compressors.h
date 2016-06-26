@@ -48,7 +48,7 @@ class SerialCompressors
     p_comps_[0] = &first_comp_;
     for (int i = 0; i < n_follower_compressors; i++) {
       comps_[i] = comp;
-      p_comps_[i] = &comps_[i];
+      p_comps_[i + 1] = &comps_[i];
     }
   }
 
@@ -64,18 +64,18 @@ class SerialCompressors
   virtual Output GetOutput(const State& x) const;
 
   /// Return default compressor state.
+  // TODO: generalize for 3+ compressors
   static const inline State GetDefaultState() {
     const Comp::State x =
         ((Comp::State() << 0.916, 1.145, 0.152, 440, 0).finished());
-    return ((State() << x.replicate(n_compressors, 1), 1.12).finished());
+    return ((State() << 0.867, 1.03, 0.176, 395, 0, 0.999, 1.19, 0.176, 395, 0)
+                .finished());
   }
 
   /// Return default compressor input.
+  // TODO: generalize for 3+ compressors
   static const inline Input GetDefaultInput() {
-    Eigen::Array<double, 4, 1> u;
-    u << 0.304, 0.43, 1.0, 0;
-
-    return ((Input() << u.replicate(n_compressors, 1), 0.7).finished());
+    return ((Input() << 0.304, 0.405, 1, 0, 0.304, -1, 0.393, 0).finished());
   }
 
  protected:
@@ -86,11 +86,18 @@ class SerialCompressors
   const double p_out_;
   constexpr static int n_comp_inputs = 4;
 
-  inline Comp::Input GetCompressorInput(Input u_in, int i, State x) const {
+  Comp::Input GetCompressorInput(const Input& u_in, const int i,
+                                        const State& x) const {
     Comp::Input u;
-    double p_out;
+    double p_out,p_in;
 
     // Get output pressure depending on compressor number
+    if (i==0){
+      p_in = p_in_;
+    } else {
+      p_in = -1;
+    }
+
     if (i == n_compressors - 1) {
       p_out = p_out_;
     } else {
@@ -98,18 +105,7 @@ class SerialCompressors
     }
 
     // Input with no entry for p_in/m_in
-    u << u_in.template segment<n_comp_inputs>(i * n_comp_inputs), -1, p_out;
-
-    if (i == 1) {
-      // Set p_in
-      u(n_comp_inputs) = p_in_;
-    } else {
-      // set m_in
-      u(n_comp_inputs) = ValveEqs::CalculateValveMassFlow(
-          x((i - 1) * Comp::n_states + 1), x(i * Comp::n_states),
-          u((i - 1) * Comp::n_states + 2), p_comps_[i - 1]->params_.D,
-          p_comps_[i - 1]->params_.m_out_c);
-    }
+    u << u_in.template segment<n_comp_inputs>(i * n_comp_inputs), p_in, p_out;
 
     return u;
   }

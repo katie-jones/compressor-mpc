@@ -8,18 +8,18 @@ using Cp = CompressorBase;
 SerialCompressors::State SerialCompressors::GetDerivative(
     const State& x, const Input& u) const {
   State dxdt;
-  double mass_flow;
+  Cp::Input u_sub;
+  double m_out = -1;
 
-  // First compressor
-  dxdt.template head<Cp::n_states>() = first_comp_.GetDerivative(
-      &mass_flow, x.template head<Cp::n_states>(), GetCompressorInput(u, 0, x));
+  for (int i = 0; i < n_compressors; i++) {
+    u_sub = GetCompressorInput(u, i, x);
+    if (i > 0) {
+      u_sub(n_comp_inputs) = m_out;
+    }
 
-  // Following compressors
-  for (int i = 1; i < n_compressors; i++) {
     dxdt.template segment<Cp::n_states>(i * Cp::n_states) =
-        comps_[i].GetDerivative(
-            &mass_flow, x.template segment<Cp::n_states>(i * Cp::n_states),
-            GetCompressorInput(u, i, x));
+        p_comps_[i]->GetDerivative(
+            &m_out, x.template segment<Cp::n_states>(i * Cp::n_states), u_sub);
   }
 
   return dxdt;
@@ -28,8 +28,9 @@ SerialCompressors::State SerialCompressors::GetDerivative(
 SerialCompressors::Linearized SerialCompressors::GetLinearizedSystem(
     const State& x, const Input& u) const {
   Linearized linsys;
-  double mass_flow, mass_flow_total = 0;
+  double m_out = 0;
   double p_compressor;
+  Cp::Input u_sub;
 
   linsys.A.setZero();
   linsys.B.setZero();
@@ -39,8 +40,8 @@ SerialCompressors::Linearized SerialCompressors::GetLinearizedSystem(
   Cp::Linearized comp_linsys;
 
   // First compressor
-  comp_linsys = first_comp_.GetLinearizedSystem(x.template head<Cp::n_states>(),
-                                                GetCompressorInput(u, 0, x));
+  comp_linsys = first_comp_.GetLinearizedSystem(
+      &m_out, x.template head<Cp::n_states>(), GetCompressorInput(u, 0, x));
   linsys.A.topLeftCorner<Cp::n_states, Cp::n_states>() = comp_linsys.A;
   linsys.B.topLeftCorner<Cp::n_states, Cp::n_control_inputs>() = comp_linsys.B;
   linsys.C.topLeftCorner<Cp::n_outputs, Cp::n_states>() = comp_linsys.C;
@@ -51,9 +52,13 @@ SerialCompressors::Linearized SerialCompressors::GetLinearizedSystem(
 
   // Following compressors
   for (int i = 1; i < n_compressors; i++) {
+    // Get input
+    u_sub = GetCompressorInput(u, i, x);
+    u_sub(n_comp_inputs) = m_out;
+
     // Linearized compressor model
-    comp_linsys = comps_[i - 1].GetLinearizedSystem(
-        x.template segment<Cp::n_states>(i * Cp::n_states),
+    comp_linsys = p_comps_[i]->GetLinearizedSystem(
+        &m_out, x.template segment<Cp::n_states>(i * Cp::n_states),
         GetCompressorInput(u, i, x));
 
     // A part of compressor i
@@ -93,7 +98,7 @@ SerialCompressors::Linearized SerialCompressors::GetLinearizedSystem(
         comp_linsys.C.row(1);  // surge distances
 
     // Compressor derivative
-    linsys.f.template segment<Cp::n_states>(i * Cp::n_states) = comp_linsys.f;
+    linsys.f = GetDerivative(x, u);
   }
 
   return linsys;
@@ -104,7 +109,8 @@ SerialCompressors::Output SerialCompressors::GetOutput(const State& x) const {
 
   for (int i = 0; i < n_compressors; i++) {
     y.template segment<Cp::n_outputs>(i * Cp::n_outputs) =
-        comps_[i].GetOutput(x.template segment<Cp::n_states>(i * Cp::n_states));
+        p_comps_[i]->GetOutput(
+            x.template segment<Cp::n_states>(i * Cp::n_states));
   }
   return y;
 }

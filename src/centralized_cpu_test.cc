@@ -29,18 +29,12 @@ using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 NvCtr *p_controller;
-std::ofstream output_file;
 std::ofstream cpu_times_file;
 
 boost::timer::cpu_timer timer;
 
 void Callback(ParallelCompressors::State x, double t) {
-  output_file << t << std::endl;
-  output_file << x.transpose() << std::endl;
-
   ParallelCompressors::Output y = p_compressor->GetOutput(x);
-
-  output_file << y.transpose() << std::endl;
 
   // Get and apply next input
   timer.resume();
@@ -54,22 +48,19 @@ void Callback(ParallelCompressors::State x, double t) {
   cpu_times_file << elapsed_ns << std::endl;
 
   p_sim_compressor->SetInput(u);
-
-  output_file << u.transpose() << std::endl
-              << std::endl;
 }
 
 int main(void) {
   timer.stop();
 
   boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system + time_offset.user);
+  boost::timer::nanosecond_type offset_ns(time_offset.system +
+                                          time_offset.user);
 
   std::cout << "Running centralized simulation... ";
   std::cout.flush();
 
-  output_file.open("parallel/cent_output.dat");
-  cpu_times_file.open("parallel/cent_cpu_times.dat");
+  cpu_times_file.open("parallel/output/cent_cpu_times.dat");
 
   cpu_times_file << offset_ns << std::endl;
 
@@ -198,13 +189,13 @@ int main(void) {
 
   sim_comp.SetOffset(u_disturbance);
 
-  sim_comp.Integrate(50 + sampling_time, 1000, sampling_time, &Callback);
+  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
-  output_file.close();
   cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
-  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system + simulation_cpu_time.user);
+  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
+                                              simulation_cpu_time.user);
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"

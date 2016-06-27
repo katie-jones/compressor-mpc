@@ -32,18 +32,14 @@ using Controller2 = CONTROLLER_NONCOOP2;
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 NvCtr *p_controller;
-std::ofstream output_file;
 std::ofstream cpu_times_file;
 
 boost::timer::cpu_timer timer;
 
 void Callback(ParallelCompressors::State x, double t) {
-  output_file << t << std::endl;
-  output_file << x.transpose() << std::endl;
 
   ParallelCompressors::Output y = p_compressor->GetOutput(x);
 
-  output_file << y.transpose() << std::endl;
 
   // Get and apply next input
   timer.resume();
@@ -58,8 +54,6 @@ void Callback(ParallelCompressors::State x, double t) {
 
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -86,9 +80,7 @@ int main(int argc, char **argv) {
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system + time_offset.user);
 
-  output_file.open("parallel/noncoop_output" + std::to_string(n_solver_iterations) +
-                   ".dat");
-  cpu_times_file.open("parallel/noncoop_cpu_times" +
+  cpu_times_file.open("parallel/output/noncoop_cpu_times" +
                       std::to_string(n_solver_iterations) + ".dat");
 
   cpu_times_file << offset_ns << std::endl;
@@ -217,9 +209,8 @@ int main(int argc, char **argv) {
 
   sim_comp.SetOffset(u_disturbance);
 
-  sim_comp.Integrate(50 + sampling_time, 1000, sampling_time, &Callback);
+  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
-  output_file.close();
   cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();

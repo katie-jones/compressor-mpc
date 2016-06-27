@@ -73,7 +73,7 @@ constexpr int p = 100;
 constexpr int m = 2;
 constexpr int n_controllers = 2;
 constexpr int n_sub_outputs = 4;
-constexpr int n_sub_outputs_nc = 2;
+constexpr int n_sub_outputs_nc = 3;
 constexpr int n_sub_control_inputs = 2;
 constexpr int n_total_states =
     SerialCompressors::n_states + n_delay_states + n_disturbance_states;
@@ -85,8 +85,8 @@ using ObserverOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
 
 using ControlledOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
-using NCControlledOutputIndices1 = ConstexprArray<0, 1>;
-using NCControlledOutputIndices2 = ConstexprArray<2, 3>;
+using NCControlledOutputIndices1 = ConstexprArray<0, 1, 2>;
+using NCControlledOutputIndices2 = ConstexprArray<2, 3, 1>;
 
 using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;

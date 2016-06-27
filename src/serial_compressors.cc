@@ -94,8 +94,9 @@ SerialCompressors::Linearized SerialCompressors::GetLinearizedSystem(
         i * Cp::n_states, i * Cp::n_control_inputs) = comp_linsys.B;
 
     // C part of compressor i
-    linsys.C.block<1, Cp::n_states>(i, i * Cp::n_states) =
-        comp_linsys.C.row(1);  // surge distances
+    linsys.C.block<Cp::n_outputs, Cp::n_states>(i * Cp::n_outputs,
+                                                i * Cp::n_states) =
+        comp_linsys.C;
 
     // Compressor derivative
     linsys.f = GetDerivative(x, u);

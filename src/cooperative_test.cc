@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
 
-  output_file.open("parallel/coop_output" + std::to_string(n_solver_iterations) +
+  output_file.open("parallel/output/coop_output" + std::to_string(n_solver_iterations) +
                    ".dat");
 
   ParallelCompressors compressor;
@@ -212,7 +212,7 @@ int main(int argc, char **argv) {
             << std::endl;
 
   std::ofstream info_file;
-  info_file.open("parallel/coop_info" + std::to_string(n_solver_iterations) + ".dat");
+  info_file.open("parallel/output/coop_info" + std::to_string(n_solver_iterations) + ".dat");
   info_file << uwt << std::endl << ywt << std::endl << y_ref;
   info_file.close();
   return 0;

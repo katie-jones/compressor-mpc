@@ -54,7 +54,7 @@ int main(void) {
   std::cout << "Running centralized simulation... ";
   std::cout.flush();
 
-  output_file.open("parallel/cent_output.dat");
+  output_file.open("parallel/output/cent_output.dat");
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
@@ -195,7 +195,7 @@ int main(void) {
             << std::endl;
 
   std::ofstream info_file;
-  info_file.open("parallel/cent_info.dat");
+  info_file.open("parallel/output/cent_info.dat");
   info_file << uwt << std::endl << ywt << std::endl << y_ref;
   info_file.close();
 

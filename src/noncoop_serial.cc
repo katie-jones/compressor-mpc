@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
 
-  output_file.open("serial/ncoop_output" + std::to_string(n_solver_iterations) +
+  output_file.open("serial/output/ncoop_output" + std::to_string(n_solver_iterations) +
                    ".dat");
 
   SerialCompressors compressor;
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
 
   sim_comp.SetOffset(u_disturbance);
 
-  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+  sim_comp.Integrate(50 + sampling_time, 250, sampling_time, &Callback);
 
   output_file.close();
 
@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
             << std::endl;
 
   std::ofstream info_file;
-  info_file.open("serial/ncoop_info" + std::to_string(n_solver_iterations) +
+  info_file.open("serial/output/ncoop_info" + std::to_string(n_solver_iterations) +
                  ".dat");
   info_file << uwt << std::endl
             << ywt << std::endl

@@ -2,4 +2,5 @@ build/
 debug_build/
 *.swp
 serial/*.dat
-parallel/*.dat
+parallel/output/
+serial/output/

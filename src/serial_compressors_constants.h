@@ -85,8 +85,8 @@ using ObserverOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
 
 using ControlledOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
-using NCControlledOutputIndices1 = ConstexprArray<0, 3>;
-using NCControlledOutputIndices2 = ConstexprArray<1, 3>;
+using NCControlledOutputIndices1 = ConstexprArray<0, 1>;
+using NCControlledOutputIndices2 = ConstexprArray<2, 3>;
 
 using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;

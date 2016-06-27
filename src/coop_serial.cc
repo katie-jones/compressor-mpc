@@ -138,7 +138,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < Controller1::n_control_inputs; i++) {
     if (!(read_file >> constraints.lower_bound(i))) {
       std::cerr
-          << "Error reading input constraints from file serial/constraints"
+          << "Error reading input constraints from file serial/dist_constraints"
           << std::endl;
       return -1;
     }
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < Controller1::n_control_inputs; i++) {
     if (!(read_file >> constraints.upper_bound(i))) {
       std::cerr
-          << "Error reading input constraints from file serial/constraints"
+          << "Error reading input constraints from file serial/dist_constraints"
           << std::endl;
       return -1;
     }
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < Controller1::n_control_inputs; i++) {
     if (!(read_file >> constraints.lower_rate_bound(i))) {
       std::cerr
-          << "Error reading input constraints from file serial/constraints"
+          << "Error reading input constraints from file serial/dist_constraints"
           << std::endl;
       return -1;
     }
@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < Controller1::n_control_inputs; i++) {
     if (!(read_file >> constraints.upper_rate_bound(i))) {
       std::cerr
-          << "Error reading input constraints from file serial/constraints"
+          << "Error reading input constraints from file serial/dist_constraints"
           << std::endl;
       return -1;
     }

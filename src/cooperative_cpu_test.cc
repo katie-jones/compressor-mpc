@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
 
   std::cout << "Running cooperative simulation using "
             << n_solver_iterations << " solver iterations... ";
+  std::cout.flush();
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
@@ -85,9 +86,9 @@ int main(int argc, char **argv) {
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system + time_offset.user);
 
-  output_file.open("coop_output" + std::to_string(n_solver_iterations) +
+  output_file.open("parallel/coop_output" + std::to_string(n_solver_iterations) +
                    ".dat");
-  cpu_times_file.open("coop_cpu_times" +
+  cpu_times_file.open("parallel/coop_cpu_times" +
                       std::to_string(n_solver_iterations) + ".dat");
 
   cpu_times_file << offset_ns << std::endl;
@@ -112,31 +113,80 @@ int main(int argc, char **argv) {
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
-  std::ifstream weight_file;
-  weight_file.open("uweight_coop");
+  std::ifstream read_file;
+  read_file.open("parallel/uweight_coop");
   for (int i = 0; i < uwt.rows(); i++) {
-    weight_file >> uwt(i, i);
+    if (!(read_file >> uwt(i, i))) {
+      std::cerr << "Error reading input weight from file parallel/uweight_coop"
+                << std::endl;
+      return -1;
+    }
   }
-  weight_file.close();
+  read_file.close();
 
-  weight_file.open("yweight_coop");
+  read_file.open("parallel/yweight_coop");
   for (int i = 0; i < ywt.rows(); i++) {
-    weight_file >> ywt(i, i);
+    if (!(read_file >> ywt(i, i))) {
+      std::cerr << "Error reading output weight from file parallel/yweight_coop"
+                << std::endl;
+      return -1;
+    }
   }
-  weight_file.close();
+  read_file.close();
 
   const AugmentedSystem1::Input u_offset = u_default;
 
-  const NvCtr::OutputPrediction y_ref =
-      (NvCtr::Output() << 4.5, 4.5, 0, 1.12).finished().replicate<p, 1>();
+  // Read in reference output
+  ParallelCompressors::Output y_ref_sub;
+  read_file.open("parallel/yref");
+  for (int i = 0; i < y_ref_sub.size(); i++) {
+    if (!(read_file >> y_ref_sub(i))) {
+      std::cerr << "Error reading reference output from file parallel/yref"
+                << std::endl;
+      return -1;
+    }
+  }
+  read_file.close();
+
+  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
-  InputConstraints<n_sub_control_inputs> constraints;
-  constraints.lower_bound << -0.3, 0;
-  constraints.upper_bound << 0.3, 1;
-  constraints.lower_rate_bound << -0.1, -0.1;
-  constraints.upper_rate_bound << 0.1, 1;
+  InputConstraints<Controller1::n_control_inputs> constraints;
   constraints.use_rate_constraints = true;
+  read_file.open("parallel/dist_constraints");
+
+  for (int i = 0; i < Controller1::n_control_inputs; i++) {
+    if (!(read_file >> constraints.lower_bound(i))) {
+      std::cerr
+          << "Error reading input constraints from file parallel/dist_constraints"
+          << std::endl;
+      return -1;
+    }
+  }
+  for (int i = 0; i < Controller1::n_control_inputs; i++) {
+    if (!(read_file >> constraints.upper_bound(i))) {
+      std::cerr
+          << "Error reading input constraints from file parallel/dist_constraints"
+          << std::endl;
+      return -1;
+    }
+  }
+  for (int i = 0; i < Controller1::n_control_inputs; i++) {
+    if (!(read_file >> constraints.lower_rate_bound(i))) {
+      std::cerr
+          << "Error reading input constraints from file parallel/dist_constraints"
+          << std::endl;
+      return -1;
+    }
+  }
+  for (int i = 0; i < Controller1::n_control_inputs; i++) {
+    if (!(read_file >> constraints.upper_rate_bound(i))) {
+      std::cerr
+          << "Error reading input constraints from file parallel/dist_constraints"
+          << std::endl;
+      return -1;
+    }
+  }
 
   // Setup controller
   AugmentedSystem1 sys1(compressor, sampling_time);

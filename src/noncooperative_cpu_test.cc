@@ -9,11 +9,13 @@
 #include "nerve_center.h"
 #include "null_index_array.h"
 #include "observer.h"
+#include "read_files.h"
 #include "parallel_compressors.h"
 #include "parallel_compressors_constants.h"
 #include "simulation_system.h"
 
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
+using namespace ReadFiles;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
@@ -37,9 +39,7 @@ std::ofstream cpu_times_file;
 boost::timer::cpu_timer timer;
 
 void Callback(ParallelCompressors::State x, double t) {
-
   ParallelCompressors::Output y = p_compressor->GetOutput(x);
-
 
   // Get and apply next input
   timer.resume();
@@ -50,10 +50,9 @@ void Callback(ParallelCompressors::State x, double t) {
   boost::timer::cpu_times elapsed = timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
 
-  cpu_times_file << elapsed_ns/2.0 << std::endl;
+  cpu_times_file << elapsed_ns / 2.0 << std::endl;
 
   p_sim_compressor->SetInput(u);
-
 }
 
 int main(int argc, char **argv) {
@@ -70,6 +69,16 @@ int main(int argc, char **argv) {
       std::cerr << "Invalid number " << argv[1] << '\n';
   }
 
+  const std::string folder_name = "parallel/";
+
+  const std::string constraints_fname = folder_name + "dist_constraints";
+  const std::string cpu_times_fname = folder_name + "output/ncoop_cpu_times" +
+                                      std::to_string(n_solver_iterations) +
+                                      ".dat";
+  const std::string yref_fname = folder_name + "yref";
+  const std::string ywt_fname = folder_name + "yweight_ncoop";
+  const std::string uwt_fname = folder_name + "uweight_ncoop";
+
   std::cout << "Running non-cooperative simulation using "
             << n_solver_iterations << " solver iterations... ";
   std::cout.flush();
@@ -78,10 +87,10 @@ int main(int argc, char **argv) {
   boost::timer::cpu_timer simulation_timer;
 
   boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system + time_offset.user);
+  boost::timer::nanosecond_type offset_ns(time_offset.system +
+                                          time_offset.user);
 
-  cpu_times_file.open("parallel/output/noncoop_cpu_times" +
-                      std::to_string(n_solver_iterations) + ".dat");
+  cpu_times_file.open(cpu_times_fname);
 
   cpu_times_file << offset_ns << std::endl;
 
@@ -102,82 +111,29 @@ int main(int argc, char **argv) {
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
+  // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
-  std::ifstream read_file;
-  read_file.open("parallel/uweight_ncoop");
-  for (int i = 0; i < uwt.rows(); i++) {
-    if (!(read_file >> uwt(i, i))) {
-      std::cerr << "Error reading input weight from file parallel/uweight_ncoop"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
+    return -1;
   }
-  read_file.close();
-
-  read_file.open("parallel/yweight_ncoop");
-  for (int i = 0; i < ywt.rows(); i++) {
-    if (!(read_file >> ywt(i, i))) {
-      std::cerr << "Error reading output weight from file parallel/yweight_ncoop"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+    return -1;
   }
-  read_file.close();
-
-  const AugmentedSystem1::Input u_offset = u_default;
 
   // Read in reference output
   ParallelCompressors::Output y_ref_sub;
-  read_file.open("parallel/yref");
-  for (int i = 0; i < y_ref_sub.size(); i++) {
-    if (!(read_file >> y_ref_sub(i))) {
-      std::cerr << "Error reading reference output from file parallel/yref"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
+    return -1;
   }
-  read_file.close();
-
   const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<Controller1::n_control_inputs> constraints;
   constraints.use_rate_constraints = true;
-  read_file.open("parallel/dist_constraints");
-
-  for (int i = 0; i < Controller1::n_control_inputs; i++) {
-    if (!(read_file >> constraints.lower_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/dist_constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller1::n_control_inputs; i++) {
-    if (!(read_file >> constraints.upper_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/dist_constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller1::n_control_inputs; i++) {
-    if (!(read_file >> constraints.lower_rate_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/dist_constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller1::n_control_inputs; i++) {
-    if (!(read_file >> constraints.upper_rate_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/dist_constraints"
-          << std::endl;
-      return -1;
-    }
+  if (!(ReadConstraintsFromFile(&constraints, constraints_fname))) {
+    return -1;
   }
 
   // Setup controller
@@ -214,7 +170,8 @@ int main(int argc, char **argv) {
   cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
-  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system + simulation_cpu_time.user);
+  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
+                                              simulation_cpu_time.user);
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"

@@ -8,6 +8,7 @@
 #include "nerve_center.h"
 #include "null_index_array.h"
 #include "observer.h"
+#include "read_files.h"
 #include "parallel_compressors.h"
 #include "parallel_compressors_constants.h"
 #include "simulation_system.h"
@@ -15,6 +16,7 @@
 constexpr int n_solver_iterations = 1;
 
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
+using namespace ReadFiles;
 
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
 
@@ -50,11 +52,19 @@ void Callback(ParallelCompressors::State x, double t) {
 }
 
 int main(void) {
+  const std::string folder_name = "parallel/";
+
+  const std::string constraints_fname = folder_name + "constraints";
+  const std::string output_fname = folder_name + "output/cent_output.dat";
+  const std::string info_fname = folder_name + "output/cent_info.dat";
+  const std::string yref_fname = folder_name + "yref";
+  const std::string ywt_fname = folder_name + "yweight_cent";
+  const std::string uwt_fname = folder_name + "uweight_cent";
 
   std::cout << "Running centralized simulation... ";
   std::cout.flush();
 
-  output_file.open("parallel/output/cent_output.dat");
+  output_file.open(output_fname);
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
@@ -76,82 +86,31 @@ int main(void) {
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
+  const AugmentedSystem::Input u_offset = u_default;
+
+  // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
-  std::ifstream read_file;
-  read_file.open("parallel/uweight_cent");
-  for (int i = 0; i < uwt.rows(); i++) {
-    if (!(read_file >> uwt(i, i))) {
-      std::cerr << "Error reading input weight from file parallel/uweight_cent"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
+    return -1;
   }
-  read_file.close();
-
-  read_file.open("parallel/yweight_cent");
-  for (int i = 0; i < ywt.rows(); i++) {
-    if (!(read_file >> ywt(i, i))) {
-      std::cerr << "Error reading output weight from file parallel/yweight_cent"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+    return -1;
   }
-  read_file.close();
-
-  const AugmentedSystem::Input u_offset = u_default;
 
   // Read in reference output
   ParallelCompressors::Output y_ref_sub;
-  read_file.open("parallel/yref");
-  for (int i = 0; i < y_ref_sub.size(); i++) {
-    if (!(read_file >> y_ref_sub(i))) {
-      std::cerr << "Error reading reference output from file parallel/yref"
-                << std::endl;
-      return -1;
-    }
+  if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
+    return -1;
   }
-  read_file.close();
-
   const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller::p, 1>();
 
   // Input constraints
   InputConstraints<Controller::n_control_inputs> constraints;
   constraints.use_rate_constraints = true;
-  read_file.open("parallel/constraints");
-
-  for (int i = 0; i < Controller::n_control_inputs; i++) {
-    if (!(read_file >> constraints.lower_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller::n_control_inputs; i++) {
-    if (!(read_file >> constraints.upper_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller::n_control_inputs; i++) {
-    if (!(read_file >> constraints.lower_rate_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/constraints"
-          << std::endl;
-      return -1;
-    }
-  }
-  for (int i = 0; i < Controller::n_control_inputs; i++) {
-    if (!(read_file >> constraints.upper_rate_bound(i))) {
-      std::cerr
-          << "Error reading input constraints from file parallel/constraints"
-          << std::endl;
-      return -1;
-    }
+  if (!(ReadConstraintsFromFile(&constraints, constraints_fname))) {
+    return -1;
   }
 
   // Setup controller
@@ -195,8 +154,10 @@ int main(void) {
             << std::endl;
 
   std::ofstream info_file;
-  info_file.open("parallel/output/cent_info.dat");
-  info_file << uwt << std::endl << ywt << std::endl << y_ref;
+  info_file.open(info_fname);
+  info_file << uwt << std::endl
+            << ywt << std::endl
+            << y_ref;
   info_file.close();
 
   return 0;

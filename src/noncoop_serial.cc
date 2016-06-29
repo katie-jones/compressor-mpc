@@ -33,6 +33,9 @@ SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
+std::ofstream cpu_times_file;
+
+boost::timer::cpu_timer timer;
 
 void Callback(SerialCompressors::State x, double t) {
   output_file << t << std::endl;
@@ -43,8 +46,15 @@ void Callback(SerialCompressors::State x, double t) {
   output_file << y.transpose() << std::endl;
 
   // Get and apply next input
+  timer.resume();
   NvCtr::ControlInput u =
       p_controller->GetNextInput(p_compressor->GetOutput(x));
+  timer.stop();
+
+  boost::timer::cpu_times elapsed = timer.elapsed();
+  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
+
+  cpu_times_file << elapsed_ns/2.0 << std::endl;
 
   p_sim_compressor->SetInput(u);
 
@@ -53,6 +63,11 @@ void Callback(SerialCompressors::State x, double t) {
 }
 
 int main(int argc, char **argv) {
+  timer.stop();
+
+  boost::timer::cpu_times time_offset = timer.elapsed();
+  boost::timer::nanosecond_type offset_ns(time_offset.system +
+                                          time_offset.user);
   int n_solver_iterations;
 
   if (argc < 2) {
@@ -63,6 +78,10 @@ int main(int argc, char **argv) {
     if (!(ss >> n_solver_iterations))
       std::cerr << "Invalid number " << argv[1] << '\n';
   }
+
+  cpu_times_file.open("serial/output/ncoop_cpu_times" + std::to_string(n_solver_iterations) + ".dat");
+
+  cpu_times_file << offset_ns << std::endl;
 
   std::cout << "Running serial non-cooperative simulation using "
             << n_solver_iterations << " solver iterations... " << std::endl;
@@ -197,9 +216,10 @@ int main(int argc, char **argv) {
 
   sim_comp.SetOffset(u_disturbance);
 
-  sim_comp.Integrate(50 + sampling_time, 250, sampling_time, &Callback);
+  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
   output_file.close();
+  cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
   boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +

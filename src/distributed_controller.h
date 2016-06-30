@@ -4,10 +4,10 @@
 #include <Eigen/Eigen>
 #include <boost/timer/timer.hpp>
 
+#include "constexpr_array.h"
 #include "distributed_solver.h"
 #include "input_constraints.h"
 #include "observer.h"
-#include "constexpr_array.h"
 
 template <class AugLinSys, typename StateIndices,
           typename ObserverOutputIndices, typename ControlledOutputIndices,
@@ -67,12 +67,14 @@ class DistributedController {
   using ControlInputIndexType =
       typename AugLinSys::ControlInputIndexType::template IndicesSubArray<
           std::make_integer_sequence<int, n_control_inputs>>;
+  using FullControlInputIndexType = typename AugLinSys::ControlInputIndexType;
 
  protected:
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_controlled_outputs, n_control_inputs, p,
-                    m> qp_solver_;
+                    m>
+      qp_solver_;
   State x_;                 // current state of system
   FullControlInput u_old_;  // previous optimal input to system
   static constexpr typename AugLinSys::DelayType n_delay_ =
@@ -109,7 +111,7 @@ class DistributedController {
     // Update previous input
     u_old_ += du;
   }
-  
+
   /// Update solution
   void UpdateU(boost::timer::cpu_timer* time_out, const FullControlInput& du) {
     time_out->resume();

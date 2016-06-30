@@ -78,6 +78,7 @@ class NerveCenter : public ControllerInterface<System> {
       : ControllerInterface<System>(Input::Zero()),
         n_solver_iterations_(n_solver_iterations),
         sys_(sys),
+        u_old_(ControlInput::Zero()),
         du_old_(ControlInputPrediction::Zero()),
         sub_controllers_(controllers) {}
 
@@ -151,7 +152,7 @@ class NerveCenter : public ControllerInterface<System> {
 
     T::StateIndexType::template IndicesSubArray<std::make_integer_sequence<
         int, T::n_states>>::GetSubArray(x_init_sub.data(), x_init.data());
-    T::ControlInputIndexType::GetSubArray(u_init_sub.data(), u_init.data());
+    T::FullControlInputIndexType::GetSubArray(u_init_sub.data(), u_init.data());
     T::ObserverOutputIndexType::GetSubArray(y_init_sub.data(), y_init.data());
     T::StateIndexType::GetSubArray(dx_init_sub.data(), dx_init.data());
 

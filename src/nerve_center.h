@@ -102,13 +102,51 @@ class NerveCenter : public ControllerInterface<System> {
         &std::get<SubControllers>(sub_controllers_), y_ref)...};
   }
 
-  /// Solve QPs and get next input to apply
   virtual const ControlInput GetNextInput(const Output& y) {
+    return GetNextInputWithTiming(y);
+  }
+
+  typedef enum {
+    NO_TIMER,
+    TOTAL_TIME,
+    SPLIT_TIMES,
+    SPLIT_INITIAL_SOLVE_TIMES
+  } TimerType;
+
+  /// Solve QPs and get next input to apply
+  template <TimerType timer_type = NO_TIMER>
+  const ControlInput GetNextInputWithTiming(
+      const Output& y, boost::timer::nanosecond_type* central_time_out = NULL,
+      boost::timer::nanosecond_type* initialize_times_out = NULL,
+      boost::timer::nanosecond_type* solve_times_out = NULL) {
+    // Determine timer type
+    constexpr bool use_timer = (timer_type != NO_TIMER);
+    constexpr bool split_timer =
+        (timer_type == SPLIT_TIMES || timer_type == SPLIT_INITIAL_SOLVE_TIMES);
+
+    // Current measure CPU time
+    boost::timer::nanosecond_type* curr_cpu_time;
+    curr_cpu_time = initialize_times_out;
+
+    boost::timer::cpu_timer timer;
 
     const Input& u_full_old = System::GetPlantInput(u_old_, u_offset_);
     // Initialize all QPs
-    expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_), y,
-                                u_full_old)...};
+    if (split_timer) {
+      expander{TimeInitializeQPHelper(
+          curr_cpu_time, &std::get<SubControllers>(sub_controllers_), y,
+          u_full_old)...};
+
+      if (timer_type == SPLIT_INITIAL_SOLVE_TIMES) {
+        curr_cpu_time = solve_times_out;
+      } else {
+        curr_cpu_time = initialize_times_out;
+      }
+
+    } else {
+      expander{InitializeQPHelper(&std::get<SubControllers>(sub_controllers_),
+                                  y, u_full_old)...};
+    }
 
     // Solve QPs n_solver_iterations_ times
     ControlInputPrediction du_prev = du_old_;
@@ -116,8 +154,15 @@ class NerveCenter : public ControllerInterface<System> {
 
     int prediction_index = 0;
     for (int i = 0; i < n_solver_iterations_; i++) {
-      expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
-                             &du_new, &prediction_index, du_prev)...};
+      if (split_timer) {
+        expander{TimeSolveQPHelper(curr_cpu_time,
+                                   &std::get<SubControllers>(sub_controllers_),
+                                   &du_new, &prediction_index, du_prev)...};
+        curr_cpu_time = solve_times_out;
+      } else {
+        expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
+                               &du_new, &prediction_index, du_prev)...};
+      }
       du_prev = du_new;
       prediction_index = 0;
     }
@@ -134,6 +179,13 @@ class NerveCenter : public ControllerInterface<System> {
     du += u_old_;
 
     expander{SendUHelper(&std::get<SubControllers>(sub_controllers_), du)...};
+
+    // Assign total central time
+    timer.stop();
+    if (use_timer) {
+      boost::timer::cpu_times elapsed = timer.elapsed();
+      *central_time_out = elapsed.wall;
+    }
 
     return u_old_;
   }
@@ -199,7 +251,20 @@ class NerveCenter : public ControllerInterface<System> {
     typename T::Output y_sub;
     T::ObserverOutputIndexType::GetSubArray(y_sub.data(), y.data());
     controller->GenerateInitialQP(y_sub, u_full_old);
+  }
 
+  // Time InitializeQPHelper
+  template <typename T>
+  int TimeInitializeQPHelper(boost::timer::nanosecond_type*& time_out,
+                             T* controller, const Output& y,
+                             const Input& u_full_old) {
+    boost::timer::cpu_timer timer;
+
+    InitializeQPHelper(controller, y, u_full_old);
+
+    boost::timer::cpu_times elapsed = timer.elapsed();
+    *time_out += elapsed.wall;
+    time_out++;
   }
 
   // Solve QP for each controller
@@ -207,6 +272,8 @@ class NerveCenter : public ControllerInterface<System> {
   int SolveQPHelper(T* controller, ControlInputPrediction* du_new,
                     int* prediction_index,
                     const ControlInputPrediction& du_old) {
+    boost::timer::cpu_timer timer;
+    boost::timer::nanosecond_type time_out;
     // Take previous solution from other controllers (not this one)
     Eigen::Matrix<double,
                   n_prediction_control_inputs - T::m * T::n_control_inputs,
@@ -225,6 +292,22 @@ class NerveCenter : public ControllerInterface<System> {
         du_new_sub;
     *prediction_index += T::m* T::n_control_inputs;
 
+    boost::timer::cpu_times elapsed = timer.elapsed();
+    time_out = elapsed.wall;  // system + elapsed.user;
+  }
+
+  // Time SolveQPHelper
+  template <typename T>
+  int TimeSolveQPHelper(boost::timer::nanosecond_type*& time_out, T* controller,
+                        ControlInputPrediction* du_new, int* prediction_index,
+                        const ControlInputPrediction& du_old) {
+    boost::timer::cpu_timer timer;
+
+    SolveQPHelper(controller, du_new, prediction_index, du_old);
+
+    boost::timer::cpu_times elapsed = timer.elapsed();
+    *time_out += elapsed.wall;
+    time_out++;
   }
 
   // Add new solution (in du_old_) to u_old_
@@ -243,7 +326,20 @@ class NerveCenter : public ControllerInterface<System> {
     du_reordered.setZero();
     T::ControlInputIndexType::GetSubArray(du_reordered.data(), du.data());
     controller->UpdateU(du_reordered);
+  }
 
+  // Get the index of controller of typename T
+  template <typename T>
+  constexpr int GetControllerNumber(const T* controller = NULL) {
+    int ind = -1;
+    bool is_right_type[]{(std::is_same<T, SubControllers>::value)...};
+
+    for (auto i = 0; i < n_controllers; i++) {
+      if (is_right_type[i]) {
+        ind = i;
+      }
+    }
+    return ind;
   }
 };
 

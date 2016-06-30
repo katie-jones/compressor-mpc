@@ -50,20 +50,11 @@ class NerveCenter : public ControllerInterface<System> {
   // Sub controllers
   std::tuple<SubControllers...> sub_controllers_;
 
-  // Current state estimate
-  State x_;
-
   // Previous applied control input
   ControlInput u_old_;
 
   // Previous control input predictions
   ControlInputPrediction du_old_;
-
-  // Previous output from plant
-  Output y_old_;
-
-  // Dynamic system to control
-  System sys_;
 
   // Number of solver iterations
   const int n_solver_iterations_;
@@ -73,11 +64,10 @@ class NerveCenter : public ControllerInterface<System> {
   using YWeightType = Eigen::Matrix<double, n_outputs, n_outputs>;
   using OutputPrediction = Eigen::Matrix<double, p_max * n_outputs, 1>;
 
-  NerveCenter(const System& sys, std::tuple<SubControllers...>& controllers,
+  NerveCenter(std::tuple<SubControllers...>& controllers,
               const int n_solver_iterations)
       : ControllerInterface<System>(Input::Zero()),
         n_solver_iterations_(n_solver_iterations),
-        sys_(sys),
         u_old_(ControlInput::Zero()),
         du_old_(ControlInputPrediction::Zero()),
         sub_controllers_(controllers) {}

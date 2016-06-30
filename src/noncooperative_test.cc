@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
 
   // Create a nerve center
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
-  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
+  NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions

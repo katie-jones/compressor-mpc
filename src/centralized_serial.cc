@@ -35,6 +35,10 @@ NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
 
+boost::timer::nanosecond_type time_initialize;
+boost::timer::nanosecond_type time_solve;
+boost::timer::nanosecond_type time_central;
+
 boost::timer::cpu_timer timer;
 
 void Callback(SerialCompressors::State x, double t) {
@@ -48,7 +52,10 @@ void Callback(SerialCompressors::State x, double t) {
   // Get and apply next input
   timer.resume();
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller
+          ->GetNextInputWithTiming<NvCtr::TimerType::SPLIT_INITIAL_SOLVE_TIMES>(
+              p_compressor->GetOutput(x), &time_central, &time_initialize,
+              &time_solve);
   timer.stop();
 
   boost::timer::cpu_times elapsed = timer.elapsed();
@@ -58,8 +65,7 @@ void Callback(SerialCompressors::State x, double t) {
 
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
+  output_file << u.transpose() << std::endl << std::endl;
 }
 
 int main(void) {
@@ -104,7 +110,8 @@ int main(void) {
       (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
-                     compressor.n_outputs>::Identity()).finished();
+                     compressor.n_outputs>::Identity())
+          .finished();
 
   const AugmentedSystem::Input u_offset = u_default;
 
@@ -176,9 +183,15 @@ int main(void) {
 
   std::ofstream info_file;
   info_file.open(info_fname);
-  info_file << uwt << std::endl
-            << ywt << std::endl
-            << y_ref;
+  info_file << uwt << std::endl << ywt << std::endl << y_ref;
+  info_file.close();
+
+  info_file.open("centralized_serial_times.dat");
+
+  info_file << "Central time: " << time_central << std::endl;
+  info_file << "Initialize time: " << time_initialize << std::endl;
+  info_file << "Solve time: " << time_solve << std::endl;
+
   info_file.close();
 
   return 0;

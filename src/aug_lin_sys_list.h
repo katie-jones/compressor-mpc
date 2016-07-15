@@ -108,6 +108,25 @@ template void SERIAL_AUGSYS_DIST2::GeneratePrediction<
     Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx, Eigen::MatrixXd* Sf,
     Eigen::MatrixXd* Su_other, const int p, const int m) const;
 
+// Noncooperative unstable
+template const Prediction SERIAL_AUGSYS_DIST1::GeneratePrediction<
+    SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices1>(
+    Eigen::MatrixXd* Su_other, const int p, const int m) const;
+
+template void SERIAL_AUGSYS_DIST1::GeneratePrediction<
+    SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices1>(
+    Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx, Eigen::MatrixXd* Sf,
+    Eigen::MatrixXd* Su_other, const int p, const int m) const;
+
+template const Prediction SERIAL_AUGSYS_DIST2::GeneratePrediction<
+    SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices2>(
+    Eigen::MatrixXd* Su_other, const int p, const int m) const;
+
+template void SERIAL_AUGSYS_DIST2::GeneratePrediction<
+    SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices2>(
+    Eigen::MatrixXd* Su, Eigen::MatrixXd* Sx, Eigen::MatrixXd* Sf,
+    Eigen::MatrixXd* Su_other, const int p, const int m) const;
+
 // Centralized
 template const Prediction SERIAL_AUGSYS_CENT::GeneratePrediction<
     SERIAL_COMPRESSORS_CONSTANTS::ControlledOutputIndices>(

@@ -38,6 +38,7 @@ add_executable(centralized_cpu_test centralized_cpu_test.cc)
 
 add_executable(centralized_serial centralized_serial.cc)
 add_executable(coop_serial coop_serial.cc)
+add_executable(noncoop_serial_unstable noncoop_serial_unstable.cc)
 add_executable(noncoop_serial noncoop_serial.cc)
 
 add_executable(cen_ser_timing centralized_split_timing_serial.cc)
@@ -73,6 +74,7 @@ target_link_libraries(centralized_cpu_test parallel_compressors distributed_cont
 
 target_link_libraries(centralized_serial serial_compressors distributed_controller auglinsys observer qpsolver)
 target_link_libraries(coop_serial serial_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(noncoop_serial_unstable serial_compressors distributed_controller auglinsys observer qpsolver)
 target_link_libraries(noncoop_serial serial_compressors distributed_controller auglinsys observer qpsolver)
 
 target_link_libraries(cen_ser_timing serial_compressors distributed_controller auglinsys observer qpsolver)
@@ -94,6 +96,7 @@ if(Boost_FOUND)
 
    target_link_libraries(centralized_serial ${Boost_LIBRARIES})
    target_link_libraries(coop_serial ${Boost_LIBRARIES})
+   target_link_libraries(noncoop_serial_unstable ${Boost_LIBRARIES})
    target_link_libraries(noncoop_serial ${Boost_LIBRARIES})
 
    target_link_libraries(cen_ser_timing ${Boost_LIBRARIES})

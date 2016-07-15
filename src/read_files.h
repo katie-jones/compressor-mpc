@@ -26,7 +26,6 @@ int ReadDataFromStream(T* data_out, std::istream& input_stream,
                        const int n_elem, const int skip_size = 1) {
   for (int i = 0; i < n_elem; i++) {
     if (!(input_stream >> data_out[skip_size * i])) {
-      std::cerr << "Error reading data from stream." << std::endl;
       return 0;
     }
   }

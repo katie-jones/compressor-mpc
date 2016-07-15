@@ -42,4 +42,9 @@ template class MpcQpSolver<SERIAL_COMPRESSORS_CONSTANTS::n_total_states,
                            SERIAL_COMPRESSORS_CONSTANTS::n_sub_control_inputs,
                            SERIAL_COMPRESSORS_CONSTANTS::p,
                            SERIAL_COMPRESSORS_CONSTANTS::m>;
+
+template class MpcQpSolver<SERIAL_COMPRESSORS_CONSTANTS::n_total_states, 2,
+                           SERIAL_COMPRESSORS_CONSTANTS::n_sub_control_inputs,
+                           SERIAL_COMPRESSORS_CONSTANTS::p,
+                           SERIAL_COMPRESSORS_CONSTANTS::m>;
 #endif

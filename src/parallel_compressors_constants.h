@@ -5,65 +5,64 @@
 #include "null_index_array.h"
 #include "parallel_compressors.h"
 
-#define AUGMENTEDSYSTEM_DIST1                                      \
+#define PARALLEL_AUGSYS_DIST1                                      \
   AugmentedLinearizedSystem<                                       \
       ParallelCompressors, PARALLEL_COMPRESSORS_CONSTANTS::Delays, \
       PARALLEL_COMPRESSORS_CONSTANTS::n_disturbance_states,        \
       PARALLEL_COMPRESSORS_CONSTANTS::ControlInputIndices1,        \
       PARALLEL_COMPRESSORS_CONSTANTS::n_sub_control_inputs>
 
-#define AUGMENTEDSYSTEM_DIST2                                      \
+#define PARALLEL_AUGSYS_DIST2                                      \
   AugmentedLinearizedSystem<                                       \
       ParallelCompressors, PARALLEL_COMPRESSORS_CONSTANTS::Delays, \
       PARALLEL_COMPRESSORS_CONSTANTS::n_disturbance_states,        \
       PARALLEL_COMPRESSORS_CONSTANTS::ControlInputIndices2,        \
       PARALLEL_COMPRESSORS_CONSTANTS::n_sub_control_inputs>
 
-#define AUGMENTEDSYSTEM_CENTRALIZED                                \
+#define PARALLEL_AUGSYS_CENT                                       \
   AugmentedLinearizedSystem<                                       \
       ParallelCompressors, PARALLEL_COMPRESSORS_CONSTANTS::Delays, \
       PARALLEL_COMPRESSORS_CONSTANTS::n_disturbance_states,        \
       PARALLEL_COMPRESSORS_CONSTANTS::ControlInputIndices1,        \
       ParallelCompressors::n_control_inputs>
 
-#define OBSERVER_DIST1 Observer<AUGMENTEDSYSTEM_DIST1>
-#define OBSERVER_DIST2 Observer<AUGMENTEDSYSTEM_DIST2>
-#define OBSERVER_CENTRALIZED Observer<AUGMENTEDSYSTEM_CENTRALIZED>
+#define PARALLEL_OBS_DIST1 Observer<PARALLEL_AUGSYS_DIST1>
+#define PARALLEL_OBS_DIST2 Observer<PARALLEL_AUGSYS_DIST2>
+#define PARALLEL_OBS_CENT Observer<PARALLEL_AUGSYS_CENT>
 
-#define CONTROLLER_COOP1                                                   \
+#define PARALLEL_CTRL_COOP1                                                \
   DistributedController<                                                   \
-      AUGMENTEDSYSTEM_DIST1, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
+      PARALLEL_AUGSYS_DIST1, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
       PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,               \
       PARALLEL_COMPRESSORS_CONSTANTS::ControlledOutputIndices,             \
       PARALLEL_COMPRESSORS_CONSTANTS::p, PARALLEL_COMPRESSORS_CONSTANTS::m>
 
-#define CONTROLLER_COOP2                                                   \
+#define PARALLEL_CTRL_COOP2                                                \
   DistributedController<                                                   \
-      AUGMENTEDSYSTEM_DIST2, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
+      PARALLEL_AUGSYS_DIST2, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
       PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,               \
       PARALLEL_COMPRESSORS_CONSTANTS::ControlledOutputIndices,             \
       PARALLEL_COMPRESSORS_CONSTANTS::p, PARALLEL_COMPRESSORS_CONSTANTS::m>
 
-#define CONTROLLER_NONCOOP1                                                   \
+#define PARALLEL_CTRL_NONCOOP1                                             \
   DistributedController<                                                   \
-      AUGMENTEDSYSTEM_DIST1, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
+      PARALLEL_AUGSYS_DIST1, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
       PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,               \
-      PARALLEL_COMPRESSORS_CONSTANTS::NCControlledOutputIndices1,             \
+      PARALLEL_COMPRESSORS_CONSTANTS::NCControlledOutputIndices1,          \
       PARALLEL_COMPRESSORS_CONSTANTS::p, PARALLEL_COMPRESSORS_CONSTANTS::m>
 
-#define CONTROLLER_NONCOOP2                                                   \
+#define PARALLEL_CTRL_NONCOOP2                                             \
   DistributedController<                                                   \
-      AUGMENTEDSYSTEM_DIST2, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
+      PARALLEL_AUGSYS_DIST2, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
       PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,               \
-      PARALLEL_COMPRESSORS_CONSTANTS::NCControlledOutputIndices2,             \
+      PARALLEL_COMPRESSORS_CONSTANTS::NCControlledOutputIndices2,          \
       PARALLEL_COMPRESSORS_CONSTANTS::p, PARALLEL_COMPRESSORS_CONSTANTS::m>
 
-#define CONTROLLER_CENTRALIZED                                 \
-  DistributedController<                                       \
-      AUGMENTEDSYSTEM_CENTRALIZED,                             \
-      PARALLEL_COMPRESSORS_CONSTANTS::StateIndices,            \
-      PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,   \
-      PARALLEL_COMPRESSORS_CONSTANTS::ControlledOutputIndices, \
+#define PARALLEL_CTRL_CENT                                                \
+  DistributedController<                                                  \
+      PARALLEL_AUGSYS_CENT, PARALLEL_COMPRESSORS_CONSTANTS::StateIndices, \
+      PARALLEL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,              \
+      PARALLEL_COMPRESSORS_CONSTANTS::ControlledOutputIndices,            \
       PARALLEL_COMPRESSORS_CONSTANTS::p, PARALLEL_COMPRESSORS_CONSTANTS::m>
 
 namespace PARALLEL_COMPRESSORS_CONSTANTS {

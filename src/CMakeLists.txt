@@ -38,7 +38,15 @@ add_executable(centralized_cpu_test centralized_cpu_test.cc)
 
 add_executable(centralized_serial centralized_serial.cc)
 add_executable(coop_serial coop_serial.cc)
+add_executable(noncoop_serial_unstable noncoop_serial_unstable.cc)
 add_executable(noncoop_serial noncoop_serial.cc)
+
+add_executable(cen_ser_timing centralized_split_timing_serial.cc)
+add_executable(cen_par_timing centralized_split_timing_parallel.cc)
+add_executable(coop_ser_timing coop_split_timing_serial.cc)
+add_executable(coop_par_timing coop_split_timing_parallel.cc)
+add_executable(ncoop_ser_timing noncoop_split_timing_serial.cc)
+add_executable(ncoop_par_timing noncoop_split_timing_parallel.cc)
 
 add_library(compressor compressor.cc)
 add_library(tank tank.cc)
@@ -66,7 +74,15 @@ target_link_libraries(centralized_cpu_test parallel_compressors distributed_cont
 
 target_link_libraries(centralized_serial serial_compressors distributed_controller auglinsys observer qpsolver)
 target_link_libraries(coop_serial serial_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(noncoop_serial_unstable serial_compressors distributed_controller auglinsys observer qpsolver)
 target_link_libraries(noncoop_serial serial_compressors distributed_controller auglinsys observer qpsolver)
+
+target_link_libraries(cen_ser_timing serial_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(cen_par_timing parallel_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(coop_ser_timing serial_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(coop_par_timing parallel_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(ncoop_ser_timing serial_compressors distributed_controller auglinsys observer qpsolver)
+target_link_libraries(ncoop_par_timing parallel_compressors distributed_controller auglinsys observer qpsolver)
 
 if(Boost_FOUND)
    include_directories(${Boost_INCLUDE_DIRS})
@@ -80,7 +96,15 @@ if(Boost_FOUND)
 
    target_link_libraries(centralized_serial ${Boost_LIBRARIES})
    target_link_libraries(coop_serial ${Boost_LIBRARIES})
+   target_link_libraries(noncoop_serial_unstable ${Boost_LIBRARIES})
    target_link_libraries(noncoop_serial ${Boost_LIBRARIES})
+
+   target_link_libraries(cen_ser_timing ${Boost_LIBRARIES})
+   target_link_libraries(cen_par_timing ${Boost_LIBRARIES})
+   target_link_libraries(coop_ser_timing ${Boost_LIBRARIES})
+   target_link_libraries(coop_par_timing ${Boost_LIBRARIES})
+   target_link_libraries(ncoop_ser_timing ${Boost_LIBRARIES})
+   target_link_libraries(ncoop_par_timing ${Boost_LIBRARIES})
 
    target_link_libraries(indextest ${Boost_LIBRARIES})
 endif()

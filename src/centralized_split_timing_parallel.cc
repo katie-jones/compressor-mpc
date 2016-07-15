@@ -1,50 +1,44 @@
 #define CONTROLLER_TYPE_CENTRALIZED
 #define SYSTEM_TYPE_PARALLEL
-
 #include "common-variables.h"
 
+// Global variables
 constexpr int n_solver_iterations = 1;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
 NvCtr *p_controller;
-std::ofstream output_file;
+std::ofstream timing_file;
+
+boost::timer::nanosecond_type time_initialize;
+boost::timer::nanosecond_type time_solve;
+boost::timer::nanosecond_type time_central;
 
 void Callback(ParallelCompressors::State x, double t) {
-  output_file << t << std::endl;
-  output_file << x.transpose() << std::endl;
-
-  ParallelCompressors::Output y = p_compressor->GetOutput(x);
-
-  output_file << y.transpose() << std::endl;
-
   // Get and apply next input
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller
+          ->GetNextInputWithTiming<NvCtr::TimerType::SPLIT_INITIAL_SOLVE_TIMES>(
+              p_compressor->GetOutput(x), &time_central, &time_initialize,
+              &time_solve);
 
   p_sim_compressor->SetInput(u);
-
-  output_file << u.transpose() << std::endl
-              << std::endl;
 }
 
 int main(void) {
   const std::string folder_name = "parallel/";
 
   const std::string constraints_fname = folder_name + "constraints";
-  const std::string output_fname = folder_name + "output/cent_output.dat";
-  const std::string info_fname = folder_name + "output/cent_info.dat";
+  const std::string timing_fname =
+      folder_name + "timing_centralized.dat";
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_cent";
   const std::string uwt_fname = folder_name + "uweight_cent";
 
+  timing_file.open(timing_fname, std::fstream::out | std::fstream::app);
+
   std::cout << "Running centralized simulation... ";
   std::cout.flush();
-
-  output_file.open(output_fname);
-
-  // Time entire simulation
-  boost::timer::cpu_timer simulation_timer;
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -96,7 +90,7 @@ int main(void) {
 
   // Create a nerve center
   std::tuple<Controller> ctrl_tuple(ctrl);
-  NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
+  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions
@@ -119,23 +113,13 @@ int main(void) {
 
   sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
-  output_file.close();
+  std::cout << "Finished." << std::endl;
 
-  boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
-  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
-                                              simulation_cpu_time.user);
+  timing_file << time_central << std::endl;
+  timing_file << time_initialize << std::endl;
+  timing_file << time_solve << std::endl;
 
-  std::cout << "Finished." << std::endl
-            << "Total time required:\t"
-            << static_cast<double>(simulation_ns) / 1.0e6 << " ms." << std::endl
-            << std::endl;
-
-  std::ofstream info_file;
-  info_file.open(info_fname);
-  info_file << uwt << std::endl
-            << ywt << std::endl
-            << y_ref;
-  info_file.close();
+  timing_file.close();
 
   return 0;
 }

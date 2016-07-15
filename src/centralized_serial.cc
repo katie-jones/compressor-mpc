@@ -1,39 +1,19 @@
-// Test of serial centralized controller
+#define CONTROLLER_TYPE_CENTRALIZED
+#define SYSTEM_TYPE_SERIAL
 
-#include <boost/timer/timer.hpp>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "read_files.h"
-#include "serial_compressors.h"
-#include "serial_compressors_constants.h"
-#include "simulation_system.h"
+#include "common-variables.h"
 
 constexpr int n_solver_iterations = 1;
-
-using namespace SERIAL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
-
-using AugmentedSystem = SERIAL_AUGSYS_CENT;
-
-using Obsv = SERIAL_OBS_CENT;
-using Controller = SERIAL_CTRL_CENT;
-
-using NvCtr = NerveCenter<SerialCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
+
+boost::timer::nanosecond_type time_initialize;
+boost::timer::nanosecond_type time_solve;
+boost::timer::nanosecond_type time_central;
 
 boost::timer::cpu_timer timer;
 
@@ -48,7 +28,10 @@ void Callback(SerialCompressors::State x, double t) {
   // Get and apply next input
   timer.resume();
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller
+          ->GetNextInputWithTiming<NvCtr::TimerType::SPLIT_INITIAL_SOLVE_TIMES>(
+              p_compressor->GetOutput(x), &time_central, &time_initialize,
+              &time_solve);
   timer.stop();
 
   boost::timer::cpu_times elapsed = timer.elapsed();
@@ -58,8 +41,7 @@ void Callback(SerialCompressors::State x, double t) {
 
   p_sim_compressor->SetInput(u);
 
-  output_file << u.transpose() << std::endl
-              << std::endl;
+  output_file << u.transpose() << std::endl << std::endl;
 }
 
 int main(void) {
@@ -104,7 +86,8 @@ int main(void) {
       (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
-                     compressor.n_outputs>::Identity()).finished();
+                     compressor.n_outputs>::Identity())
+          .finished();
 
   const AugmentedSystem::Input u_offset = u_default;
 
@@ -176,9 +159,15 @@ int main(void) {
 
   std::ofstream info_file;
   info_file.open(info_fname);
-  info_file << uwt << std::endl
-            << ywt << std::endl
-            << y_ref;
+  info_file << uwt << std::endl << ywt << std::endl << y_ref;
+  info_file.close();
+
+  info_file.open("centralized_serial_times.dat");
+
+  info_file << "Central time: " << time_central << std::endl;
+  info_file << "Initialize time: " << time_initialize << std::endl;
+  info_file << "Solve time: " << time_solve << std::endl;
+
   info_file.close();
 
   return 0;

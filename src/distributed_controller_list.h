@@ -11,13 +11,13 @@
 #include "serial_compressors_constants.h"
 
 // Parallel
-template class CONTROLLER_COOP1; 
-template class CONTROLLER_COOP2;
+template class PARALLEL_CTRL_COOP1;
+template class PARALLEL_CTRL_COOP2;
 
-template class CONTROLLER_NONCOOP1; 
-template class CONTROLLER_NONCOOP2;
+template class PARALLEL_CTRL_NONCOOP1;
+template class PARALLEL_CTRL_NONCOOP2;
 
-template class CONTROLLER_CENTRALIZED;
+template class PARALLEL_CTRL_CENT;
 
 // Serial
 template class SERIAL_CTRL_COOP1;
@@ -25,6 +25,9 @@ template class SERIAL_CTRL_COOP2;
 
 template class SERIAL_CTRL_NONCOOP1;
 template class SERIAL_CTRL_NONCOOP2;
+
+template class SERIAL_CTRL_NONCOOP_UNSTABLE1;
+template class SERIAL_CTRL_NONCOOP_UNSTABLE2;
 
 template class SERIAL_CTRL_CENT;
 

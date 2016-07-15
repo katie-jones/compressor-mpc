@@ -1,35 +1,7 @@
-#include <boost/timer/timer.hpp>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "serial_compressors.h"
-#include "serial_compressors_constants.h"
-#include "simulation_system.h"
-#include "read_files.h"
+#define CONTROLLER_TYPE_NCOOP
+#define SYSTEM_TYPE_SERIAL
 
-using namespace SERIAL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
-
-using NvCtr = NerveCenter<SerialCompressors, n_total_states,
-                          SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP2>;
-
-using AugmentedSystem1 = SERIAL_AUGSYS_DIST1;
-using AugmentedSystem2 = SERIAL_AUGSYS_DIST2;
-
-using Obsv1 = SERIAL_OBS_DIST1;
-using Obsv2 = SERIAL_OBS_DIST2;
-
-using Controller1 = SERIAL_CTRL_NONCOOP1;
-using Controller2 = SERIAL_CTRL_NONCOOP2;
+#include "common-variables.h"
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
@@ -94,6 +66,7 @@ int main(int argc, char **argv) {
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_ncoop";
   const std::string uwt_fname = folder_name + "uweight_ncoop";
+  const std::string disturbances_fname = folder_name + "ncoop_disturbances";
 
   cpu_times_file.open(cpu_times_fname);
 
@@ -140,7 +113,8 @@ int main(int argc, char **argv) {
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<n_sub_control_inputs> constraints;
@@ -169,17 +143,37 @@ int main(int argc, char **argv) {
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
 
-  // Integrate system
-  sim_comp.Integrate(0, 50, sampling_time, &Callback);
+  // Initialize disturbance
+  SerialCompressors::Input u_disturbance;
+  double t_past = -sampling_time;
+  double t_next;
 
-  // Apply disturbance
-  SerialCompressors::Input u_disturbance = u_default;
-  u_disturbance(6) -= 0.1;
+  std::ifstream disturbances_file;
+  disturbances_file.open(disturbances_fname);
 
-  sim_comp.SetOffset(u_disturbance);
+  // Read inputs and times from file
+  while (ReadDataFromStream(u_disturbance.data(), disturbances_file,
+                            u_disturbance.size())) {
+    if (!(ReadDataFromStream(&t_next, disturbances_file, 1))) {
+      std::cerr << "Simulation time could not be read." << std::endl;
+      break;
+    }
+    std::cout << "Simulating from time " << t_past << " to time " << t_next
+              << " with offset:" << std::endl;
+    for (int i = 0; i < u_disturbance.size(); i++) {
+      std::cout << u_disturbance(i) << "\t";
+    }
+    std::cout << std::endl;
 
-  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+    sim_comp.SetOffset(u_default + u_disturbance);
 
+    sim_comp.Integrate(t_past + sampling_time, t_next, sampling_time,
+                       &Callback);
+
+    t_past = t_next;
+  }
+
+  disturbances_file.close();
   output_file.close();
   cpu_times_file.close();
 

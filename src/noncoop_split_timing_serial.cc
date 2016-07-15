@@ -1,29 +1,30 @@
+#undef CONTROLLER_TYPE_COOP
+#undef CONTROLLER_TYPE_CENTRALIZED
+#undef SYSTEM_TYPE_PARALLEL
+
 #define CONTROLLER_TYPE_NCOOP
-#define SYSTEM_TYPE_PARALLEL
+#define SYSTEM_TYPE_SERIAL
 
 #include "common-variables.h"
 
 SimSystem *p_sim_compressor;
-ParallelCompressors *p_compressor;
+SerialCompressors *p_compressor;
 NvCtr *p_controller;
-std::ofstream output_file;
+std::ofstream timing_file;
 
-void Callback(ParallelCompressors::State x, double t) {
-  output_file << t << std::endl;
-  output_file << x.transpose() << std::endl;
+boost::timer::nanosecond_type time_initialize[2];
+boost::timer::nanosecond_type time_solve[2];
+boost::timer::nanosecond_type time_central;
 
-  ParallelCompressors::Output y = p_compressor->GetOutput(x);
-
-  output_file << y.transpose() << std::endl;
-
+void Callback(SerialCompressors::State x, double t) {
   // Get and apply next input
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
+      p_controller
+          ->GetNextInputWithTiming<NvCtr::TimerType::SPLIT_INITIAL_SOLVE_TIMES>(
+              p_compressor->GetOutput(x), &time_central, time_initialize,
+              time_solve);
 
   p_sim_compressor->SetInput(u);
-
-  output_file << u.transpose() << std::endl
-              << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -38,31 +39,24 @@ int main(int argc, char **argv) {
       std::cerr << "Invalid number " << argv[1] << '\n';
   }
 
-  const std::string folder_name = "parallel/";
+  const std::string folder_name = "serial/";
 
   const std::string constraints_fname = folder_name + "dist_constraints";
-  const std::string output_fname = folder_name + "output/ncoop_output" +
-                                   std::to_string(n_solver_iterations) + ".dat";
-  const std::string info_fname = folder_name + "output/ncoop_info" +
-                                 std::to_string(n_solver_iterations) + ".dat";
+  const std::string timing_fname = folder_name + "timing_ncoop" + std::to_string(n_solver_iterations) + ".dat";
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_ncoop";
   const std::string uwt_fname = folder_name + "uweight_ncoop";
 
-  std::cout << "Running non-cooperative simulation using "
-            << n_solver_iterations << " solver iterations... ";
+  timing_file.open(timing_fname, std::fstream::out | std::fstream::app);
+
+  std::cout << "Running serial non-cooperative simulation... ";
   std::cout.flush();
 
-  // Time entire simulation
-  boost::timer::cpu_timer simulation_timer;
-
-  output_file.open(output_fname);
-
-  ParallelCompressors compressor;
+  SerialCompressors compressor;
   p_compressor = &compressor;
 
-  ParallelCompressors::Input u_default = ParallelCompressors::GetDefaultInput();
-  ParallelCompressors::State x_init = ParallelCompressors::GetDefaultState();
+  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
+  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
@@ -71,9 +65,11 @@ int main(int argc, char **argv) {
 
   const Obsv1::ObserverMatrix M =
       (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
-                                                compressor.n_outputs>::Zero(),
+                                               compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
+
+  const AugmentedSystem1::Input u_offset = u_default;
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
@@ -87,11 +83,12 @@ int main(int argc, char **argv) {
   }
 
   // Read in reference output
-  ParallelCompressors::Output y_ref_sub;
+  SerialCompressors::Output y_ref_sub;
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<Controller1::n_control_inputs> constraints;
@@ -108,7 +105,7 @@ int main(int argc, char **argv) {
 
   // Create a nerve center
   std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
-  NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
+  NvCtr nerve_center(compressor, ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
   // Test functions
@@ -124,30 +121,22 @@ int main(int argc, char **argv) {
   sim_comp.Integrate(0, 50, sampling_time, &Callback);
 
   // Apply disturbance
-  ParallelCompressors::Input u_disturbance = u_default;
-  u_disturbance(8) -= 0.3;
+  SerialCompressors::Input u_disturbance = u_default;
+  u_disturbance(6) -= 0.1;
 
   sim_comp.SetOffset(u_disturbance);
 
   sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
 
-  output_file.close();
+  std::cout << "Finished." << std::endl;
 
-  boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
-  boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
-                                              simulation_cpu_time.user);
+  timing_file << time_central << std::endl;
+  timing_file << time_initialize[0] << std::endl;
+  timing_file << time_solve[0] << std::endl;
+  timing_file << time_initialize[1] << std::endl;
+  timing_file << time_solve[1] << std::endl;
 
-  std::cout << "Finished." << std::endl
-            << "Total time required:\t"
-            << static_cast<double>(simulation_ns) / 1.0e6 << " ms." << std::endl
-            << std::endl;
-
-  std::ofstream info_file;
-  info_file.open(info_fname);
-  info_file << uwt << std::endl
-            << ywt << std::endl
-            << y_ref;
-  info_file.close();
+  timing_file.close();
 
   return 0;
 }

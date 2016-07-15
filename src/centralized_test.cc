@@ -1,32 +1,9 @@
-#include <boost/timer/timer.hpp>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "read_files.h"
-#include "parallel_compressors.h"
-#include "parallel_compressors_constants.h"
-#include "simulation_system.h"
+#define CONTROLLER_TYPE_CENTRALIZED
+#define SYSTEM_TYPE_PARALLEL
+
+#include "common-variables.h"
 
 constexpr int n_solver_iterations = 1;
-
-using namespace PARALLEL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
-
-using AugmentedSystem = AUGMENTEDSYSTEM_CENTRALIZED;
-
-using Obsv = OBSERVER_CENTRALIZED;
-
-using Controller = CONTROLLER_CENTRALIZED;
-
-using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;

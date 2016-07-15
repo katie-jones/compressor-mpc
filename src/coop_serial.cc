@@ -1,35 +1,11 @@
-#include <boost/timer/timer.hpp>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "read_files.h"
-#include "serial_compressors.h"
-#include "serial_compressors_constants.h"
-#include "simulation_system.h"
+#undef CONTROLLER_TYPE_NCOOP
+#undef CONTROLLER_TYPE_CENTRALIZED
+#undef SYSTEM_TYPE_PARALLEL
 
-using namespace SERIAL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
+#define CONTROLLER_TYPE_COOP
+#define SYSTEM_TYPE_SERIAL
 
-using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
-
-using NvCtr = NerveCenter<SerialCompressors, n_total_states, SERIAL_CTRL_COOP1,
-                          SERIAL_CTRL_COOP2>;
-
-using AugmentedSystem1 = SERIAL_AUGSYS_DIST1;
-using AugmentedSystem2 = SERIAL_AUGSYS_DIST2;
-
-using Obsv1 = SERIAL_OBS_DIST1;
-using Obsv2 = SERIAL_OBS_DIST2;
-
-using Controller1 = SERIAL_CTRL_COOP1;
-using Controller2 = SERIAL_CTRL_COOP2;
+#include "common-variables.h"
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
@@ -56,7 +32,7 @@ void Callback(SerialCompressors::State x, double t) {
   boost::timer::cpu_times elapsed = timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
 
-  cpu_times_file << elapsed_ns/2.0 << std::endl;
+  cpu_times_file << elapsed_ns / 2.0 << std::endl;
 
   p_sim_compressor->SetInput(u);
 
@@ -142,7 +118,8 @@ int main(int argc, char **argv) {
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<Controller1::n_control_inputs> constraints;

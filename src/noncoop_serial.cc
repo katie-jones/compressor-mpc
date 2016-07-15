@@ -1,35 +1,7 @@
-#include <boost/timer/timer.hpp>
-#include <sstream>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "serial_compressors.h"
-#include "serial_compressors_constants.h"
-#include "simulation_system.h"
-#include "read_files.h"
+#define CONTROLLER_TYPE_NCOOP
+#define SYSTEM_TYPE_SERIAL
 
-using namespace SERIAL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
-
-using NvCtr = NerveCenter<SerialCompressors, n_total_states,
-                          SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP2>;
-
-using AugmentedSystem1 = SERIAL_AUGSYS_DIST1;
-using AugmentedSystem2 = SERIAL_AUGSYS_DIST2;
-
-using Obsv1 = SERIAL_OBS_DIST1;
-using Obsv2 = SERIAL_OBS_DIST2;
-
-using Controller1 = SERIAL_CTRL_NONCOOP1;
-using Controller2 = SERIAL_CTRL_NONCOOP2;
+#include "common-variables.h"
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
@@ -140,7 +112,8 @@ int main(int argc, char **argv) {
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<n_sub_control_inputs> constraints;

@@ -1,32 +1,9 @@
-#include <boost/timer/timer.hpp>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "parallel_compressors.h"
-#include "parallel_compressors_constants.h"
-#include "simulation_system.h"
-#include "read_files.h"
+#define CONTROLLER_TYPE_CENTRALIZED
+#define SYSTEM_TYPE_PARALLEL
+
+#include "common-variables.h"
 
 constexpr int n_solver_iterations = 1;
-
-using namespace PARALLEL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
-
-using AugmentedSystem = AUGMENTEDSYSTEM_CENTRALIZED;
-
-using Obsv = OBSERVER_CENTRALIZED;
-
-using Controller = CONTROLLER_CENTRALIZED;
-
-using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -62,7 +39,6 @@ int main(void) {
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_cent";
   const std::string uwt_fname = folder_name + "uweight_cent";
-
 
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system +
@@ -101,19 +77,16 @@ int main(void) {
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
-  if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname,
-                         uwt.rows() + 1))) {
+  if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname,
-                         ywt.rows() + 1))) {
+  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
     return -1;
   }
 
   // Read in reference output
   ParallelCompressors::Output y_ref_sub;
-  if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(),
-                         yref_fname))) {
+  if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
   const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller::p, 1>();

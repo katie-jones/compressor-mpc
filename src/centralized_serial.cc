@@ -1,33 +1,9 @@
-// Test of serial centralized controller
+#define CONTROLLER_TYPE_CENTRALIZED
+#define SYSTEM_TYPE_SERIAL
 
-#include <boost/timer/timer.hpp>
-#include <fstream>
-#include <iostream>
-#include "aug_lin_sys.h"
-#include "constexpr_array.h"
-#include "distributed_controller.h"
-#include "input_constraints.h"
-#include "nerve_center.h"
-#include "null_index_array.h"
-#include "observer.h"
-#include "read_files.h"
-#include "serial_compressors.h"
-#include "serial_compressors_constants.h"
-#include "simulation_system.h"
+#include "common-variables.h"
 
 constexpr int n_solver_iterations = 1;
-
-using namespace SERIAL_COMPRESSORS_CONSTANTS;
-using namespace ReadFiles;
-
-using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
-
-using AugmentedSystem = SERIAL_AUGSYS_CENT;
-
-using Obsv = SERIAL_OBS_CENT;
-using Controller = SERIAL_CTRL_CENT;
-
-using NvCtr = NerveCenter<SerialCompressors, n_total_states, Controller>;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;

@@ -10,8 +10,8 @@ timing_ncoop_par = timing_coop_par;
 timing_coop_ser = timing_coop_par;
 timing_ncoop_ser = timing_ncoop_par;
 
-fname_par = 'parallel/timing_';
-fname_ser = 'serial/timing_';
+fname_par = 'parallel/timing/timing_';
+fname_ser = 'serial/timing/timing_';
 
 %% centralized
 f = fopen([fname_par,'centralized.dat'],'r');

@@ -3,6 +3,13 @@
 
 #include "common-variables.h"
 
+using NvCtr =
+    NerveCenter<SerialCompressors, n_total_states,
+                SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP_UNSTABLE2>;
+
+using Controller1 = SERIAL_CTRL_NONCOOP1;
+using Controller2 = SERIAL_CTRL_NONCOOP_UNSTABLE2;
+
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
 NvCtr *p_controller;

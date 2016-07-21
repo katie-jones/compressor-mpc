@@ -108,14 +108,14 @@ using Controller2 = SERIAL_CTRL_NONCOOP2;
 #endif  // ifdef CONTROLLER_TYPE_NCOOP
 
 #ifdef CONTROLLER_TYPE_NCOOP_UNSTABLE
-using NvCtr =
-    NerveCenter<SerialCompressors, n_total_states,
-                SERIAL_CTRL_NONCOOP_UNSTABLE1, SERIAL_CTRL_NONCOOP_UNSTABLE2>;
+// using NvCtr =
+    // NerveCenter<SerialCompressors, n_total_states,
+                // SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP2>;
 
-using Controller1 = SERIAL_CTRL_NONCOOP_UNSTABLE1;
-using Controller2 = SERIAL_CTRL_NONCOOP_UNSTABLE2;
+// using Controller1 = SERIAL_CTRL_NONCOOP1;
+// using Controller2 = SERIAL_CTRL_NONCOOP2;
 
-#endif  // ifdef CONTROLLER_TYPE_NCOOP
+#endif  // ifdef CONTROLLER_TYPE_NCOOP_UNSTABLE
 
 #endif  // ifdef SYSTEM_TYPE_SERIAL
 

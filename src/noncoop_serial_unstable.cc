@@ -3,18 +3,19 @@
 
 #include "common-variables.h"
 
-using NvCtr =
-    NerveCenter<SerialCompressors, n_total_states,
-                SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP_UNSTABLE2>;
-
 using Controller1 = SERIAL_CTRL_NONCOOP1;
-using Controller2 = SERIAL_CTRL_NONCOOP_UNSTABLE2;
+using Controller2 = SERIAL_CTRL_NONCOOP2;
+
+using NvCtr =
+    NerveCenter<SerialCompressors, n_total_states, Controller1, Controller2>;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
+std::ofstream J_file;
+int n_solver_iterations;
 
 boost::timer::cpu_timer timer;
 
@@ -31,6 +32,11 @@ void Callback(SerialCompressors::State x, double t) {
   NvCtr::ControlInput u =
       p_controller->GetNextInput(p_compressor->GetOutput(x));
   timer.stop();
+
+  const double *objective_function = p_controller->GetObjVals();
+  for (int i = 0; i < n_controllers * n_solver_iterations; i++) {
+    J_file << objective_function[i] << std::endl;
+  }
 
   boost::timer::cpu_times elapsed = timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
@@ -49,7 +55,6 @@ int main(int argc, char **argv) {
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system +
                                           time_offset.user);
-  int n_solver_iterations;
 
   if (argc < 2) {
     std::cout << "Number of solver iterations: ";
@@ -74,9 +79,15 @@ int main(int argc, char **argv) {
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_ncoop_unstable";
   const std::string uwt_fname = folder_name + "uweight_ncoop_unstable";
-  const std::string disturbances_fname = folder_name + "ncoop_unstable_disturbances";
+  const std::string disturbances_fname =
+      folder_name + "ncoop_unstable_disturbances";
+  const std::string xinit_fname = folder_name + "xinit_ncoop_unstable";
+  const std::string uinit_fname = folder_name + "uinit_ncoop_unstable";
+  const std::string J_fname = folder_name + "output/ncoop_unstable_J" +
+                              std::to_string(n_solver_iterations) + ".dat";
 
   cpu_times_file.open(cpu_times_fname);
+  J_file.open(J_fname);
 
   cpu_times_file << offset_ns << std::endl;
 
@@ -91,8 +102,21 @@ int main(int argc, char **argv) {
   SerialCompressors compressor;
   p_compressor = &compressor;
 
-  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
-  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
+  SerialCompressors::Input u_default;
+  SerialCompressors::State x_init;
+
+  // Read initial state
+  if (!(ReadDataFromFile(u_default.data(), u_default.size(), uinit_fname))) {
+    std::cerr << "Initial inputs could not be read" << std::endl;
+    return 1;
+  }
+
+  u_default += compressor.GetDefaultInput();
+
+  if (!(ReadDataFromFile(x_init.data(), x_init.size(), xinit_fname))) {
+    std::cerr << "Initial state could not be read" << std::endl;
+    return 1;
+  }
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
@@ -116,15 +140,17 @@ int main(int argc, char **argv) {
   if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromStream(ywt1.data(), yweight_file, ywt1.rows(), ywt1.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt1.data(), yweight_file, ywt1.rows(),
+                           ywt1.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromStream(ywt2.data(), yweight_file, ywt2.rows(), ywt2.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt2.data(), yweight_file, ywt2.rows(),
+                           ywt2.rows() + 1))) {
     return -1;
   }
 
   yweight_file.close();
-  NvCtr::SubYWeightType ywts(ywt1,ywt2);  
+  NvCtr::SubYWeightType ywts(ywt1, ywt2);
 
   // Read in reference output
   SerialCompressors::Output y_ref_sub;
@@ -152,17 +178,15 @@ int main(int argc, char **argv) {
   NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
-  // Test functions
+  // Set up controllers
   nerve_center.SetWeights(uwt, ywts);
   nerve_center.SetOutputReference(y_ref);
 
-  nerve_center.Initialize(compressor.GetDefaultState(),
-                          AugmentedSystem1::ControlInput::Zero(),
-                          compressor.GetDefaultInput(),
-                          compressor.GetOutput(compressor.GetDefaultState()));
+  nerve_center.Initialize(x_init, AugmentedSystem1::ControlInput::Zero(),
+                          u_default, compressor.GetOutput(x_init));
 
   // Initialize disturbance
-  SerialCompressors::Input u_disturbance;
+  SerialCompressors::Input u_disturbance = SerialCompressors::Input::Zero();
   double t_past = -sampling_time;
   double t_next;
 
@@ -211,5 +235,6 @@ int main(int argc, char **argv) {
             << ywt2 << std::endl
             << y_ref;
   info_file.close();
+  J_file.close();
   return 0;
 }

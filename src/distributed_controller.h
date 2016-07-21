@@ -150,6 +150,9 @@ class DistributedController {
   void GetStateEstimate(double* x_out) {
     for (int i = 0; i < n_states; ++i) x_out[i] = x_(i);
   }
+
+  /// Get value of QP solver objective function
+  double GetObjVal() const { return qp_solver_.GetObjVal(); }
 };
 
 // Declaration of static constexpr member

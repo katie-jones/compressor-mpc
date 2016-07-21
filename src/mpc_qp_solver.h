@@ -11,6 +11,7 @@ template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 class MpcQpSolver {
  private:
   static constexpr int n_wsr_max = 10;  // max working set recalculations
+  double objective_function_value_;
 
  public:
   using AugmentedState = Eigen::Matrix<double, n_total_states, 1>;
@@ -78,6 +79,9 @@ class MpcQpSolver {
 
   /// Get current output reference
   OutputPrediction GetOutputReference() const { return y_ref_; }
+
+  /// Get objective function value
+  double GetObjVal() const { return objective_function_value_; }
 
  protected:
   // generate QP matrices based on linearization, given the y prediction

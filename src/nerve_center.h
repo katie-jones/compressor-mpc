@@ -62,6 +62,7 @@ class NerveCenter : public ControllerInterface<System> {
  public:
   using UWeightType = Eigen::Matrix<double, n_control_inputs, n_control_inputs>;
   using YWeightType = Eigen::Matrix<double, n_outputs, n_outputs>;
+  using SubYWeightType = std::tuple<typename SubControllers::YWeightType...>;
   using OutputPrediction = Eigen::Matrix<double, p_max * n_outputs, 1>;
 
   NerveCenter(std::tuple<SubControllers...>& controllers,
@@ -85,6 +86,12 @@ class NerveCenter : public ControllerInterface<System> {
   void SetWeights(const UWeightType& uwt, const YWeightType& ywt) {
     expander{SetWeightsHelper(&std::get<SubControllers>(sub_controllers_), uwt,
                               ywt)...};
+  }
+
+  /// Set input/output weights individually for each controller
+  void SetWeights(const UWeightType& uwt, const SubYWeightType& ywts) {
+    expander{SetWeightsSubHelper(&std::get<SubControllers>(sub_controllers_),
+                                 uwt, ywts)...};
   }
 
   /// Set reference output
@@ -217,6 +224,19 @@ class NerveCenter : public ControllerInterface<System> {
     controller->SetWeights(uwt_sub, ywt_sub);
   }
 
+  // Set weights for each controller
+  template <typename T>
+  int SetWeightsSubHelper(T* controller, const UWeightType& uwt,
+                          const SubYWeightType& ywts) {
+    typename T::YWeightType ywt_sub = std::get<GetControllerNumber<T>()>(ywts);
+    typename T::UWeightType uwt_sub;
+
+    T::ControlInputIndexType::template GetSubMatrix<n_control_inputs>(
+        uwt_sub.data(), uwt.data());
+
+    controller->SetWeights(uwt_sub, ywt_sub);
+  }
+
   // Set reference output for each controller
   template <typename T>
   int SetOutputReferenceHelper(T* controller, const OutputPrediction& y_ref) {
@@ -321,7 +341,7 @@ class NerveCenter : public ControllerInterface<System> {
 
   // Get the index of controller of typename T
   template <typename T>
-  constexpr int GetControllerNumber(const T* controller = NULL) {
+  static constexpr int GetControllerNumber(const T* controller = NULL) {
     int ind = -1;
     bool is_right_type[]{(std::is_same<T, SubControllers>::value)...};
 

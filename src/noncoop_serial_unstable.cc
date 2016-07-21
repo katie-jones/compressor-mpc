@@ -56,17 +56,18 @@ int main(int argc, char **argv) {
   const std::string folder_name = "serial/";
 
   const std::string constraints_fname = folder_name + "dist_constraints";
-  const std::string output_fname = folder_name + "output/ncoop_output" +
+  const std::string output_fname = folder_name +
+                                   "output/ncoop_unstable_output" +
                                    std::to_string(n_solver_iterations) + ".dat";
-  const std::string info_fname = folder_name + "output/ncoop_info" +
+  const std::string info_fname = folder_name + "output/ncoop_unstable_info" +
                                  std::to_string(n_solver_iterations) + ".dat";
-  const std::string cpu_times_fname = folder_name + "output/ncoop_cpu_times" +
-                                      std::to_string(n_solver_iterations) +
-                                      ".dat";
+  const std::string cpu_times_fname =
+      folder_name + "output/ncoop_unstable_cpu_times" +
+      std::to_string(n_solver_iterations) + ".dat";
   const std::string yref_fname = folder_name + "yref";
-  const std::string ywt_fname = folder_name + "yweight_ncoop";
-  const std::string uwt_fname = folder_name + "uweight_ncoop";
-  const std::string disturbances_fname = folder_name + "ncoop_disturbances";
+  const std::string ywt_fname = folder_name + "yweight_ncoop_unstable";
+  const std::string uwt_fname = folder_name + "uweight_ncoop_unstable";
+  const std::string disturbances_fname = folder_name + "ncoop_unstable_disturbances";
 
   cpu_times_file.open(cpu_times_fname);
 
@@ -99,14 +100,24 @@ int main(int argc, char **argv) {
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
-  NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
+  Controller1::YWeightType ywt1 = Controller1::YWeightType::Zero();
+  Controller2::YWeightType ywt2 = Controller2::YWeightType::Zero();
+
+  std::ifstream yweight_file;
+  yweight_file.open(ywt_fname);
 
   if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt1.data(), yweight_file, ywt1.rows(), ywt1.rows() + 1))) {
     return -1;
   }
+  if (!(ReadDataFromStream(ywt2.data(), yweight_file, ywt2.rows(), ywt2.rows() + 1))) {
+    return -1;
+  }
+
+  yweight_file.close();
+  NvCtr::SubYWeightType ywts(ywt1,ywt2);  
 
   // Read in reference output
   SerialCompressors::Output y_ref_sub;
@@ -135,7 +146,7 @@ int main(int argc, char **argv) {
   p_controller = &nerve_center;
 
   // Test functions
-  nerve_center.SetWeights(uwt, ywt);
+  nerve_center.SetWeights(uwt, ywts);
   nerve_center.SetOutputReference(y_ref);
 
   nerve_center.Initialize(compressor.GetDefaultState(),
@@ -189,7 +200,8 @@ int main(int argc, char **argv) {
   std::ofstream info_file;
   info_file.open(info_fname);
   info_file << uwt << std::endl
-            << ywt << std::endl
+            << ywt1 << std::endl
+            << ywt2 << std::endl
             << y_ref;
   info_file.close();
   return 0;

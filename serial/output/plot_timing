@@ -1,0 +1,23 @@
+N = 9;
+n_trials = 5;
+
+t_init = zeros(N,2);
+t_solve = t_init;
+t_master = zeros(N,1);
+
+data = cell(N,n_trials);
+
+
+
+for i=1:9
+    f = fopen(['ncoop_timing',num2str(i),'.dat'],'r');
+    A = fscanf(f,'%g',[6,Inf]);
+    fclose(f);
+    
+    t_init(i,:) = [mean(A(:,1)),mean(A(:,3))];
+    t_solve(i,:) = [mean(A(:,2)),mean(A(:,4))];
+    t_master(i) = mean(A(:,5));
+    
+    data{i} = A;
+end
+

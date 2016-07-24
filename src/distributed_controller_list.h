@@ -26,8 +26,8 @@ template class SERIAL_CTRL_COOP2;
 template class SERIAL_CTRL_NONCOOP1;
 template class SERIAL_CTRL_NONCOOP2;
 
-template class SERIAL_CTRL_NONCOOP_UNSTABLE1;
-template class SERIAL_CTRL_NONCOOP_UNSTABLE2;
+template class SERIAL_CTRL_NONCOOP_OLD1;
+template class SERIAL_CTRL_NONCOOP_OLD2;
 
 template class SERIAL_CTRL_CENT;
 

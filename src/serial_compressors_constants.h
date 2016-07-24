@@ -44,6 +44,20 @@
       SERIAL_COMPRESSORS_CONSTANTS::ControlledOutputIndices,           \
       SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
 
+#define SERIAL_CTRL_NONCOOP_OLD1                                           \
+  DistributedController<                                               \
+      SERIAL_AUGSYS_DIST1, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
+      SERIAL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,             \
+      SERIAL_COMPRESSORS_CONSTANTS::OldNCControlledOutputIndices1,        \
+      SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
+
+#define SERIAL_CTRL_NONCOOP_OLD2                                           \
+  DistributedController<                                               \
+      SERIAL_AUGSYS_DIST2, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
+      SERIAL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,             \
+      SERIAL_COMPRESSORS_CONSTANTS::OldNCControlledOutputIndices2,        \
+      SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
+
 #define SERIAL_CTRL_NONCOOP1                                           \
   DistributedController<                                               \
       SERIAL_AUGSYS_DIST1, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
@@ -56,20 +70,6 @@
       SERIAL_AUGSYS_DIST2, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
       SERIAL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,             \
       SERIAL_COMPRESSORS_CONSTANTS::NCControlledOutputIndices2,        \
-      SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
-
-#define SERIAL_CTRL_NONCOOP_UNSTABLE1                                           \
-  DistributedController<                                               \
-      SERIAL_AUGSYS_DIST1, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
-      SERIAL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,             \
-      SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices1,        \
-      SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
-
-#define SERIAL_CTRL_NONCOOP_UNSTABLE2                                           \
-  DistributedController<                                               \
-      SERIAL_AUGSYS_DIST2, SERIAL_COMPRESSORS_CONSTANTS::StateIndices, \
-      SERIAL_COMPRESSORS_CONSTANTS::ObserverOutputIndices,             \
-      SERIAL_COMPRESSORS_CONSTANTS::UnstableControlledOutputIndices2,        \
       SERIAL_COMPRESSORS_CONSTANTS::p, SERIAL_COMPRESSORS_CONSTANTS::m>
 
 #define SERIAL_CTRL_CENT                                              \
@@ -99,10 +99,10 @@ using ObserverOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
 using InputIndices = ConstexprArray<0, 3, 4, 7>;
 
 using ControlledOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;
-using NCControlledOutputIndices1 = ConstexprArray<0, 1, 2>;
-using NCControlledOutputIndices2 = ConstexprArray<2, 3, 1>;
-using UnstableControlledOutputIndices1 = ConstexprArray<0, 1>;
-using UnstableControlledOutputIndices2 = ConstexprArray<2, 3>;
+using OldNCControlledOutputIndices1 = ConstexprArray<0, 1, 2>;
+using OldNCControlledOutputIndices2 = ConstexprArray<2, 3, 1>;
+using NCControlledOutputIndices1 = ConstexprArray<0, 1>;
+using NCControlledOutputIndices2 = ConstexprArray<2, 3>;
 
 using ControlInputIndices1 = ConstexprArray<0, 1, 2, 3>;
 using ControlInputIndices2 = ConstexprArray<2, 3, 0, 1>;

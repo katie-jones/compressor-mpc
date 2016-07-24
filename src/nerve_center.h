@@ -192,7 +192,10 @@ class NerveCenter : public ControllerInterface<System> {
     timer.stop();
     if (use_timer) {
       boost::timer::cpu_times elapsed = timer.elapsed();
-      *central_time_out = elapsed.wall;
+      if (timer_type == TOTAL_TIME)
+        *central_time_out += elapsed.user + elapsed.system;
+      else
+        *central_time_out += elapsed.wall;
     }
 
     return u_old_;
@@ -296,8 +299,6 @@ class NerveCenter : public ControllerInterface<System> {
   int SolveQPHelper(T* controller, ControlInputPrediction* du_new,
                     int* prediction_index,
                     const ControlInputPrediction& du_old) {
-    boost::timer::cpu_timer timer;
-    boost::timer::nanosecond_type time_out;
     // Take previous solution from other controllers (not this one)
     Eigen::Matrix<double,
                   n_prediction_control_inputs - T::m * T::n_control_inputs,
@@ -315,9 +316,6 @@ class NerveCenter : public ControllerInterface<System> {
     du_new->template segment<T::m* T::n_control_inputs>(*prediction_index) =
         du_new_sub;
     *prediction_index += T::m* T::n_control_inputs;
-
-    boost::timer::cpu_times elapsed = timer.elapsed();
-    time_out = elapsed.wall;  // system + elapsed.user;
   }
 
   // Time SolveQPHelper

@@ -96,8 +96,21 @@ int main(int argc, char **argv) {
   SerialCompressors compressor;
   p_compressor = &compressor;
 
-  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
-  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
+  SerialCompressors::Input u_default;
+  SerialCompressors::State x_init;
+
+  // Read initial state
+  if (!(ReadDataFromFile(u_default.data(), u_default.size(), uinit_fname))) {
+    std::cerr << "Initial inputs could not be read" << std::endl;
+    return 1;
+  }
+
+  u_default += compressor.GetDefaultInput();
+
+  if (!(ReadDataFromFile(x_init.data(), x_init.size(), xinit_fname))) {
+    std::cerr << "Initial state could not be read" << std::endl;
+    return 1;
+  }
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
@@ -112,14 +125,26 @@ int main(int argc, char **argv) {
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
-  NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
+  Controller1::YWeightType ywt1 = Controller1::YWeightType::Zero();
+  Controller2::YWeightType ywt2 = Controller2::YWeightType::Zero();
+
+  std::ifstream yweight_file;
+  yweight_file.open(ywt_fname);
 
   if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt1.data(), yweight_file, ywt1.rows(),
+                           ywt1.rows() + 1))) {
     return -1;
   }
+  if (!(ReadDataFromStream(ywt2.data(), yweight_file, ywt2.rows(),
+                           ywt2.rows() + 1))) {
+    return -1;
+  }
+
+  yweight_file.close();
+  NvCtr::SubYWeightType ywts(ywt1, ywt2);
 
   // Read in reference output
   SerialCompressors::Output y_ref_sub;
@@ -147,17 +172,15 @@ int main(int argc, char **argv) {
   NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
-  // Test functions
-  nerve_center.SetWeights(uwt, ywt);
+  // Set up controllers
+  nerve_center.SetWeights(uwt, ywts);
   nerve_center.SetOutputReference(y_ref);
 
-  nerve_center.Initialize(compressor.GetDefaultState(),
-                          AugmentedSystem1::ControlInput::Zero(),
-                          compressor.GetDefaultInput(),
-                          compressor.GetOutput(compressor.GetDefaultState()));
+  nerve_center.Initialize(x_init, AugmentedSystem1::ControlInput::Zero(),
+                          u_default, compressor.GetOutput(x_init));
 
   // Initialize disturbance
-  SerialCompressors::Input u_disturbance;
+  SerialCompressors::Input u_disturbance = SerialCompressors::Input::Zero();
   double t_past = -sampling_time;
   double t_next;
 
@@ -202,7 +225,8 @@ int main(int argc, char **argv) {
   std::ofstream info_file;
   info_file.open(info_fname);
   info_file << uwt << std::endl
-            << ywt << std::endl
+            << ywt1 << std::endl
+            << ywt2 << std::endl
             << y_ref;
   info_file.close();
   J_file.close();

@@ -53,10 +53,10 @@ using Controller2 = PARALLEL_CTRL_COOP2;
 //---------------------------- NON-COOPERATIVE ---------------------------------
 #ifdef CONTROLLER_TYPE_NCOOP
 using NvCtr = NerveCenter<ParallelCompressors, n_total_states,
-                          PARALLEL_CTRL_COOP1, PARALLEL_CTRL_COOP2>;
+                          PARALLEL_CTRL_NONCOOP1, PARALLEL_CTRL_NONCOOP2>;
 
-using Controller1 = PARALLEL_CTRL_COOP1;
-using Controller2 = PARALLEL_CTRL_COOP2;
+using Controller1 = PARALLEL_CTRL_NONCOOP1;
+using Controller2 = PARALLEL_CTRL_NONCOOP2;
 #endif  // ifdef CONTROLLER_TYPE_NCOOP
 
 #endif  // ifdef SYSTEM_TYPE_PARALLEL

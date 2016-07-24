@@ -3,7 +3,7 @@
 
 #include "common-variables.h"
 
-constexpr int n_solver_iterations = 1;
+constexpr int n_solver_iterations = 0;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
@@ -53,9 +53,9 @@ int main(void) {
   const std::string folder_name = "serial/";
 
   const std::string constraints_fname = folder_name + "constraints";
-  const std::string output_fname = folder_name + "output/cent_output.dat";
-  const std::string info_fname = folder_name + "output/cent_info.dat";
-  const std::string cpu_times_fname = folder_name + "output/cent_cpu_times.dat";
+  const std::string output_fname = folder_name + "output/cent_output0.dat";
+  const std::string info_fname = folder_name + "output/cent_info0.dat";
+  const std::string cpu_times_fname = folder_name + "output/cent_cpu_times0.dat";
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_cent";
   const std::string uwt_fname = folder_name + "uweight_cent";

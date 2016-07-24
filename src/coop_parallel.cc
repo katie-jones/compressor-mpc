@@ -4,6 +4,7 @@
 
 #define CONTROLLER_TYPE_COOP
 #define SYSTEM_TYPE_PARALLEL
+#define EIGEN_DONT_PARALLELIZE 1
 
 #include "common-variables.h"
 
@@ -12,27 +13,21 @@ ParallelCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream cpu_times_file;
 
-boost::timer::cpu_timer timer;
+boost::timer::nanosecond_type time_total;
 
 void Callback(ParallelCompressors::State x, double t) {
   ParallelCompressors::Output y = p_compressor->GetOutput(x);
 
   // Get and apply next input
-  timer.resume();
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
-  timer.stop();
-
-  boost::timer::cpu_times elapsed = timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
-
-  cpu_times_file << elapsed_ns / 2.0 << std::endl;
+      p_controller->GetNextInputWithTiming<NvCtr::TOTAL_TIME>(
+          p_compressor->GetOutput(x), &time_total);
 
   p_sim_compressor->SetInput(u);
 }
 
 int main(int argc, char **argv) {
-  timer.stop();
+  time_total = 0;
 
   int n_solver_iterations;
 
@@ -54,6 +49,7 @@ int main(int argc, char **argv) {
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_coop";
   const std::string uwt_fname = folder_name + "uweight_coop";
+  const std::string disturbances_fname = folder_name + "disturbances_coop";
 
   std::cout << "Running cooperative simulation using " << n_solver_iterations
             << " solver iterations... ";
@@ -61,14 +57,6 @@ int main(int argc, char **argv) {
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
-
-  boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system +
-                                          time_offset.user);
-
-  cpu_times_file.open(cpu_times_fname);
-
-  cpu_times_file << offset_ns << std::endl;
 
   ParallelCompressors compressor;
   p_compressor = &compressor;
@@ -105,7 +93,8 @@ int main(int argc, char **argv) {
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller1::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
   InputConstraints<Controller1::n_control_inputs> constraints;
@@ -134,23 +123,48 @@ int main(int argc, char **argv) {
                           compressor.GetDefaultInput(),
                           compressor.GetOutput(compressor.GetDefaultState()));
 
-  // Integrate system
-  sim_comp.Integrate(0, 50, sampling_time, &Callback);
+  // Initialize disturbance
+  ParallelCompressors::Input u_disturbance;
+  double t_past = -sampling_time;
+  double t_next;
 
-  // Apply disturbance
-  ParallelCompressors::Input u_disturbance = u_default;
-  u_disturbance(8) -= 0.3;
+  std::ifstream disturbances_file;
+  disturbances_file.open(disturbances_fname);
 
-  sim_comp.SetOffset(u_disturbance);
-  std::cout << u_disturbance << std::endl;
+  // Read inputs and times from file
+  while (ReadDataFromStream(u_disturbance.data(), disturbances_file,
+                            u_disturbance.size())) {
+    if (!(ReadDataFromStream(&t_next, disturbances_file, 1))) {
+      std::cerr << "Simulation time could not be read." << std::endl;
+      break;
+    }
 
-  sim_comp.Integrate(50 + sampling_time, 500, sampling_time, &Callback);
+    if (n_solver_iterations == 0) u_disturbance *= 0;
 
-  cpu_times_file.close();
+    std::cout << "Simulating from time " << t_past << " to time " << t_next
+              << " with offset:" << std::endl;
+    for (int i = 0; i < u_disturbance.size(); i++) {
+      std::cout << u_disturbance(i) << "\t";
+    }
+    std::cout << std::endl;
+
+    sim_comp.SetOffset(u_default + u_disturbance);
+
+    sim_comp.Integrate(t_past + sampling_time, t_next, sampling_time,
+                       &Callback);
+
+    t_past = t_next;
+  }
+
+  disturbances_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
   boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
                                               simulation_cpu_time.user);
+  cpu_times_file.open(cpu_times_fname);
+
+  cpu_times_file << time_total << std::endl;
+  cpu_times_file.close();
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"

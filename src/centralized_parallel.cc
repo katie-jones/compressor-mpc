@@ -1,82 +1,54 @@
 #define CONTROLLER_TYPE_CENTRALIZED
-#define SYSTEM_TYPE_SERIAL
+#define SYSTEM_TYPE_PARALLEL
+#define EIGEN_DONT_PARALLELIZE 1
 
 #include "common-variables.h"
 
 constexpr int n_solver_iterations = 1;
 
 SimSystem *p_sim_compressor;
-SerialCompressors *p_compressor;
+ParallelCompressors *p_compressor;
 NvCtr *p_controller;
-std::ofstream output_file;
 std::ofstream cpu_times_file;
 
-boost::timer::nanosecond_type time_initialize;
-boost::timer::nanosecond_type time_solve;
-boost::timer::nanosecond_type time_central;
+boost::timer::nanosecond_type time_total;
 
-boost::timer::cpu_timer timer;
-
-void Callback(SerialCompressors::State x, double t) {
-  output_file << t << std::endl;
-  output_file << x.transpose() << std::endl;
-
-  SerialCompressors::Output y = p_compressor->GetOutput(x);
-
-  output_file << y.transpose() << std::endl;
+void Callback(ParallelCompressors::State x, double t) {
+  ParallelCompressors::Output y = p_compressor->GetOutput(x);
 
   // Get and apply next input
-  timer.resume();
   NvCtr::ControlInput u =
-      p_controller
-          ->GetNextInputWithTiming<NvCtr::TimerType::SPLIT_INITIAL_SOLVE_TIMES>(
-              p_compressor->GetOutput(x), &time_central, &time_initialize,
-              &time_solve);
-  timer.stop();
-
-  boost::timer::cpu_times elapsed = timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
-
-  cpu_times_file << elapsed_ns << std::endl;
+      p_controller->GetNextInputWithTiming<NvCtr::TOTAL_TIME>(
+          p_compressor->GetOutput(x), &time_total);
 
   p_sim_compressor->SetInput(u);
-
-  output_file << u.transpose() << std::endl << std::endl;
 }
 
 int main(void) {
-  timer.stop();
+  time_total =  0;
 
-  boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system +
-                                          time_offset.user);
-  const std::string folder_name = "serial/";
+  const std::string folder_name = "parallel/";
 
   const std::string constraints_fname = folder_name + "constraints";
-  const std::string output_fname = folder_name + "output/cent_output.dat";
-  const std::string info_fname = folder_name + "output/cent_info.dat";
-  const std::string cpu_times_fname = folder_name + "output/cent_cpu_times.dat";
+  const std::string cpu_times_fname =
+      folder_name + "output/cent_cpu_times.dat";
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_cent";
   const std::string uwt_fname = folder_name + "uweight_cent";
   const std::string disturbances_fname = folder_name + "disturbances_cent";
 
-  std::cout << "Running serial centralized simulation... ";
+  std::cout << "Running centralized simulation... ";
   std::cout.flush();
 
-  cpu_times_file.open(cpu_times_fname);
-
-  cpu_times_file << offset_ns << std::endl;
-  output_file.open(output_fname);
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
 
-  SerialCompressors compressor;
+  ParallelCompressors compressor;
   p_compressor = &compressor;
 
-  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
-  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
+  ParallelCompressors::Input u_default = ParallelCompressors::GetDefaultInput();
+  ParallelCompressors::State x_init = ParallelCompressors::GetDefaultState();
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
@@ -87,8 +59,7 @@ int main(void) {
       (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
-                     compressor.n_outputs>::Identity())
-          .finished();
+                     compressor.n_outputs>::Identity()).finished();
 
   const AugmentedSystem::Input u_offset = u_default;
 
@@ -104,7 +75,7 @@ int main(void) {
   }
 
   // Read in reference output
-  SerialCompressors::Output y_ref_sub;
+  ParallelCompressors::Output y_ref_sub;
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
@@ -136,7 +107,7 @@ int main(void) {
                           compressor.GetOutput(compressor.GetDefaultState()));
 
   // Initialize disturbance
-  SerialCompressors::Input u_disturbance;
+  ParallelCompressors::Input u_disturbance;
   double t_past = -sampling_time;
   double t_next;
 
@@ -166,30 +137,18 @@ int main(void) {
   }
 
   disturbances_file.close();
-  output_file.close();
-  cpu_times_file.close();
-
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
   boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
                                               simulation_cpu_time.user);
+
+  cpu_times_file.open(cpu_times_fname);
+  cpu_times_file << time_total << std::endl;
+  cpu_times_file.close();
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"
             << static_cast<double>(simulation_ns) / 1.0e6 << " ms." << std::endl
             << std::endl;
-
-  std::ofstream info_file;
-  info_file.open(info_fname);
-  info_file << uwt << std::endl << ywt << std::endl << y_ref;
-  info_file.close();
-
-  info_file.open("centralized_serial_times.dat");
-
-  info_file << "Central time: " << time_central << std::endl;
-  info_file << "Initialize time: " << time_initialize << std::endl;
-  info_file << "Solve time: " << time_solve << std::endl;
-
-  info_file.close();
 
   return 0;
 }

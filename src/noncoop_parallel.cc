@@ -1,38 +1,29 @@
-#undef CONTROLLER_TYPE_NCOOP
-#undef CONTROLLER_TYPE_CENTRALIZED
-#undef SYSTEM_TYPE_PARALLEL
-
-#define CONTROLLER_TYPE_COOP
-#define SYSTEM_TYPE_SERIAL
+#define CONTROLLER_TYPE_NCOOP
+#define SYSTEM_TYPE_PARALLEL
+#define EIGEN_DONT_PARALLELIZE 1
 
 #include "common-variables.h"
 
 SimSystem *p_sim_compressor;
-SerialCompressors *p_compressor;
+ParallelCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
-std::ofstream cpu_times_file;
+int n_solver_iterations;
 
-boost::timer::cpu_timer timer;
+boost::timer::nanosecond_type time_total;
 
-void Callback(SerialCompressors::State x, double t) {
+void Callback(ParallelCompressors::State x, double t) {
   output_file << t << std::endl;
   output_file << x.transpose() << std::endl;
 
-  SerialCompressors::Output y = p_compressor->GetOutput(x);
+  ParallelCompressors::Output y = p_compressor->GetOutput(x);
 
   output_file << y.transpose() << std::endl;
 
   // Get and apply next input
-  timer.resume();
   NvCtr::ControlInput u =
-      p_controller->GetNextInput(p_compressor->GetOutput(x));
-  timer.stop();
-
-  boost::timer::cpu_times elapsed = timer.elapsed();
-  boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
-
-  cpu_times_file << elapsed_ns / 2.0 << std::endl;
+      p_controller->GetNextInputWithTiming<NvCtr::TOTAL_TIME>(
+          p_compressor->GetOutput(x), &time_total);
 
   p_sim_compressor->SetInput(u);
 
@@ -41,13 +32,7 @@ void Callback(SerialCompressors::State x, double t) {
 }
 
 int main(int argc, char **argv) {
-  timer.stop();
-
-  boost::timer::cpu_times time_offset = timer.elapsed();
-  boost::timer::nanosecond_type offset_ns(time_offset.system +
-                                          time_offset.user);
-  int n_solver_iterations;
-
+  time_total = 0;
   if (argc < 2) {
     std::cout << "Number of solver iterations: ";
     std::cin >> n_solver_iterations;
@@ -57,26 +42,26 @@ int main(int argc, char **argv) {
       std::cerr << "Invalid number " << argv[1] << '\n';
   }
 
-  const std::string folder_name = "serial/";
+  const std::string folder_name = "parallel/";
 
   const std::string constraints_fname = folder_name + "dist_constraints";
-  const std::string output_fname = folder_name + "output/coop_output" +
+  const std::string output_fname = folder_name + "output/ncoop_output" +
                                    std::to_string(n_solver_iterations) + ".dat";
-  const std::string info_fname = folder_name + "output/coop_info" +
+  const std::string info_fname = folder_name + "output/ncoop_info" +
                                  std::to_string(n_solver_iterations) + ".dat";
-  const std::string cpu_times_fname = folder_name + "output/coop_cpu_times" +
+  const std::string cpu_times_fname = folder_name + "output/ncoop_cpu_times" +
                                       std::to_string(n_solver_iterations) +
                                       ".dat";
-  const std::string disturbances_fname = folder_name + "disturbances_coop";
   const std::string yref_fname = folder_name + "yref";
-  const std::string ywt_fname = folder_name + "yweight_coop";
-  const std::string uwt_fname = folder_name + "uweight_coop";
+  const std::string ywt_fname = folder_name + "yweight_ncoop";
+  const std::string uwt_fname = folder_name + "uweight_ncoop";
+  const std::string disturbances_fname = folder_name + "disturbances_ncoop";
+  const std::string xinit_fname = folder_name + "xinit_ncoop";
+  const std::string uinit_fname = folder_name + "uinit_ncoop";
+  const std::string J_fname = folder_name + "output/ncoop_J" +
+                              std::to_string(n_solver_iterations) + ".dat";
 
-  cpu_times_file.open(cpu_times_fname);
-
-  cpu_times_file << offset_ns << std::endl;
-
-  std::cout << "Running serial cooperative simulation using "
+  std::cout << "Running parallel non-cooperative simulation using "
             << n_solver_iterations << " solver iterations... " << std::endl;
 
   // Time entire simulation
@@ -84,11 +69,24 @@ int main(int argc, char **argv) {
 
   output_file.open(output_fname);
 
-  SerialCompressors compressor;
+  ParallelCompressors compressor;
   p_compressor = &compressor;
 
-  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
-  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
+  ParallelCompressors::Input u_default;
+  ParallelCompressors::State x_init;
+
+  // Read initial state
+  if (!(ReadDataFromFile(u_default.data(), u_default.size(), uinit_fname))) {
+    std::cerr << "Initial inputs could not be read" << std::endl;
+    return 1;
+  }
+
+  u_default += compressor.GetDefaultInput();
+
+  if (!(ReadDataFromFile(x_init.data(), x_init.size(), xinit_fname))) {
+    std::cerr << "Initial state could not be read" << std::endl;
+    return 1;
+  }
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
@@ -101,21 +99,24 @@ int main(int argc, char **argv) {
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity()).finished();
 
-  const AugmentedSystem1::Input u_offset = u_default;
-
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
+  std::ifstream yweight_file;
+  yweight_file.open(ywt_fname);
+
   if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
     return -1;
   }
-  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt.data(), yweight_file, ywt.rows(),
+                           ywt.rows() + 1))) {
     return -1;
   }
+  yweight_file.close();
 
   // Read in reference output
-  SerialCompressors::Output y_ref_sub;
+  ParallelCompressors::Output y_ref_sub;
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
     return -1;
   }
@@ -123,7 +124,7 @@ int main(int argc, char **argv) {
       y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
-  InputConstraints<Controller1::n_control_inputs> constraints;
+  InputConstraints<n_sub_control_inputs> constraints;
   constraints.use_rate_constraints = true;
   if (!(ReadConstraintsFromFile(&constraints, constraints_fname))) {
     return -1;
@@ -140,17 +141,15 @@ int main(int argc, char **argv) {
   NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
-  // Test functions
+  // Set up controllers
   nerve_center.SetWeights(uwt, ywt);
   nerve_center.SetOutputReference(y_ref);
 
-  nerve_center.Initialize(compressor.GetDefaultState(),
-                          AugmentedSystem1::ControlInput::Zero(),
-                          compressor.GetDefaultInput(),
-                          compressor.GetOutput(compressor.GetDefaultState()));
+  nerve_center.Initialize(x_init, AugmentedSystem1::ControlInput::Zero(),
+                          u_default, compressor.GetOutput(x_init));
 
   // Initialize disturbance
-  SerialCompressors::Input u_disturbance;
+  ParallelCompressors::Input u_disturbance = ParallelCompressors::Input::Zero();
   double t_past = -sampling_time;
   double t_next;
 
@@ -158,12 +157,16 @@ int main(int argc, char **argv) {
   disturbances_file.open(disturbances_fname);
 
   // Read inputs and times from file
+  std::cout << "Starting simulation." << std::endl;
   while (ReadDataFromStream(u_disturbance.data(), disturbances_file,
                             u_disturbance.size())) {
     if (!(ReadDataFromStream(&t_next, disturbances_file, 1))) {
       std::cerr << "Simulation time could not be read." << std::endl;
       break;
     }
+
+    if (n_solver_iterations == 0) u_disturbance *= 0;
+
     std::cout << "Simulating from time " << t_past << " to time " << t_next
               << " with offset:" << std::endl;
     for (int i = 0; i < u_disturbance.size(); i++) {
@@ -181,11 +184,14 @@ int main(int argc, char **argv) {
 
   disturbances_file.close();
   output_file.close();
-  cpu_times_file.close();
 
   boost::timer::cpu_times simulation_cpu_time = simulation_timer.elapsed();
   boost::timer::nanosecond_type simulation_ns(simulation_cpu_time.system +
                                               simulation_cpu_time.user);
+  std::ofstream cpu_times_file;
+  cpu_times_file.open(cpu_times_fname);
+  cpu_times_file << time_total << std::endl;
+  cpu_times_file.close();
 
   std::cout << "Finished." << std::endl
             << "Total time required:\t"

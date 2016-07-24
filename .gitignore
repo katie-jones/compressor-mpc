@@ -1,5 +1,5 @@
 build/
 debug_build/
 *.swp
-parallel/output/
-serial/output/
+/parallel/output/
+/serial/output/

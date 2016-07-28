@@ -250,7 +250,6 @@ void AugmentedLinearizedSystem<
   Eigen::Matrix<double, n_controlled_outputs, n_total_states> c_times_a;
   c_times_a.template rightCols<n_delay_states>().setZero();
 
-  // TODO: take only desired rows from C
   for (int i = 0; i < ControlledOutputIndices::size; i++) {
     c_times_a.template block<1, n_obs_states>(i, 0) =
         C.row(ControlledOutputIndices::GetEntry(i));

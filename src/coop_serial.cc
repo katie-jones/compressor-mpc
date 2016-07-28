@@ -12,6 +12,8 @@ SerialCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream output_file;
 std::ofstream cpu_times_file;
+std::ofstream J_file;
+int n_solver_iterations;
 
 boost::timer::cpu_timer timer;
 
@@ -28,6 +30,11 @@ void Callback(SerialCompressors::State x, double t) {
   NvCtr::ControlInput u =
       p_controller->GetNextInput(p_compressor->GetOutput(x));
   timer.stop();
+
+  const double *objective_function = p_controller->GetObjVals();
+  for (int i = 0; i < n_controllers * n_solver_iterations; i++) {
+    J_file << objective_function[i] << std::endl;
+  }
 
   boost::timer::cpu_times elapsed = timer.elapsed();
   boost::timer::nanosecond_type elapsed_ns(elapsed.system + elapsed.user);
@@ -46,7 +53,6 @@ int main(int argc, char **argv) {
   boost::timer::cpu_times time_offset = timer.elapsed();
   boost::timer::nanosecond_type offset_ns(time_offset.system +
                                           time_offset.user);
-  int n_solver_iterations;
 
   if (argc < 2) {
     std::cout << "Number of solver iterations: ";
@@ -71,6 +77,8 @@ int main(int argc, char **argv) {
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_coop";
   const std::string uwt_fname = folder_name + "uweight_coop";
+  const std::string J_fname = folder_name + "output/coop_J" +
+                              std::to_string(n_solver_iterations) + ".dat";
 
   cpu_times_file.open(cpu_times_fname);
 
@@ -83,6 +91,7 @@ int main(int argc, char **argv) {
   boost::timer::cpu_timer simulation_timer;
 
   output_file.open(output_fname);
+  J_file.open(J_fname);
 
   SerialCompressors compressor;
   p_compressor = &compressor;
@@ -198,5 +207,7 @@ int main(int argc, char **argv) {
             << ywt << std::endl
             << y_ref;
   info_file.close();
+  J_file.close();
+
   return 0;
 }

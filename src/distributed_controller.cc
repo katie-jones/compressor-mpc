@@ -105,7 +105,7 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   }
 
   // Generate QP to solve
-  Prediction pred;
+  // Prediction pred;
   auglinsys_.template GeneratePrediction<ControlledOutputIndices>(
       &pred.Su, &pred.Sx, &pred.Sf, &su_other_, p, m);
 
@@ -115,6 +115,12 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
 
   qp_solver_.GenerateDistributedQP(&qp_, pred.Su, pred.Sx, pred.Sf, delta_x0,
                                    n_aug_states, y_controlled);
+
+  // Part of y predicted that we can already calculate
+  OutputPrediction y_pred_xf = pred.Sx * delta_x0.template tail<n_aug_states>() +
+                            pred.Sf * delta_x0.template head<n_states>() +
+                            y.template replicate<p, 1>();
+  obj_fun_val_base_ = qp_solver_.GetObjVal(ControlInputPrediction::Zero(), y_pred_xf);
 }
 
 #include "distributed_controller_list.h"

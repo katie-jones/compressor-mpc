@@ -73,14 +73,17 @@ class DistributedController {
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_controlled_outputs, n_control_inputs, p,
-                    m>
-      qp_solver_;
+                    m> qp_solver_;
   State x_;                 // current state of system
   FullControlInput u_old_;  // previous optimal input to system
   static constexpr typename AugLinSys::DelayType n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
   Eigen::MatrixXd su_other_;            // effect of other inputs
   QP qp_;
+  Prediction pred;                   // current value of prediction matrices
+  double objective_function_value_;  // last value of J
+  double obj_fun_val_base_;          // base value from Sx*dx + Sf*df
+  double obj_fun_val_out_;           // base value from Sx*dx + Sf*df
 
  public:
   /// Constructor
@@ -152,7 +155,10 @@ class DistributedController {
   }
 
   /// Get value of QP solver objective function
-  double GetObjVal() const { return qp_solver_.GetObjVal(); }
+  double GetObjVal() const { return objective_function_value_; }
+
+  /// Cost of just outputs
+  double GetOutObjVal() const { return obj_fun_val_out_; }
 };
 
 // Declaration of static constexpr member
@@ -183,6 +189,16 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
     *u_solution =
         qp_solver_.SolveQP(qp_, u_old_.template head<n_control_inputs>());
   }
+
+  Output y = observer_.GetPreviousOutput();
+  OutputPrediction y_pred_u =
+      pred.Su * *u_solution + y.template replicate<p, 1>();
+  obj_fun_val_out_ =
+      obj_fun_val_base_ +
+      qp_solver_.GetObjVal(ControlInputPrediction::Zero(), y_pred_u);
+  objective_function_value_ =
+      obj_fun_val_out_ +
+      qp_solver_.GetObjVal(*u_solution, OutputPrediction::Zero());
 }
 
 #endif

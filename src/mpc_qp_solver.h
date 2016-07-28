@@ -81,7 +81,13 @@ class MpcQpSolver {
   OutputPrediction GetOutputReference() const { return y_ref_; }
 
   /// Get objective function value
-  double GetObjVal() const { return objective_function_value_; }
+  double GetObjVal(const ControlInputPrediction& u,
+                   const OutputPrediction& y) const {
+    OutputPrediction dy_ref = y - y_ref_;
+    Eigen::MatrixXd J =
+        u.transpose() * u_weight_ * u + dy_ref.transpose() * y_weight_ * dy_ref;
+    return J(0);
+  }
 
  protected:
   // generate QP matrices based on linearization, given the y prediction

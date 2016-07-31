@@ -4,7 +4,7 @@
 
 #include "common-variables.h"
 
-constexpr int n_solver_iterations = 1;
+int n_solver_iterations;
 
 SimSystem *p_sim_compressor;
 ParallelCompressors *p_compressor;
@@ -24,14 +24,28 @@ void Callback(ParallelCompressors::State x, double t) {
   p_sim_compressor->SetInput(u);
 }
 
-int main(void) {
-  time_total =  0;
+int main(int argc, char **argv) {
+  time_total = 0;
+  if (argc < 2) {
+    n_solver_iterations = 1;
+  } else {
+    std::istringstream ss(argv[1]);
+    if (!(ss >> n_solver_iterations)) {
+      std::cerr << "Invalid number " << argv[1] << std::endl;
+      return 1;
+    }
+    if (n_solver_iterations < 0 || n_solver_iterations > 1) {
+      std::cout << "Warning: Number of solver iterations for centralized "
+                   "controller should be 0 or 1. Using 1 solver iteration."
+                << std::endl;
+      n_solver_iterations = 1;
+    }
+  }
 
   const std::string folder_name = "parallel/";
 
   const std::string constraints_fname = folder_name + "constraints";
-  const std::string cpu_times_fname =
-      folder_name + "output/cent_cpu_times.dat";
+  const std::string cpu_times_fname = folder_name + "output/cent_cpu_times.dat";
   const std::string yref_fname = folder_name + "yref";
   const std::string ywt_fname = folder_name + "yweight_cent";
   const std::string uwt_fname = folder_name + "uweight_cent";
@@ -39,7 +53,6 @@ int main(void) {
 
   std::cout << "Running centralized simulation... ";
   std::cout.flush();
-
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;

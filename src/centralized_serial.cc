@@ -3,7 +3,7 @@
 
 #include "common-variables.h"
 
-constexpr int n_solver_iterations = 1;
+int n_solver_iterations;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
@@ -44,7 +44,23 @@ void Callback(SerialCompressors::State x, double t) {
   output_file << u.transpose() << std::endl << std::endl;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+  if (argc < 2) {
+    n_solver_iterations = 1;
+  } else {
+    std::istringstream ss(argv[1]);
+    if (!(ss >> n_solver_iterations)) {
+      std::cerr << "Invalid number " << argv[1] << std::endl;
+      return 1;
+    }
+    if (n_solver_iterations < 0 || n_solver_iterations > 1) {
+      std::cout << "Warning: Number of solver iterations for centralized "
+                   "controller should be 0 or 1. Using 1 solver iteration."
+                << std::endl;
+      n_solver_iterations = 1;
+    }
+  }
+
   timer.stop();
 
   boost::timer::cpu_times time_offset = timer.elapsed();

@@ -27,6 +27,15 @@ class ConstexprArray {
     return sum;
   }
 
+  /// Get number of nonzero entries
+  static constexpr int GetNonzeroEntries() {
+    int n = 0;
+    for (int i=0; i<data_.size(); ++i) {
+      if (data_[i] != 0) n++;
+    }
+    return n;
+  }
+
   static constexpr int GetEntry(const int i) { return data_[i]; }
 
   static constexpr std::integer_sequence<int, Ints...> GetIntegerSequence() {

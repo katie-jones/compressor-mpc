@@ -1,4 +1,7 @@
 #include "aug_lin_sys.h"
+#ifndef NDEBUG
+#include <iostream>
+#endif
 
 /*
  * Default values for linearization
@@ -34,21 +37,33 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
 
   Aaug.reserve(reserve_a);
 
+  // Make identity matrix for disturbance states
   for (int i = 0; i < n_disturbance_states; i++) {
     Aaug.insert(i, i) = 1;
   }
 
-  int index_delay_states = n_disturbance_states;
+  // Insert zeros for delayed input rows
+  // TODO: make Aaug smaller and delete this
+  for (int i = 0; i < n_delayed_inputs; i++) {
+    Aaug.insert(n_disturbance_states + i, n_disturbance_states + i) = 0;
+  }
+
+  int index_delay_states = n_disturbance_states + n_delayed_inputs;
+  int index_delayed_inputs = n_disturbance_states;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       const int size_block = n_delay_[i] - 1;
-      for (int j = 0; j < size_block; j++) {
-        Aaug.insert(index_delay_states + j, index_delay_states + j + 1) = 1;
+      Aaug.insert(index_delayed_inputs, index_delay_states) = 1;
+      for (int j = 1; j < size_block; j++) {
+        Aaug.insert(index_delay_states + j - 1, index_delay_states + j) = 1;
       }
-      Aaug.insert(index_delay_states + size_block, 0) = 0;
-      index_delay_states += n_delay_[i];
+      index_delay_states += n_delay_[i] - 1;
+      index_delayed_inputs++;
     }
   }
+#ifndef NDEBUG
+  std::cout << Aaug << std::endl;
+#endif
 }
 
 /*
@@ -67,11 +82,11 @@ void AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
   C->template leftCols<n_states>() *= Aorig;
   C->template rightCols<n_aug_states>() *= Aaug;
 
-  int index_delay_states = 0;
+  int index_delay_states = n_obs_states;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
-      C->col(n_obs_states + index_delay_states) += temp * Adelay.col(i);
-      index_delay_states += n_delay_[i];
+      C->col(index_delay_states) += temp * Adelay.col(i);
+      index_delay_states++;
     }
   }
 }
@@ -111,12 +126,11 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
   x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
 
   // Effect of delayed input on states
-  int index_delay_states = 0;
+  int index_delay_states = n_disturbance_states;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
-      x_out.template head<n_states>() +=
-          Adelay.col(i) * x(n_disturbance_states + index_delay_states);
-      index_delay_states += n_delay_[i];
+      x_out.template head<n_states>() += Adelay.col(i) * x(index_delay_states);
+      index_delay_states++;
     }
   }
 
@@ -170,15 +184,18 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
   reserve_b.setConstant(1);
   Baug.reserve(reserve_b);
 
-  int index_delay_states = 0;
+  int index_delay_states = n_delayed_inputs;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
-      index_delay_states += n_delay_[i];
+      index_delay_states += n_delay_[i] - 1;
       Baug.insert(index_delay_states - 1, i) = 1;
     } else {
       Baug.insert(0, i) = 0;
     }
   }
+#ifndef NDEBUG
+  std::cout << Baug << std::endl;
+#endif
 }
 
 /*
@@ -193,7 +210,7 @@ typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                               ControlInputIndices,
                               n_sub_control_inputs_in>::BComposite::
     operator*(const ControlInput& u) const {
-  AugmentedState x_out;
+  AugmentedState x_out = AugmentedState::Zero();
   x_out.template head<n_states>() = Borig * u;
   x_out.template segment<n_disturbance_states>(n_states).setZero();
   x_out.template tail<n_delay_states>() = Baug * u;

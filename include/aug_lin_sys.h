@@ -25,6 +25,7 @@ class AugmentedLinearizedSystem {
  public:
   static constexpr int n_delay_states = Delays::GetSum();
   static constexpr int n_control_inputs = System::n_control_inputs;
+  static constexpr int n_delayed_inputs = Delays::GetNonzeroEntries();
   static constexpr int n_inputs = System::n_inputs;
   static constexpr int n_outputs = System::n_outputs;
   static constexpr int n_states = System::n_states;
@@ -92,24 +93,27 @@ class AugmentedLinearizedSystem {
   /// Subtract value of input at linearization from delayed states
   static void AdjustFirstDelayedStates(AugmentedState* x,
                                        const ControlInput& u) {
-    int index_delay_states = n_obs_states;
+    int index_delayed_inputs = n_obs_states;
     for (int i = 0; i < n_control_inputs; i++) {
       if (n_delay_[i] != 0) {
-        (*x)(index_delay_states) -= u[i];
-        index_delay_states += n_delay_[i];
+        (*x)(index_delayed_inputs) -= u[i];
+        index_delayed_inputs++;
       }
     }
   }
 
   /// Subtract value of input at linearization from all delayed states
   static void AdjustAllDelayedStates(AugmentedState* x, const ControlInput& u) {
-    int index_delay_states = n_obs_states;
+    int index_delay_states = n_obs_states + n_delayed_inputs;
+    int index_delayed_inputs = n_obs_states;
     for (int i = 0; i < n_control_inputs; i++) {
       if (n_delay_[i] != 0) {
-        for (int j = 0; j < n_delay_[i]; j++) {
-          (*x)(index_delay_states + j) -= u[i];
+        (*x)(index_delayed_inputs) -= u[i];
+        for (int j = 1; j < n_delay_[i]; j++) {
+          (*x)(index_delay_states + j - 1) -= u[i];
         }
-        index_delay_states += n_delay_[i];
+        index_delay_states += n_delay_[i] - 1;
+        index_delayed_inputs++;
       }
     }
   }

@@ -35,17 +35,15 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
   Eigen::Matrix<double, n_aug_states, 1> reserve_a;
   reserve_a.setConstant(1);
 
+  for (int i = 0; i < n_delayed_inputs; i++) {
+    reserve_a[n_disturbance_states + i] = 0;
+  }
+
   Aaug.reserve(reserve_a);
 
   // Make identity matrix for disturbance states
   for (int i = 0; i < n_disturbance_states; i++) {
     Aaug.insert(i, i) = 1;
-  }
-
-  // Insert zeros for delayed input rows
-  // TODO: make Aaug smaller and delete this
-  for (int i = 0; i < n_delayed_inputs; i++) {
-    Aaug.insert(n_disturbance_states + i, n_disturbance_states + i) = 0;
   }
 
   int index_delay_states = n_disturbance_states + n_delayed_inputs;
@@ -180,17 +178,13 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                           n_sub_control_inputs_in>::BComposite::BComposite()
     : Baug(Eigen::SparseMatrix<bool>(n_delay_states, n_control_inputs)),
       Borig(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()) {
-  Eigen::Matrix<double, n_control_inputs, 1> reserve_b;
-  reserve_b.setConstant(1);
-  Baug.reserve(reserve_b);
+  Baug.reserve(n_delayed_inputs);
 
   int index_delay_states = n_delayed_inputs;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       index_delay_states += n_delay_[i] - 1;
       Baug.insert(index_delay_states - 1, i) = 1;
-    } else {
-      Baug.insert(0, i) = 0;
     }
   }
 #ifndef NDEBUG

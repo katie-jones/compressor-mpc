@@ -81,7 +81,9 @@
 
 namespace SERIAL_COMPRESSORS_CONSTANTS {
 
-constexpr int n_delay_states = 80;
+using Delays = ConstexprArray<0, 40, 0, 40>;
+constexpr int n_delay_states = Delays::GetSum();
+
 constexpr int n_disturbance_states = 4;
 constexpr int p = 100;
 constexpr int m = 2;
@@ -92,7 +94,6 @@ constexpr int n_sub_control_inputs = 2;
 constexpr int n_total_states =
     SerialCompressors::n_states + n_delay_states + n_disturbance_states;
 
-using Delays = ConstexprArray<0, 40, 0, 40>;
 using StateIndices = NullIndexArray<SerialCompressors::n_states +
                                     n_delay_states + n_disturbance_states>;
 using ObserverOutputIndices = NullIndexArray<SerialCompressors::n_outputs>;

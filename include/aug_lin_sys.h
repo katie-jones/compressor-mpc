@@ -130,7 +130,7 @@ class AugmentedLinearizedSystem {
  protected:
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;
-    Eigen::Matrix<double, n_states, n_control_inputs> Adelay;
+    Eigen::Matrix<double, n_states, n_delayed_inputs> Adelay;
     Eigen::SparseMatrix<bool> Aaug;
 
     AComposite();

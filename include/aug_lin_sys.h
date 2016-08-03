@@ -89,6 +89,40 @@ class AugmentedLinearizedSystem {
   /// Return current derivative of system
   const State GetDerivative() const { return f; }
 
+  /// Subtract value of input at linearization from delayed states
+  static void AdjustFirstDelayedStates(AugmentedState* x,
+                                       const ControlInput& u) {
+    int index_delay_states = n_obs_states;
+    for (int i = 0; i < n_control_inputs; i++) {
+      if (n_delay_[i] != 0) {
+        (*x)(index_delay_states) -= u[i];
+        index_delay_states += n_delay_[i];
+      }
+    }
+  }
+
+  /// Subtract value of input at linearization from all delayed states
+  static void AdjustAllDelayedStates(AugmentedState* x, const ControlInput& u) {
+    int index_delay_states = n_obs_states;
+    for (int i = 0; i < n_control_inputs; i++) {
+      if (n_delay_[i] != 0) {
+        for (int j = 0; j < n_delay_[i]; j++) {
+          (*x)(index_delay_states + j) -= u[i];
+        }
+        index_delay_states += n_delay_[i];
+      }
+    }
+  }
+
+  /// Subtract value of input at linearization from all delayed states
+  static void AdjustAppliedInput(ControlInput* du, const ControlInput& u) {
+    for (int i = 0; i < n_control_inputs; i++) {
+      if (n_delay_[i] != 0) {
+        (*du)(i) += u[i];
+      }
+    }
+  }
+
  protected:
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;

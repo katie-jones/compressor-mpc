@@ -6,21 +6,13 @@
 template <class AugLinSys>
 void Observer<AugLinSys>::ObserveAPriori(
     const ControlInput& du_in, const ControlInput& u_old) {
-  ControlInput du = ControlInput::Zero();
+  ControlInput du = du_in;
   AugmentedState dx = dx_aug_;
 
   dx.template head<n_states>().setZero();
-  int index_delay_states = n_obs_states;
 
-  for (int i = 0; i < n_control_inputs; i++) {
-    if (p_auglinsys_->n_delay_[i] == 0) {
-      du(i) = du_in(i);
-    } else {
-      du(i) = u_old[i] + du_in(i);
-      dx(index_delay_states) -= u_old[i];
-      index_delay_states += p_auglinsys_->n_delay_[i];
-    }
-  }
+  AugLinSys::AdjustFirstDelayedStates(&dx,u_old);
+  AugLinSys::AdjustAppliedInput(&du,u_old);
 
   dx_aug_ = p_auglinsys_->B * du + p_auglinsys_->A * dx;
   dx_aug_.template head<n_states>() += p_auglinsys_->f;

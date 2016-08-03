@@ -50,15 +50,8 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   delta_x0 << auglinsys_.GetDerivative(),
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
-  int index_delay_states = n_obs_states;
-  for (int i = 0; i < n_full_control_inputs; i++) {
-    if (n_delay_[i] != 0) {
-      for (int j = 0; j < n_delay_[i]; j++) {
-        delta_x0(index_delay_states + j) -= u_old_[i];
-      }
-      index_delay_states += n_delay_[i];
-    }
-  }
+  // Offset delayed states
+  AugLinSys::AdjustAllDelayedStates(&delta_x0, u_old_);
 
   Prediction pred;
   pred = auglinsys_.template GeneratePrediction<ControlledOutputIndices>(
@@ -94,15 +87,7 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
       observer_.GetStateEstimate().template tail<n_aug_states>();
 
   // Adjust delayed inputs to account for linearization before applying
-  int index_delay_states = n_obs_states;
-  for (int i = 0; i < n_full_control_inputs; i++) {
-    if (n_delay_[i] != 0) {
-      for (int j = 0; j < n_delay_[i]; j++) {
-        delta_x0(index_delay_states + j) -= u_old_[i];
-      }
-      index_delay_states += n_delay_[i];
-    }
-  }
+  AugLinSys::AdjustAllDelayedStates(&delta_x0, u_old_);
 
   // Generate QP to solve
   // Prediction pred;

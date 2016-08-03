@@ -97,8 +97,16 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
     BComposite::MultiplyC(
         const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const {
   Eigen::Matrix<double, n_sub_outputs, n_control_inputs> output =
-      C.template leftCols<n_states>() * Borig;
-  output += C.template rightCols<n_delay_states>() * Baug;
+      C.template rightCols<n_delay_states>() * Baug;
+
+  int index_inputs = 0;
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] == 0) {
+      output.col(i) +=
+          C.template leftCols<n_states>() * Borig.col(index_inputs);
+      index_inputs++;
+    }
+  }
 
   return output;
 }
@@ -147,6 +155,7 @@ void AugmentedLinearizedSystem<
   A.Aorig = sys_discrete.A;
   int index;
   int index_delayed_inputs = 0;
+  int index_inputs = 0;
   for (int i = 0; i < n_control_inputs; i++) {
     // if system has re-ordered control inputs, re-order columns of A and B
     if (is_reduced)
@@ -154,7 +163,8 @@ void AugmentedLinearizedSystem<
     else
       index = i;
     if (n_delay_[i] == 0) {
-      B.Borig.col(index) = sys_discrete.B.col(i);
+      B.Borig.col(index_inputs) = sys_discrete.B.col(index);
+      index_inputs++;
     } else {
       A.Adelay.col(index_delayed_inputs) = sys_discrete.B.col(index);
       index_delayed_inputs++;
@@ -174,7 +184,8 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                           ControlInputIndices,
                           n_sub_control_inputs_in>::BComposite::BComposite()
     : Baug(Eigen::SparseMatrix<bool>(n_delay_states, n_control_inputs)),
-      Borig(Eigen::Matrix<double, n_states, n_control_inputs>::Zero()) {
+      Borig(Eigen::Matrix<double, n_states,
+                          n_control_inputs - n_delayed_inputs>::Zero()) {
   Baug.reserve(n_delayed_inputs);
 
   int index_delay_states = n_delayed_inputs;
@@ -198,9 +209,17 @@ typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                               ControlInputIndices,
                               n_sub_control_inputs_in>::BComposite::
     operator*(const ControlInput& u) const {
-  AugmentedState x_out = AugmentedState::Zero();
-  x_out.template head<n_states>() = Borig * u;
-  x_out.template segment<n_disturbance_states>(n_states).setZero();
+  AugmentedState x_out;
+  x_out.template head<n_obs_states>().setZero();
+
+  int index_inputs = 0;
+  for (int i = 0; i < n_control_inputs; i++) {
+    if (n_delay_[i] == 0) {
+      x_out.template head<n_states>() += Borig.col(index_inputs) * u(i);
+      index_inputs++;
+    }
+  }
+
   x_out.template tail<n_delay_states>() = Baug * u;
 
   return x_out;

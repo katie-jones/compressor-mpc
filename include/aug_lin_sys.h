@@ -144,7 +144,7 @@ class AugmentedLinearizedSystem {
   };
 
   struct BComposite {
-    Eigen::Matrix<double, n_states, n_control_inputs> Borig;
+    Eigen::Matrix<double, n_states, n_control_inputs - n_delayed_inputs> Borig;
     Eigen::SparseMatrix<bool> Baug;
 
     BComposite();

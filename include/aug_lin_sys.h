@@ -131,7 +131,7 @@ class AugmentedLinearizedSystem {
   struct AComposite {
     Eigen::Matrix<double, n_states, n_states> Aorig;
     Eigen::Matrix<double, n_states, n_delayed_inputs> Adelay;
-    Eigen::SparseMatrix<bool> Aaug;
+    Eigen::Matrix<int, n_aug_states, 1> Aaug;
 
     AComposite();
     inline AugmentedState operator*(const AugmentedState& x) const;

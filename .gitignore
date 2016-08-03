@@ -3,3 +3,4 @@
 *.swp
 /parallel/output/
 /serial/output/
+.ycm_extra_conf.py*

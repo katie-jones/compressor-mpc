@@ -29,21 +29,16 @@ template <class System, typename Delays, int n_disturbance_states_in,
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                           ControlInputIndices,
                           n_sub_control_inputs_in>::AComposite::AComposite()
-    : Aaug(Eigen::SparseMatrix<bool>(n_aug_states, n_aug_states)),
+    : Aaug(Eigen::Matrix<int, n_aug_states, 1>::Zero()),
       Aorig(Eigen::Matrix<double, n_states, n_states>::Zero()),
       Adelay(Eigen::Matrix<double, n_states, n_delayed_inputs>::Zero()) {
-  Eigen::Matrix<double, n_aug_states, 1> reserve_a;
-  reserve_a.setConstant(1);
-
-  for (int i = 0; i < n_delayed_inputs; i++) {
-    reserve_a[n_disturbance_states + i] = 0;
-  }
-
-  Aaug.reserve(reserve_a);
-
   // Make identity matrix for disturbance states
   for (int i = 0; i < n_disturbance_states; i++) {
-    Aaug.insert(i, i) = 1;
+    Aaug(i) = i;
+  }
+
+  for (int i = 0; i < n_delayed_inputs; i++) {
+    Aaug(n_disturbance_states + i) = -1;
   }
 
   int index_delay_states = n_disturbance_states + n_delayed_inputs;
@@ -51,9 +46,9 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       const int size_block = n_delay_[i] - 1;
-      Aaug.insert(index_delayed_inputs, index_delay_states) = 1;
+      Aaug(index_delay_states) = index_delayed_inputs;
       for (int j = 1; j < size_block; j++) {
-        Aaug.insert(index_delay_states + j - 1, index_delay_states + j) = 1;
+        Aaug(index_delay_states + j) = index_delay_states + j - 1;
       }
       index_delay_states += n_delay_[i] - 1;
       index_delayed_inputs++;
@@ -73,9 +68,19 @@ void AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
         Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const {
   const Eigen::Matrix<double, n_sub_outputs, n_states> temp =
       C->template leftCols<n_states>();
+  const Eigen::Matrix<double, n_sub_outputs, n_aug_states> temp2 =
+      C->template rightCols<n_aug_states>();
 
   C->template leftCols<n_states>() *= Aorig;
-  C->template rightCols<n_aug_states>() *= Aaug;
+
+  for (int i = 0; i < n_aug_states; i++) {
+    if (Aaug(i) >= 0) {
+      C->col(n_states + i) = temp2.col(Aaug(i));
+    } else {
+      C->col(n_states + i).setZero();
+    }
+  }
+
   C->template block<n_sub_outputs, n_delayed_inputs>(0, n_obs_states) +=
       temp * Adelay;
 }
@@ -112,7 +117,13 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
         const Eigen::Matrix<double, n_aug_states, 1> x) const {
   // Augmented part
   AugmentedState x_out = AugmentedState::Zero();
-  x_out.template tail<n_aug_states>() = Aaug * x.template tail<n_aug_states>();
+
+  for (int i = 0; i < n_aug_states; i++) {
+    if (Aaug(i) >= 0) {
+      x_out(n_states + Aaug(i)) = x(i);
+    }
+  }
+
   x_out.template head<n_states>() +=
       Adelay * x.template segment<n_delayed_inputs>(n_disturbance_states);
 

@@ -29,7 +29,7 @@ find_package(Boost REQUIRED timer)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # source subdirectory
-add_subdirectory(src)
+add_subdirectory(tests)
 
 # libraries subdirectory
 add_subdirectory(libs)

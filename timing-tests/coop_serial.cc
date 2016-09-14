@@ -1,27 +1,22 @@
-#define CONTROLLER_TYPE_CENTRALIZED
+#define CONTROLLER_TYPE_COOP
 #define SYSTEM_TYPE_SERIAL
 
 #include "common-variables.h"
-
-int n_solver_iterations;
 
 SimSystem *p_sim_compressor;
 SerialCompressors *p_compressor;
 NvCtr *p_controller;
 std::ofstream cpu_times_file;
-
-constexpr int n_max_solver_iterations = 1;
-
 boost::timer::nanosecond_type time_out;
+int n_solver_iterations;
+constexpr int n_max_solver_iterations = 9;
 
 void Callback(SerialCompressors::State x, double t) {
   SerialCompressors::Output y = p_compressor->GetOutput(x);
 
   // Get and apply next input
-  NvCtr::ControlInput u =
-      p_controller
-          ->GetNextInputWithTiming(
-              p_compressor->GetOutput(x), n_solver_iterations, &time_out);
+  NvCtr::ControlInput u = p_controller->GetNextInputWithTiming(
+      p_compressor->GetOutput(x), n_solver_iterations, &time_out);
   cpu_times_file << time_out << std::endl;
 
   p_sim_compressor->SetInput(u);
@@ -29,34 +24,32 @@ void Callback(SerialCompressors::State x, double t) {
 
 int main(int argc, char **argv) {
   if (argc < 2) {
-    n_solver_iterations = 1;
+    std::cout << "Number of solver iterations for timing: ";
+    std::cin >> n_solver_iterations;
   } else {
     std::istringstream ss(argv[1]);
-    if (!(ss >> n_solver_iterations)) {
-      std::cerr << "Invalid number " << argv[1] << std::endl;
-      return 1;
-    }
-    if (n_solver_iterations < 0 || n_solver_iterations > 1) {
-      std::cout << "Warning: Number of solver iterations for centralized "
-                   "controller should be 0 or 1. Using 1 solver iteration."
-                << std::endl;
-      n_solver_iterations = 1;
-    }
+    if (!(ss >> n_solver_iterations))
+      std::cerr << "Invalid number " << argv[1] << '\n';
   }
 
   const std::string folder_name = "serial/";
 
-  const std::string constraints_fname = folder_name + "constraints";
-  const std::string cpu_times_fname = folder_name + "output/cent_cpu_times.dat";
+  const std::string constraints_fname = folder_name + "dist_constraints";
+  const std::string cpu_times_fname = folder_name + "output/coop_cpu_times" +
+                                      std::to_string(n_solver_iterations) +
+                                      ".dat";
   const std::string yref_fname = folder_name + "yref";
-  const std::string ywt_fname = folder_name + "yweight_cent";
-  const std::string uwt_fname = folder_name + "uweight_cent";
-  const std::string disturbances_fname = folder_name + "disturbances_cent";
-
-  std::cout << "Running serial centralized simulation... ";
-  std::cout.flush();
+  const std::string ywt_fname = folder_name + "yweight_coop";
+  const std::string uwt_fname = folder_name + "uweight_coop";
+  const std::string disturbances_fname = folder_name + "disturbances_coop";
+  const std::string xinit_fname = folder_name + "xinit_coop";
+  const std::string uinit_fname = folder_name + "uinit_coop";
 
   cpu_times_file.open(cpu_times_fname);
+
+  std::cout << "Running serial cooperative simulation using "
+            << n_max_solver_iterations << " solver iterations (timing "
+            << n_solver_iterations << " iterations)... " << std::endl;
 
   // Time entire simulation
   boost::timer::cpu_timer simulation_timer;
@@ -64,68 +57,90 @@ int main(int argc, char **argv) {
   SerialCompressors compressor;
   p_compressor = &compressor;
 
-  SerialCompressors::Input u_default = SerialCompressors::GetDefaultInput();
-  SerialCompressors::State x_init = SerialCompressors::GetDefaultState();
+  SerialCompressors::Input u_default;
+  SerialCompressors::State x_init;
+
+  // Read initial state
+  if (!(ReadDataFromFile(u_default.data(), u_default.size(), uinit_fname))) {
+    std::cerr << "Initial inputs could not be read" << std::endl;
+    return 1;
+  }
+
+  u_default += compressor.GetDefaultInput();
+
+  if (!(ReadDataFromFile(x_init.data(), x_init.size(), xinit_fname))) {
+    std::cerr << "Initial state could not be read" << std::endl;
+    return 1;
+  }
 
   SimSystem sim_comp(p_compressor, u_default, x_init);
   p_sim_compressor = &sim_comp;
 
   const double sampling_time = 0.05;
 
-  const Obsv::ObserverMatrix M =
-      (Obsv::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
-                                               compressor.n_outputs>::Zero(),
+  const Obsv1::ObserverMatrix M =
+      (Obsv1::ObserverMatrix() << Eigen::Matrix<double, compressor.n_states,
+                                                compressor.n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
                      compressor.n_outputs>::Identity())
           .finished();
-
-  const AugmentedSystem::Input u_offset = u_default;
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Zero();
   NvCtr::YWeightType ywt = NvCtr::YWeightType::Zero();
 
+  std::ifstream yweight_file;
+  yweight_file.open(ywt_fname);
+
   if (!(ReadDataFromFile(uwt.data(), uwt.rows(), uwt_fname, uwt.rows() + 1))) {
+    std::cerr << "U weights could not be read" << std::endl;
     return -1;
   }
-  if (!(ReadDataFromFile(ywt.data(), ywt.rows(), ywt_fname, ywt.rows() + 1))) {
+  if (!(ReadDataFromStream(ywt.data(), yweight_file, ywt.rows(),
+                           ywt.rows() + 1))) {
+    std::cerr << "Y1 weights could not be read" << std::endl;
     return -1;
   }
+
+  yweight_file.close();
 
   // Read in reference output
   SerialCompressors::Output y_ref_sub;
   if (!(ReadDataFromFile(y_ref_sub.data(), y_ref_sub.size(), yref_fname))) {
+    std::cerr << "Reference signal could not be read" << std::endl;
     return -1;
   }
-  const NvCtr::OutputPrediction y_ref = y_ref_sub.replicate<Controller::p, 1>();
+  const NvCtr::OutputPrediction y_ref =
+      y_ref_sub.replicate<Controller1::p, 1>();
 
   // Input constraints
-  InputConstraints<Controller::n_control_inputs> constraints;
+  InputConstraints<n_sub_control_inputs> constraints;
   constraints.use_rate_constraints = true;
   if (!(ReadConstraintsFromFile(&constraints, constraints_fname))) {
+    std::cerr << "Input constraints could not be read" << std::endl;
     return -1;
   }
 
   // Setup controller
-  AugmentedSystem sys(compressor, sampling_time);
-  Controller ctrl(sys, constraints, M);
+  AugmentedSystem1 sys1(compressor, sampling_time);
+  AugmentedSystem2 sys2(compressor, sampling_time);
+  Controller1 ctrl1(sys1, constraints, M);
+  Controller2 ctrl2(sys2, constraints, M);
 
   // Create a nerve center
-  std::tuple<Controller> ctrl_tuple(ctrl);
+  std::tuple<Controller1, Controller2> ctrl_tuple(ctrl1, ctrl2);
   NvCtr nerve_center(ctrl_tuple, n_max_solver_iterations);
   p_controller = &nerve_center;
 
-  // Test functions
+  // Set up controllers
   nerve_center.SetWeights(uwt, ywt);
   nerve_center.SetOutputReference(y_ref);
 
-  nerve_center.Initialize(compressor.GetDefaultState(),
-                          AugmentedSystem::ControlInput::Zero(),
-                          compressor.GetDefaultInput(),
-                          compressor.GetOutput(compressor.GetDefaultState()));
+  nerve_center.Initialize(x_init, AugmentedSystem1::ControlInput::Zero(),
+                          u_default, compressor.GetOutput(x_init));
 
   // Initialize disturbance
-  SerialCompressors::Input u_disturbance;
+  SerialCompressors::Input u_disturbance = SerialCompressors::Input::Zero();
   double t_past = -sampling_time;
   double t_next;
 

@@ -70,7 +70,6 @@ MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m>::SolveQP(
 
   ControlInputPrediction u_solution;
   qp_problem_.getPrimalSolution(u_solution.data());
-  objective_function_value_ = qp_problem_.getObjVal();
 
   return u_solution;
 }

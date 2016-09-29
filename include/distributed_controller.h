@@ -81,9 +81,6 @@ class DistributedController {
   Eigen::MatrixXd su_other_;            // effect of other inputs
   QP qp_;
   Prediction pred;                   // current value of prediction matrices
-  double objective_function_value_;  // last value of J
-  double obj_fun_val_base_;          // base value from Sx*dx + Sf*df
-  double obj_fun_val_out_;           // base value from Sx*dx + Sf*df
 
  public:
   /// Constructor
@@ -154,11 +151,6 @@ class DistributedController {
     for (int i = 0; i < n_states; ++i) x_out[i] = x_(i);
   }
 
-  /// Get value of QP solver objective function
-  double GetObjVal() const { return objective_function_value_; }
-
-  /// Cost of just outputs
-  double GetOutObjVal() const { return obj_fun_val_out_; }
 };
 
 // Declaration of static constexpr member
@@ -193,12 +185,6 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   Output y = observer_.GetPreviousOutput();
   OutputPrediction y_pred_u =
       pred.Su * *u_solution + y.template replicate<p, 1>();
-  obj_fun_val_out_ =
-      obj_fun_val_base_ +
-      qp_solver_.GetObjVal(ControlInputPrediction::Zero(), y_pred_u);
-  objective_function_value_ =
-      obj_fun_val_out_ +
-      qp_solver_.GetObjVal(*u_solution, OutputPrediction::Zero());
 }
 
 #endif

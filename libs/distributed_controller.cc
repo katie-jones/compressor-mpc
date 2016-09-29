@@ -120,7 +120,6 @@ void DistributedController<AugLinSys, StateIndices, ObserverOutputIndices,
   OutputPrediction y_pred_xf = pred.Sx * delta_x0.template tail<n_aug_states>() +
                             pred.Sf * delta_x0.template head<n_states>() +
                             y.template replicate<p, 1>();
-  obj_fun_val_base_ = qp_solver_.GetObjVal(ControlInputPrediction::Zero(), y_pred_xf);
 }
 
 #include "distributed_controller_list.h"

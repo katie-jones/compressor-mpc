@@ -27,8 +27,6 @@ class NerveCenter : public ControllerInterface<System> {
   static constexpr int n_prediction_control_inputs =
       GetPredictionControlInputs();
 
-  Eigen::MatrixXd objective_function_values_;
-
  public:
   using State = Eigen::Matrix<double, System::n_states, 1>;
   using AugmentedState = Eigen::Matrix<double, n_total_states, 1>;
@@ -74,8 +72,6 @@ class NerveCenter : public ControllerInterface<System> {
         u_old_(ControlInput::Zero()),
         du_old_(ControlInputPrediction::Zero()),
         sub_controllers_(controllers) {
-    objective_function_values_ =
-        Eigen::MatrixXd::Zero(n_controllers, n_solver_iterations_);
   }
 
   /// Initialize all sub controllers based on given initial conditions
@@ -156,7 +152,6 @@ class NerveCenter : public ControllerInterface<System> {
     ControlInputPrediction du_new = ControlInputPrediction::Zero();
 
     int prediction_index = 0;
-    double* curr_obj_val = objective_function_values_.data();
     for (int i = 0; i < n_solver_iterations_; i++) {
       if (split_timer) {
         expander{TimeSolveQPHelper(curr_cpu_time,
@@ -168,8 +163,6 @@ class NerveCenter : public ControllerInterface<System> {
         expander{SolveQPHelper(&std::get<SubControllers>(sub_controllers_),
                                &du_new, &prediction_index, du_prev)...};
       }
-      expander{GetObjValHelper(curr_obj_val,
-                               &std::get<SubControllers>(sub_controllers_))...};
 
       du_prev = du_new;
       prediction_index = 0;
@@ -200,9 +193,6 @@ class NerveCenter : public ControllerInterface<System> {
 
     return u_old_;
   }
-
-  // Return pointer to objective function value
-  const double* GetObjVals() { return objective_function_values_.data(); }
 
  private:
   // Initialize each controller
@@ -348,13 +338,6 @@ class NerveCenter : public ControllerInterface<System> {
     du_reordered.setZero();
     T::ControlInputIndexType::GetSubArray(du_reordered.data(), du.data());
     controller->UpdateU(du_reordered);
-  }
-
-  // Get the values of the objective function for a single controller
-  template <typename T>
-  static constexpr int GetObjValHelper(double*& obj_val, const T* controller) {
-    *obj_val = controller->GetObjVal();
-    obj_val++;
   }
 
   // Get the index of controller of typename T

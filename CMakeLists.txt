@@ -18,7 +18,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 # qpOASES library
-set( QPOASES_ROOT /home/katie/school/MasterThesis/qpOASES-3.2.0)
+set( QPOASES_ROOT /home/katie/school/EPFL/4-S2016/MasterThesis/qpOASES-3.2.0)
 INCLUDE_DIRECTORIES(${QPOASES_ROOT}/include)
 LINK_DIRECTORIES(${QPOASES_ROOT}/bin)
 

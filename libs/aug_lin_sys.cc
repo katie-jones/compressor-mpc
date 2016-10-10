@@ -96,15 +96,16 @@ AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                           ControlInputIndices, n_sub_control_inputs_in>::
     BComposite::MultiplyC(
         const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const {
-  Eigen::Matrix<double, n_sub_outputs, n_control_inputs> output =
-      C.template rightCols<n_delay_states>() * Baug;
+  Eigen::Matrix<double, n_sub_outputs, n_control_inputs> output;
 
   int index_inputs = 0;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
-      output.col(i) +=
+      output.col(i) =
           C.template leftCols<n_states>() * Borig.col(index_inputs);
       index_inputs++;
+    } else {
+      output.col(i) = C.col(Baug(i));
     }
   }
 
@@ -183,16 +184,16 @@ template <class System, typename Delays, int n_disturbance_states_in,
 AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                           ControlInputIndices,
                           n_sub_control_inputs_in>::BComposite::BComposite()
-    : Baug(Eigen::SparseMatrix<bool>(n_delay_states, n_control_inputs)),
-      Borig(Eigen::Matrix<double, n_states,
+      : Borig(Eigen::Matrix<double, n_states,
                           n_control_inputs - n_delayed_inputs>::Zero()) {
-  Baug.reserve(n_delayed_inputs);
 
   int index_delay_states = n_delayed_inputs;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] != 0) {
       index_delay_states += n_delay_[i] - 1;
-      Baug.insert(index_delay_states - 1, i) = 1;
+      Baug(i) = n_states + n_disturbance_states + index_delay_states - 1;
+    } else {
+      Baug(i) = -1;
     }
   }
 }
@@ -210,17 +211,17 @@ typename AugmentedLinearizedSystem<System, Delays, n_disturbance_states_in,
                               n_sub_control_inputs_in>::BComposite::
     operator*(const ControlInput& u) const {
   AugmentedState x_out;
-  x_out.template head<n_obs_states>().setZero();
+  x_out.setZero();
 
   int index_inputs = 0;
   for (int i = 0; i < n_control_inputs; i++) {
     if (n_delay_[i] == 0) {
       x_out.template head<n_states>() += Borig.col(index_inputs) * u(i);
       index_inputs++;
+    } else {
+      x_out(Baug(i)) = u(i);
     }
   }
-
-  x_out.template tail<n_delay_states>() = Baug * u;
 
   return x_out;
 }

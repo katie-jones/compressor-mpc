@@ -1,9 +1,8 @@
 #ifndef COMPRESSOR_H
 #define COMPRESSOR_H
 
-#include "dynamic_system.h"
-#include "global.h"
 #include "constexpr_array.h"
+#include "dynamic_system.h"
 
 class ParallelCompressors;
 class SerialCompressors;
@@ -34,10 +33,10 @@ class CompressorBase
   struct Parameters {
     double J, tau_r, m_in_c, m_out_c, torque_drive_c, delta_bar, n_bar;
     double V1, V2, AdivL, SD_multiplier;
-    Vec<8> C, D;
-    Vec<12> A;
-    Vec<2> m_rec_ss_c, SD_c;
-    Vec<3> T_ss_c;
+    Eigen::Matrix<double, 8, 1> C, D;
+    Eigen::Matrix<double, 12, 1> A;
+    Eigen::Matrix<double, 2, 1> m_rec_ss_c, SD_c;
+    Eigen::Matrix<double, 3, 1> T_ss_c;
     Parameters();
   };
 
@@ -49,8 +48,7 @@ class CompressorBase
 
   /// Casting constructor
   template <bool has_input_tank>
-  CompressorBase(const Compressor<has_input_tank>& x)
-      : params_(x.params_) {}
+  CompressorBase(const Compressor<has_input_tank>& x) : params_(x.params_) {}
 
   /// Equals operator
   CompressorBase& operator=(const CompressorBase& x) {

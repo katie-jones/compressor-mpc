@@ -2,7 +2,6 @@
 #define TANK_H
 
 #include "dynamic_system.h"
-#include "global.h"
 #include "constexpr_array.h"
 
 class ParallelCompressors;
@@ -27,7 +26,7 @@ class Tank : public DynamicSystem<1, 3, 1, ConstexprArray<>> {
   /// Parameters determining dynamics of tank.
   struct Params {
     double volume;
-    Vec<8> D;
+    Eigen::Matrix<double, 8, 1> D;
     double m_out_c;
     Params();
   };

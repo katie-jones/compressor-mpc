@@ -3,7 +3,6 @@
 #include <cmath>
 #include <iostream>
 
-#include "global.h"
 #include "valve_eqs.h"
 
 constexpr double pi = 3.14159265358979323846;
@@ -40,14 +39,17 @@ auto Compressor<has_input_tank>::GetDerivative(double *m_out, const State &x,
 
   double m_rec_ss =
       params_.m_rec_ss_c.dot(
-          (Vec<2>() << sqrt(p2 * 1e5 - p1 * 1e5) * u_rec, 1).finished()) *
+          (Eigen::Matrix<double, 2, 1>() << sqrt(p2 * 1e5 - p1 * 1e5) * u_rec,
+           1).finished()) *
       (u_rec > 1e-2);
 
   const double mc2 = mc * mc;
   const double mc3 = mc * mc2;
   const double wc2 = wc * wc;
-  const Vec<12> M((Vec<12>() << wc2 * mc3, wc2 * mc2, wc2 * mc, wc2, wc * mc3,
-                   wc * mc2, wc * mc, wc, mc3, mc2, mc, 1).finished());
+  const Eigen::Matrix<double, 12, 1> M(
+      (Eigen::Matrix<double, 12, 1>() << wc2 * mc3, wc2 * mc2, wc2 * mc, wc2,
+       wc * mc3, wc * mc2, wc * mc, wc, mc3, mc2, mc,
+       1).finished());
 
   const double p_ratio = params_.A.transpose() * M;
 
@@ -116,15 +118,15 @@ auto Compressor<has_input_tank>::GetLinearizedSystem(double *m_out,
   const double mc2 = mc * mc;
   const double mc3 = mc * mc2;
 
-  Vec<12> M, dM_dmcomp, dM_dwcomp;
+  Eigen::Matrix<double, 12, 1> M, dM_dmcomp, dM_dwcomp;
 
-  dM_dmcomp << 3 * wc2 *mc2, 2 * wc2 *mc, wc2, 0, 3 * wc *mc2, 2 * wc *mc, wc,
-      0, 3 * mc2, 2 * mc, 1, 0;
-  dM_dwcomp << 2 * wc *mc3, 2 * wc *mc2, 2 * wc *mc, 2 * wc, mc3, mc2, mc, 1, 0,
-      0, 0, 0;
+  dM_dmcomp << 3 * wc2 * mc2, 2 * wc2 * mc, wc2, 0, 3 * wc * mc2, 2 * wc * mc,
+      wc, 0, 3 * mc2, 2 * mc, 1, 0;
+  dM_dwcomp << 2 * wc * mc3, 2 * wc * mc2, 2 * wc * mc, 2 * wc, mc3, mc2, mc, 1,
+      0, 0, 0, 0;
 
-  M << wc2 *mc3, wc2 *mc2, wc2 *mc, wc2, wc *mc3, wc *mc2, wc *mc, wc, mc3, mc2,
-      mc, 1;
+  M << wc2 * mc3, wc2 * mc2, wc2 * mc, wc2, wc * mc3, wc * mc2, wc * mc, wc,
+      mc3, mc2, mc, 1;
 
   double p_ratio = params_.A.dot(M);
 
@@ -161,8 +163,8 @@ auto Compressor<has_input_tank>::GetLinearizedSystem(double *m_out,
     dmr_ur = a * dmr_ur;
   }
 
-  linsys.B << 0, 0, 0, 0, 0, 0, 1.0 / params_.J *params_.torque_drive_c / wc, 0,
-      0, dmr_ur;
+  linsys.B << 0, 0, 0, 0, 0, 0, 1.0 / params_.J * params_.torque_drive_c / wc,
+      0, 0, dmr_ur;
 
   linsys.C << 0, 1, 0, 0, 0, 100 * p2 / (params_.SD_c(0) * p1 * p1),
       -100. / (params_.SD_c(0) * p1), 100, 0, 0;
@@ -175,27 +177,32 @@ auto Compressor<has_input_tank>::GetLinearizedSystem(double *m_out,
 CompressorBase::Parameters::Parameters() {
   J = (0.4 + 0.2070) * 0.4;
   tau_r = 1 / 0.5;
-  A = (Vec<12>() << 0.000299749505193654, -0.000171254191089237,
-       3.57321648097597e-05, -9.1783572200945e-07, -0.252701086129365,
-       0.136885752773673, -0.02642368327081, 0.00161012740365743,
-       54.8046725371143, -29.9550791497765, 5.27827499839098,
-       0.693826282579158).finished();
+  A = (Eigen::Matrix<double, 12, 1>() << 0.000299749505193654,
+       -0.000171254191089237, 3.57321648097597e-05, -9.1783572200945e-07,
+       -0.252701086129365, 0.136885752773673, -0.02642368327081,
+       0.00161012740365743, 54.8046725371143, -29.9550791497765,
+       5.27827499839098, 0.693826282579158)
+          .finished();
 
-  C = (Vec<8>() << -0.423884232813775, 0.626400271518973, -0.0995040168384753,
-       0.0201535563630318, -0.490814924104294, 0.843580880467905,
-       -0.423103455111209, 0.0386841406482887).finished();
+  C = (Eigen::Matrix<double, 8, 1>() << -0.423884232813775, 0.626400271518973,
+       -0.0995040168384753, 0.0201535563630318, -0.490814924104294,
+       0.843580880467905, -0.423103455111209, 0.0386841406482887)
+          .finished();
 
-  D = (Vec<8>() << -0.0083454, -0.0094965, 0.16826, -0.032215, -0.61199,
-       0.94175, -0.48522, 0.10369).finished();
+  D = (Eigen::Matrix<double, 8, 1>() << -0.0083454, -0.0094965, 0.16826,
+       -0.032215, -0.61199, 0.94175, -0.48522, 0.10369)
+          .finished();
 
   m_in_c = 0.0051;
-  m_rec_ss_c = (Vec<2>() << 0.0047, 0.0263).finished();
+  m_rec_ss_c = (Eigen::Matrix<double, 2, 1>() << 0.0047, 0.0263).finished();
 
   m_out_c = 0.017;
 
-  T_ss_c = (Vec<3>() << 2.5543945754982, 47.4222669576423, 0.6218).finished();
+  T_ss_c = (Eigen::Matrix<double, 3, 1>() << 2.5543945754982, 47.4222669576423,
+            0.6218)
+               .finished();
 
-  SD_c = (Vec<2>() << 5.55, 0.66).finished();
+  SD_c = (Eigen::Matrix<double, 2, 1>() << 5.55, 0.66).finished();
   SD_multiplier = 100;
 
   torque_drive_c = 15000;

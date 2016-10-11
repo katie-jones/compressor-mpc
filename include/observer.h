@@ -14,7 +14,8 @@ class Observer {
   constexpr static int n_total_states = n_obs_states + n_delay_states;
 
   /// Observer of dynamic system
-  typedef Eigen::Matrix<double, n_obs_states, AugLinSys::n_outputs>
+  typedef Eigen::Matrix<double, n_obs_states, AugLinSys::n_outputs,
+                        Eigen::RowMajor>
       ObserverMatrix;
 
  public:

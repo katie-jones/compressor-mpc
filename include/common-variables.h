@@ -119,6 +119,4 @@ using Controller2 = SERIAL_CTRL_NONCOOP2;
 
 #endif  // ifdef SYSTEM_TYPE_SERIAL
 
-using namespace ReadFiles;
-
 #endif

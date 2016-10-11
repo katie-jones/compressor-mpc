@@ -1,4 +1,7 @@
-// Centralized serial simulation
+// Centralized parallel simulation
+#include <exception>
+#include <sstream>
+#include <string>
 
 // Define two macros to use correct typedefs etc. in "common-variables.h"
 #define CONTROLLER_TYPE_CENTRALIZED
@@ -10,9 +13,6 @@
 // AugmentedSystem(1,2): (sub)systems with augmented state matrices
 // Obsv(1,2): observers of (sub)systems
 // Controller(1,2): (sub)controllers
-#include <exception>
-#include <sstream>
-#include <string>
 #include "common-variables.h"
 
 // -------------------------------------------------------------------------- //
@@ -23,7 +23,7 @@ int n_solver_iterations;  // Number of solver iterations
 int n_timing_iterations;  // Number of solver iterations to time
 
 SimSystem *p_sim_compressor;        // Pointer to the simulation
-ParallelCompressors *p_compressor;  // Pointer to the parallel compressor sys.
+CompressorSystem *p_compressor;  // Pointer to the parallel compressor sys.
 NvCtr *p_controller;                // Pointer to controller nerve center
 std::ofstream output_file;          // File where timing data is saved
 
@@ -33,9 +33,9 @@ boost::timer::nanosecond_type time_total;  // Solver time (ns) per iteration
 // -------------------------------- CALLBACK -------------------------------- //
 // -------------------------------------------------------------------------- //
 
-void Callback(ParallelCompressors::State x, double t) {
+void Callback(CompressorSystem::State x, double t) {
   // Get output from system
-  ParallelCompressors::Output y = p_compressor->GetOutput(x);
+  CompressorSystem::Output y = p_compressor->GetOutput(x);
 
   // Get and apply next input
   NvCtr::ControlInput u = p_controller->GetNextInputWithTiming(
@@ -65,26 +65,26 @@ struct SimulationVariables {
   std::string folder_name = "parallel/";
   std::string output_fname = "cent_output.dat";
 
-  ParallelCompressors::Input u_init = ParallelCompressors::GetDefaultInput();
-  ParallelCompressors::ControlInput u_control_init =
-      ParallelCompressors::ControlInput::Zero();
-  ParallelCompressors::State x_init = ParallelCompressors::GetDefaultState();
+  CompressorSystem::Input u_init = CompressorSystem::GetDefaultInput();
+  CompressorSystem::ControlInput u_control_init =
+      CompressorSystem::ControlInput::Zero();
+  CompressorSystem::State x_init = CompressorSystem::GetDefaultState();
 
   double sampling_time = 0.05;
 
   Obsv::ObserverMatrix M =
       (Obsv::ObserverMatrix()
-           << Eigen::Matrix<double, ParallelCompressors::n_states,
-                            ParallelCompressors::n_outputs>::Zero(),
+           << Eigen::Matrix<double, CompressorSystem::n_states,
+                            CompressorSystem::n_outputs>::Zero(),
        Eigen::Matrix<double, n_disturbance_states,
-                     ParallelCompressors::n_outputs>::Identity())
+                     CompressorSystem::n_outputs>::Identity())
           .finished();
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Identity();
   Controller::YWeightType ywt = Controller::YWeightType::Identity();
 
-  ParallelCompressors::Output y_ref = ParallelCompressors::Output::Zero();
+  CompressorSystem::Output y_ref = CompressorSystem::Output::Zero();
 
   // Input constraints
   InputConstraints<Controller::n_control_inputs> constraints;
@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
   time_total = 0;
   output_file.open(x.folder_name + x.output_fname);
 
-  ParallelCompressors compressor;
+  CompressorSystem compressor;
   p_compressor = &compressor;
 
   SimSystem sim_comp(p_compressor, x.u_init, x.x_init);
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
                           compressor.GetOutput(x.x_init));
 
   // Initialize disturbance
-  ParallelCompressors::Input u_disturbance;
+  CompressorSystem::Input u_disturbance;
   double t_past = -x.sampling_time;
   double t_next;
 

@@ -23,6 +23,7 @@
 
 using namespace PARALLEL_COMPRESSORS_CONSTANTS;
 using SimSystem = SimulationSystem<ParallelCompressors, Delays, InputIndices>;
+using CompressorSystem = ParallelCompressors;
 
 //------------------------------ CENTRALIZED -----------------------------------
 #ifdef CONTROLLER_TYPE_CENTRALIZED
@@ -70,6 +71,7 @@ using Controller2 = PARALLEL_CTRL_NONCOOP2;
 
 using namespace SERIAL_COMPRESSORS_CONSTANTS;
 using SimSystem = SimulationSystem<SerialCompressors, Delays, InputIndices>;
+using CompressorSystem = SerialCompressors;
 
 //------------------------------ CENTRALIZED -----------------------------------
 #ifdef CONTROLLER_TYPE_CENTRALIZED
@@ -106,16 +108,6 @@ using Controller1 = SERIAL_CTRL_NONCOOP1;
 using Controller2 = SERIAL_CTRL_NONCOOP2;
 
 #endif  // ifdef CONTROLLER_TYPE_NCOOP
-
-#ifdef CONTROLLER_TYPE_NCOOP_UNSTABLE
-// using NvCtr =
-    // NerveCenter<SerialCompressors, n_total_states,
-                // SERIAL_CTRL_NONCOOP1, SERIAL_CTRL_NONCOOP2>;
-
-// using Controller1 = SERIAL_CTRL_NONCOOP1;
-// using Controller2 = SERIAL_CTRL_NONCOOP2;
-
-#endif  // ifdef CONTROLLER_TYPE_NCOOP_UNSTABLE
 
 #endif  // ifdef SYSTEM_TYPE_SERIAL
 

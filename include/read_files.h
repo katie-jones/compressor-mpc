@@ -77,7 +77,6 @@ int ReadNumbers(T *data_out, const int n_elements, std::ifstream &setup_file,
     std::cerr << "Extra text \"" << remaining_text << "\" in line "
               << line_number << " being ignored." << std::endl;
   }
-  std::cout << "Read " << i << " elements." << std::endl;
   return i;
 }
 

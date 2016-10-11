@@ -1,4 +1,3 @@
-// Centralized parallel simulation
 #include <exception>
 #include <sstream>
 #include <string>
@@ -23,7 +22,7 @@ int n_solver_iterations;  // Number of solver iterations
 int n_timing_iterations;  // Number of solver iterations to time
 
 SimSystem *p_sim_compressor;        // Pointer to the simulation
-CompressorSystem *p_compressor;  // Pointer to the parallel compressor sys.
+CompressorSystem *p_compressor;  // Pointer to the compressor sys.
 NvCtr *p_controller;                // Pointer to controller nerve center
 std::ofstream output_file;          // File where timing data is saved
 
@@ -62,8 +61,21 @@ struct SimulationVariables {
   int n_solver_iterations = 1;
   int n_timing_iterations = 1;
 
+#ifdef SYSTEM_TYPE_SERIAL
+  std::string folder_name = "serial/";
+#else
   std::string folder_name = "parallel/";
+#endif
+
+#ifdef CONTROLLER_TYPE_CENTRALIZED
   std::string output_fname = "cent_output.dat";
+#else
+#ifdef CONTROLLER_TYPE_COOP
+  std::string output_fname = "coop_output.dat";
+#else
+  std::string output_fname = "ncoop_output.dat";
+#endif
+#endif
 
   CompressorSystem::Input u_init = CompressorSystem::GetDefaultInput();
   CompressorSystem::ControlInput u_control_init =
@@ -82,12 +94,15 @@ struct SimulationVariables {
 
   // Weights
   NvCtr::UWeightType uwt = NvCtr::UWeightType::Identity();
-  Controller::YWeightType ywt = Controller::YWeightType::Identity();
+  Controller1::YWeightType ywt1 = Controller1::YWeightType::Identity();
+#ifndef CONTROLLER_TYPE_CENTRALIZED
+  Controller2::YWeightType ywt2 = Controller2::YWeightType::Identity();
+#endif
 
   CompressorSystem::Output y_ref = CompressorSystem::Output::Zero();
 
   // Input constraints
-  InputConstraints<Controller::n_control_inputs> constraints;
+  InputConstraints<Controller1::n_control_inputs> constraints;
 
   SimulationVariables() { constraints.use_rate_constraints = true; }
 };
@@ -133,7 +148,10 @@ SimulationVariables ReadSimulationVariables(std::ifstream &setup_file,
     } else if (line.find("uwt") != std::string::npos) {
       ReadNumbers(x.uwt.data(), x.uwt.size(), setup_file, line_number);
     } else if (line.find("ywt") != std::string::npos) {
-      ReadNumbers(x.ywt.data(), x.ywt.size(), setup_file, line_number);
+      ReadNumbers(x.ywt1.data(), x.ywt1.size(), setup_file, line_number);
+#ifndef CONTROLLER_TYPE_CENTRALIZED
+      ReadNumbers(x.ywt2.data(), x.ywt2.size(), setup_file, line_number);
+#endif
     } else if (line.find("yref") != std::string::npos) {
       ReadNumbers(x.y_ref.data(), x.y_ref.size(), setup_file, line_number);
     } else if (line.find("constraints-lower") != std::string::npos) {
@@ -209,16 +227,21 @@ int main(int argc, char **argv) {
 
   // Setup controller
   AugmentedSystem sys(compressor, x.sampling_time);
-  Controller ctrl(sys, x.constraints, x.M);
+  Controller1 ctrl(sys, x.constraints, x.M);
 
   // Create a nerve center
-  std::tuple<Controller> ctrl_tuple(ctrl);
+  std::tuple<Controller1> ctrl_tuple(ctrl);
   NvCtr nerve_center(ctrl_tuple, n_solver_iterations);
   p_controller = &nerve_center;
 
-  NvCtr::SubYWeightType ywts(x.ywt);
+#ifdef CONTROLLER_TYPE_CENTRALIZED
+  NvCtr::SubYWeightType ywts(x.ywt1);
+#else
+  NvCtr::SubYWeightType ywts(x.ywt1, x.ywt2);
+#endif
+
   nerve_center.SetWeights(x.uwt, ywts);
-  nerve_center.SetOutputReference(x.y_ref.replicate<Controller::p, 1>());
+  nerve_center.SetOutputReference(x.y_ref.replicate<Controller1::p, 1>());
 
   nerve_center.Initialize(x.x_init, x.u_control_init, x.u_init,
                           compressor.GetOutput(x.x_init));
@@ -229,7 +252,7 @@ int main(int argc, char **argv) {
   double t_next;
 
   // Time entire simulation
-  std::cout << "Running centralized simulation... ";
+  std::cout << "Running simulation... ";
   std::cout.flush();
   boost::timer::cpu_timer simulation_timer;
 

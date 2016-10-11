@@ -29,8 +29,8 @@ using CompressorSystem = ParallelCompressors;
 #ifdef CONTROLLER_TYPE_CENTRALIZED
 using AugmentedSystem = PARALLEL_AUGSYS_CENT;
 using Obsv = PARALLEL_OBS_CENT;
-using Controller = PARALLEL_CTRL_CENT;
-using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller>;
+using Controller1 = PARALLEL_CTRL_CENT;
+using NvCtr = NerveCenter<ParallelCompressors, n_total_states, Controller1>;
 
 #else   // ifdef CONTROLLER_TYPE_CENTRALIZED
 //------------------------------ DISTRIBUTED -----------------------------------
@@ -77,8 +77,8 @@ using CompressorSystem = SerialCompressors;
 #ifdef CONTROLLER_TYPE_CENTRALIZED
 using AugmentedSystem = SERIAL_AUGSYS_CENT;
 using Obsv = SERIAL_OBS_CENT;
-using Controller = SERIAL_CTRL_CENT;
-using NvCtr = NerveCenter<SerialCompressors, n_total_states, Controller>;
+using Controller1 = SERIAL_CTRL_CENT;
+using NvCtr = NerveCenter<SerialCompressors, n_total_states, Controller1>;
 
 #else
 //------------------------------ DISTRIBUTED -----------------------------------

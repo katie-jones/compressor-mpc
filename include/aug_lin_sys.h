@@ -4,12 +4,33 @@
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
 
-#include "prediction.h"
 #include "null_index_array.h"
+#include "prediction.h"
 
 template <class System>
 class Observer;
 
+/**
+ * Linearized, discretized dynamic (possibly sub-) system with augmented delayed
+ * input states and integrator states.
+ * This class controls the linearization and generation of augmented system (A,
+ * B, C) matrices at each timestep.
+ * It also allows linearized prediction matrices predicting the response of the
+ * system over a certain prediction horizon to be generated.
+ *
+ * The augmented A and B matrices are implemented using structs AComposite and
+ * BComposite which optimizes linear algebra operators given prior knowledge of
+ * their structure.
+ *
+ * Template parameters:\n
+ * - System: class of original dynamic system\n
+ * - Delays: ConstexprArray containing delay state info\n
+ * - n_disturbance_states_in: number of total disturbance states\n
+ * - ControlInputIndices: indices of control inputs of this sub-system relative
+ * to those of full system\n
+ * - n_sub_control_inputs_in: number of control inputs belonging to this
+ * subsystem\n
+ */
 template <class System, typename Delays, int n_disturbance_states_in,
           typename ControlInputIndices =
               NullIndexArray<System::n_control_inputs>,
@@ -23,25 +44,39 @@ class AugmentedLinearizedSystem {
       (n_sub_control_inputs_in != System::n_control_inputs);
 
  public:
+  /// Number of delayed states
   static constexpr int n_delay_states = Delays::GetSum();
+  /// Number of control inputs
   static constexpr int n_control_inputs = System::n_control_inputs;
+  /// Total number of delayed inputs
   static constexpr int n_delayed_inputs = Delays::GetNonzeroEntries();
+  /// Number of system inputs
   static constexpr int n_inputs = System::n_inputs;
+  /// Number of system outputs
   static constexpr int n_outputs = System::n_outputs;
+  /// Number of system states
   static constexpr int n_states = System::n_states;
+  /// Number of disturbance/integrator states
   static constexpr int n_disturbance_states = n_disturbance_states_in;
+  /// Number of control inputs for this subsystem
   static constexpr int n_sub_control_inputs =
       is_reduced ? n_sub_control_inputs_in : n_control_inputs;
+  /// Number of control inputs controlled by other subsystems
   static constexpr int n_other_control_inputs =
       n_control_inputs - n_sub_control_inputs;
 
+  /// Number of augmented states
   static constexpr int n_aug_states = n_disturbance_states + n_delay_states;
+  /// Number of observable states
   static constexpr int n_obs_states = n_states + n_disturbance_states;
+  /// Number of total states (augmented + real)
   static constexpr int n_total_states = n_aug_states + n_states;
 
-  /// Delays to system
+  /// ConstexprArray of Delays to system
   using DelayType = Delays;
+  /// ConstexprArray of indices of current subsystem's control inputs
   using ControlInputIndexType = ControlInputIndices;
+  /// (Sub-)System being controlled
   using SystemType = System;
 
   /// State of the dynamic system
@@ -128,28 +163,46 @@ class AugmentedLinearizedSystem {
   }
 
  protected:
+  /// Augmented A matrix, separated into components for efficiency
   struct AComposite {
+    /// Original (non-augmented) A matrix
     Eigen::Matrix<double, n_states, n_states> Aorig;
+    /// Component multiplied by last delayed states
     Eigen::Matrix<double, n_states, n_delayed_inputs> Adelay;
+    /// Vector containing locations of 1s in augmented part of A matrix
     Eigen::Matrix<int, n_aug_states, 1> Aaug;
 
+    /// Constructor
     AComposite();
+
+    /// Multiply by an augmented state
     inline AugmentedState operator*(const AugmentedState& x) const;
+
+    /// Multiply by only the augmented (delay and disturbance) components of an
+    /// augmented state
     AugmentedState TimesAugmentedOnly(
         const Eigen::Matrix<double, n_aug_states, 1> x) const;
 
+    /// Multiply by a C matrix (or one with same dimensions)
     template <int n_sub_outputs>
     void MultiplyC(
         Eigen::Matrix<double, n_sub_outputs, n_total_states>* C) const;
   };
 
+  /// Augmented B matrix, separated into components for efficiency
   struct BComposite {
+    /// Non-delayed components of original B-matrix
     Eigen::Matrix<double, n_states, n_control_inputs - n_delayed_inputs> Borig;
+    /// Vector containing location of 1s in augmented part of B matrix
     Eigen::Matrix<int, n_control_inputs, 1> Baug;
 
+    /// Constructor
     BComposite();
+
+    /// Multiply B by ControlInput vector
     AugmentedState operator*(const ControlInput& u) const;
 
+    /// Multiply given C matrix by B
     template <int n_sub_outputs>
     Eigen::Matrix<double, n_sub_outputs, System::n_control_inputs> MultiplyC(
         const Eigen::Matrix<double, n_sub_outputs, n_total_states>& C) const;

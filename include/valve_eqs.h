@@ -6,11 +6,13 @@
 #include <cmath>
 
 namespace ValveEqs {
-// Calculate partial derivative wrt pressure across a valve
-// p_in: upstream pressure
-// p_out: downstream pressure
-// u_valve: valve setting
-// C: coefficients of valve map
+/**
+ * Calculate partial derivative wrt pressure across a valve
+ * p_in: upstream pressure
+ * p_out: downstream pressure
+ * u_valve: valve setting
+ * C: coefficients of valve map
+ */
 inline double CalculateValveDerivative(double p_in, double p_out,
                                        double u_valve,
                                        Eigen::Matrix<double, 8, 1> C,
@@ -24,12 +26,14 @@ inline double CalculateValveDerivative(double p_in, double p_out,
          M.dot(C.head<4>());
 }
 
-// Calculate the mass flow across a valve
-// p_in: upstream pressure
-// p_out: downstream pressure
-// u_valve: valve setting
-// C: coefficients of valve map
-// m_offset: mass flow offset
+/**
+ * Calculate the mass flow across a valve
+ * p_in: upstream pressure
+ * p_out: downstream pressure
+ * u_valve: valve setting
+ * C: coefficients of valve map
+ * m_offset: mass flow offset
+ */
 inline double CalculateValveMassFlow(double p_in, double p_out, double u_valve,
                                      Eigen::Matrix<double, 8, 1> C,
                                      double m_offset) {

@@ -10,6 +10,11 @@ class SerialCompressors;
 template <bool has_input_tank>
 class Compressor;
 
+/**
+ * Virtual base class of compressor, combining elements common to compressors
+ * with and without an input tank. Inherits from the DynamicSystem class.
+ * Defines compressor parameters and provides default values.
+ */
 class CompressorBase
     : public virtual DynamicSystem<5, 6, 2, ConstexprArray<0, 3>> {
   friend ParallelCompressors;
@@ -56,11 +61,13 @@ class CompressorBase
     return *this;
   }
 
+  /// Equals operator
   template <bool has_input_tank>
   CompressorBase& operator=(const Compressor<has_input_tank>& x) {
     return *this;
   }
 
+  /// Destructor
   virtual ~CompressorBase() {}
 
   /**
@@ -95,7 +102,8 @@ class CompressorBase
   virtual Linearized GetLinearizedSystem(const State& x,
                                          const Input& u) const = 0;
 
-  virtual Linearized GetLinearizedSystem(double *m_out, const State& x,
+  /// Linearize system about operating point.
+  virtual Linearized GetLinearizedSystem(double* m_out, const State& x,
                                          const Input& u) const = 0;
 
   /// Return system output at given state.
@@ -105,7 +113,10 @@ class CompressorBase
   Parameters params_;
 };
 
-// Compressor implementation with input tank or without
+/**
+ * Implementation of CompressorBase with input tank or without.
+ * Implements all required virtual methods to be dynamic system.
+ */
 template <bool has_input_tank>
 class Compressor : public CompressorBase {
  public:
@@ -130,8 +141,10 @@ class Compressor : public CompressorBase {
     return *this;
   }
 
+  /// Equals operator
   Compressor& operator=(const CompressorBase& x) { return *this; }
 
+  /// Destructor
   virtual ~Compressor() {}
 
   /**
@@ -149,7 +162,8 @@ class Compressor : public CompressorBase {
     return GetLinearizedSystem(&m_out, x, u);
   }
 
-  virtual Linearized GetLinearizedSystem(double *m_out, const State& x,
+  /// Linearize system about operating point.
+  virtual Linearized GetLinearizedSystem(double* m_out, const State& x,
                                          const Input& u) const;
 };
 

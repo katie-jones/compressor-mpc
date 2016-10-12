@@ -4,14 +4,24 @@
 #include <Eigen/Eigen>
 #include <iostream>
 
+/**
+ * Class representing a discrete time delay in a dynamic system. Stores a
+ * pre-defined number of delayed values for each input.
+ * Template parameters:
+ * - Delays: ConstexprArray giving number of delays per input
+ */
 template <typename Delays>
 class TimeDelay {
  public:
+  /// Number of inputs
   constexpr static int n_inputs = Delays::size;
+  /// Total number of delay states
   constexpr static int n_delay_states = Delays::GetSum();
 
+  /// Input to system
   typedef Eigen::Matrix<double, n_inputs, 1> Input;
 
+  /// Constructor: initializes memory to 0
   TimeDelay() {
     // initialize to zero
     for (int i = 0; i < n_delay_states; i++) {
@@ -26,6 +36,8 @@ class TimeDelay {
     }
   }
 
+  /// Store the next input values and output the delayed input to be applied to
+  /// system
   Input GetDelayedInput(const Input& u_next) {
     Input u_out = Input::Zero();
     int index_delay_states = 0;
@@ -45,6 +57,7 @@ class TimeDelay {
     return u_out;
   }
 
+  /// Debugging function to print the current state stored in memory
   void PrintCurrentState(std::ostream& os) {
     for (int i = 0; i < n_delay_states; i++) {
       os << u_delay_[i] << " ";
@@ -63,7 +76,7 @@ class TimeDelay {
 };
 
 // Definition of constexpr static member
-template<typename Delays>
+template <typename Delays>
 constexpr Delays TimeDelay<Delays>::n_delay_;
 
 #endif

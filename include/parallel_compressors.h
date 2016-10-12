@@ -1,52 +1,64 @@
 #ifndef PARALLEL_COMPRESSORS_H
 #define PARALLEL_COMPRESSORS_H
 
-#include "dynamic_system.h"
 #include "compressor.h"
-#include "tank.h"
 #include "constexpr_array.h"
+#include "dynamic_system.h"
+#include "tank.h"
 
-// TODO: make n_compressors a template argument
+/**
+ * Dynamic system of 2 compressors arranged in parallel, connected to a common
+ * discharge tank.
+ */
 class ParallelCompressors
     : public virtual DynamicSystem<11, 9, 4, ConstexprArray<0, 3, 4, 7>> {
  public:
+  /// Number of system states
   constexpr static int n_states = 11;
+  /// Number of system inputs
   constexpr static int n_inputs = 9;
+  /// Number of system outputs
   constexpr static int n_outputs = 4;
+  /// Number of system control inputs
   constexpr static int n_control_inputs = 4;
+  /// Number of compressors in system
   constexpr static int n_compressors = 2;
 
+  /// Indices of control inputs relative to inputs
   using ControlInputIndex = ConstexprArray<0, 3, 4, 7>;
 
   /// Compressor with input tank
   using Comp = Compressor<true>;
 
-
+  /// State of system
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
+  /// Input to system
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
+  /// Output of system
   typedef DynamicSystem<n_states, n_inputs, n_outputs,
                         ControlInputIndex>::Output Output;
 
+  /// Constructor with an array of individual compressors
   ParallelCompressors(const double p_in, const double p_out,
-                      const Comp comps[n_compressors],
-                      const Tank tank = Tank())
+                      const Comp comps[n_compressors], const Tank tank = Tank())
       : p_in_(p_in), p_out_(p_out), tank_(tank) {
     for (int i = 0; i < n_compressors; i++) {
       comps_[i] = comps[i];
     }
   }
 
+  /// Constructor using identical compressors
   ParallelCompressors(const double p_in = 1.0, const double p_out = 1.0,
-                      const Comp comp = Comp(),
-                      const Tank tank = Tank())
+                      const Comp comp = Comp(), const Tank tank = Tank())
       : p_in_(p_in), p_out_(p_out), tank_(tank) {
     for (int i = 0; i < n_compressors; i++) {
       comps_[i] = comp;
     }
   }
 
+  /// Destructor
   virtual ~ParallelCompressors() {}
 
   /// Get derivative of compressor system about given operating point.
@@ -79,8 +91,7 @@ class ParallelCompressors
   const double p_in_;
   const double p_out_;
   constexpr static int n_comp_inputs = 4;
-  inline Comp::Input GetCompressorInput(Input u_in, int i,
-                                              State x) const {
+  inline Comp::Input GetCompressorInput(Input u_in, int i, State x) const {
     Comp::Input u;
     u << u_in.segment<n_comp_inputs>(i * n_comp_inputs), p_in_, x.tail<1>();
     return u;

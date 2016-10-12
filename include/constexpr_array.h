@@ -1,16 +1,22 @@
 #ifndef CONSTEXPR_ARRAY_H
 #define CONSTEXPR_ARRAY_H
-#include <utility>
 #include <Eigen/Eigen>
+#include <utility>
 
+/**
+ * Class implementing an array that is constexpr (and therefore fixed at compile
+ * time). Uses parameter packs and the std::integer_sequence class.
+ */
 template <int... Ints>
 class ConstexprArray {
  private:
   static constexpr std::array<int, sizeof...(Ints)> data_ = {Ints...};
 
  public:
+  /// Default constructor
   constexpr ConstexprArray() {}
 
+  /// Type of this object
   using type = ConstexprArray<Ints...>;
 
   /// Number of control inputs
@@ -30,18 +36,21 @@ class ConstexprArray {
   /// Get number of nonzero entries
   static constexpr int GetNonzeroEntries() {
     int n = 0;
-    for (int i=0; i<data_.size(); ++i) {
+    for (int i = 0; i < data_.size(); ++i) {
       if (data_[i] != 0) n++;
     }
     return n;
   }
 
+  /// Get entry number i
   static constexpr int GetEntry(const int i) { return data_[i]; }
 
+  /// Get a std integer sequence containing the same values
   static constexpr std::integer_sequence<int, Ints...> GetIntegerSequence() {
     return std::integer_sequence<int, Ints...>();
   }
 
+  /// Get a std index sequence containing the same values
   static constexpr std::index_sequence<static_cast<std::size_t>(Ints)...>
   GetIndexSequence() {
     return std::index_sequence<static_cast<std::size_t>(Ints)...>();
@@ -85,7 +94,7 @@ class ConstexprArray {
     (void)expander{(x_out[Ints] += *(x_in++))...};
   }
 
-  // Function to get subvector from an Eigen vector
+  /// Get subvector from an Eigen vector
   template <int N>
   static Eigen::Matrix<double, size, 1> GetSubVector(
       const Eigen::Matrix<double, N, 1>& x) {
@@ -94,14 +103,14 @@ class ConstexprArray {
     return x_reduced;
   }
 
-  // Function to get subvector from an Eigen vector
+  /// Get subvector from an Eigen vector
   template <int N>
   static void GetSubVector(Eigen::Matrix<double, size, 1>* x_reduced,
                            const Eigen::Matrix<double, N, 1>& x) {
     GetSubArray(x_reduced->data(), x.data());
   }
 
-  // Function to get submatrix from an Eigen matrix
+  /// Get submatrix from an Eigen matrix
   template <int N, typename T>
   static void GetSubMatrix(Eigen::Matrix<T, size, size>* x_reduced,
                            const Eigen::Matrix<T, N, N>& x) {
@@ -117,7 +126,7 @@ class ConstexprArray {
     int dummy[]{get_sub_row(new_data, old_data + (N * Ints))...};
   }
 
-  // Function to get submatrix from an Eigen matrix
+  /// Get submatrix from an Eigen matrix
   template <int N, typename T>
   static void GetSubMatrix(T* new_data, const T* old_data) {
     auto get_sub_row = [](T*& a, const T* b) {
@@ -136,7 +145,7 @@ class ConstexprArray {
 template <int... Ints>
 constexpr std::array<int, sizeof...(Ints)> ConstexprArray<Ints...>::data_;
 
-// Function to return a ConstexprArray from an integer sequence
+// Return a ConstexprArray from an integer sequence
 template <int... Ints>
 constexpr ConstexprArray<Ints...> MakeConstexprArray(
     const std::integer_sequence<int, Ints...>&) {
@@ -150,6 +159,7 @@ class ConstexprArrayList {
   static constexpr auto list_ = std::tuple<Arrays...>();
 
  public:
+  /// Constructor
   constexpr ConstexprArrayList() {}
 
   /// Number of control inputs
@@ -169,6 +179,7 @@ class ConstexprArrayList {
     return sum;
   }
 
+ private:
   template <typename Array>
   static constexpr int AddEntry() {
     return Array::GetSum();

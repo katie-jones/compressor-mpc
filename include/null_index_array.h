@@ -3,25 +3,35 @@
 #include <utility>
 #include "constexpr_array.h"
 
-// Type returning original vector
+/**
+ * Constexpr class representing an array of integers such that x[i] = i.
+ * Implements the same functionality as the ConstexprArray class.
+ * Template parameters:\n
+ * - size_in: size of array
+ */
 template <int size_in>
 class NullIndexArray {
  public:
+   /// Constructor
   constexpr NullIndexArray() {
     static_assert(size_in > 0, "Size should be positive");
   }
 
-  static constexpr int GetEntry(const int i) {
-    return i;
-  }
+  /// Get array value at location i
+  static constexpr int GetEntry(const int i) { return i; }
 
+  /// Size of array
   static constexpr int size = size_in;
+
+  /// Type of this object
   using type = NullIndexArray<size_in>;
 
+  /// Return std integer sequence with same values as this array
   static constexpr std::make_integer_sequence<int, size> GetIntegerSequence() {
     return std::make_integer_sequence<int, size>();
   }
 
+  /// Return std index sequence with same values as this array
   static constexpr std::make_index_sequence<static_cast<std::size_t>(size)>
   GetIndexSequence() {
     return std::make_index_sequence<static_cast<std::size_t>(size)>();
@@ -34,18 +44,18 @@ class NullIndexArray {
       x_out[i] = x_in[i];
     }
   }
-  
-  // Function to get submatrix from an Eigen matrix
+
+  /// Get submatrix from an Eigen matrix
   static void GetSubMatrix(Eigen::Matrix<double, size, size>* x_reduced,
                            const Eigen::Matrix<double, size, size>& x) {
     x_reduced = &x;
   }
 
-  // Function to get submatrix from an Eigen matrix
+  /// Get submatrix from an Eigen matrix
   template <int N, typename T>
   static void GetSubMatrix(T* new_data, const T* old_data) {
-    int n = size*size;
-    for (int i=0; i<n; i++) {
+    int n = size * size;
+    for (int i = 0; i < n; i++) {
       *new_data = *old_data;
       new_data++;
       old_data++;
@@ -83,13 +93,13 @@ class NullIndexArray {
     }
   }
 
-  // Function to get subvector from an Eigen vector
+  /// Get subvector from an Eigen vector
   static Eigen::Matrix<double, size, 1> GetSubVector(
       const Eigen::Matrix<double, size, 1>& x) {
     return x;
   }
 
-  // Function to get subvector from an Eigen vector
+  /// Get subvector from an Eigen vector
   static void GetSubVector(Eigen::Matrix<double, size, 1>* x_out,
                            const Eigen::Matrix<double, size, 1>& x) {
     x_out = &x;

@@ -56,7 +56,10 @@ class SimulationSystem {
     u_ = GetPlantInput(u_init);
   }
 
+  /// Get current input to system
   ControlInput GetCurrentInput() { return u_; }
+
+  /// Get current state of system
   State GetCurrentState() { return x_; }
 
   /// Update input offset.
@@ -73,7 +76,7 @@ class SimulationSystem {
   /// Return output at current system state x
   Output GetOutput() const { return GetOutput(x_); }
 
-  /// output plant input based on control input and offset
+  /// Output plant input based on control input and offset
   const Input GetPlantInput(const ControlInput& u_control) const {
     Input u = u_offset_;
     for (int i = 0; i < System::n_control_inputs; i++) {

@@ -2,21 +2,37 @@
 #define MPC_QP_SOLVER_H
 
 #include <Eigen/Eigen>
-#include "qpOASES.hpp"
-#include "prediction.h"
-#include "input_constraints.h"
 #include "controller_interface.h"
+#include "input_constraints.h"
+#include "prediction.h"
+#include "qpOASES.hpp"
 
+/**
+ * QP solver for MPC controllers. Generates and solves QP based on a reference
+ * trajectory, weights on inputs/outputs and constraints of type
+ * InputConstraints.
+ * Template parametes:\n
+ * - n_total_states: total number of (augmented + real) states\n
+ * - n_outputs: number of system outputs\n
+ * - n_control_inputs: number of control inputs\n
+ * - p: prediction horizon\n
+ * - m: move horizon\n
+ */
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 class MpcQpSolver {
  private:
   static constexpr int n_wsr_max = 10;  // max working set recalculations
 
  public:
+  /// Augmented state of system
   using AugmentedState = Eigen::Matrix<double, n_total_states, 1>;
+  /// Output of system
   using Output = Eigen::Matrix<double, n_outputs, 1>;
+  /// Control input to system
   using ControlInput = Eigen::Matrix<double, n_control_inputs, 1>;
+  /// Prediction of output over prediction horizon
   using OutputPrediction = Eigen::Matrix<double, p * n_outputs, 1>;
+  /// Prediction of control input over move horizon
   using ControlInputPrediction = Eigen::Matrix<double, m * n_control_inputs, 1>;
 
   /// Matrix of input weight terms
@@ -28,7 +44,8 @@ class MpcQpSolver {
   /// Structure containing QP problem to solve
   struct QP {
     Eigen::Matrix<double, m * n_control_inputs, m * n_control_inputs,
-                  Eigen::RowMajor> H;
+                  Eigen::RowMajor>
+        H;
     Eigen::Matrix<double, m * n_control_inputs, 1> f;
   };
 
@@ -62,7 +79,7 @@ class MpcQpSolver {
     }
   }
 
-  /// generate QP matrices based on linearization
+  /// Generate QP matrices based on linearization
   QP GenerateQP(const Prediction& pred, const AugmentedState& delta_x0,
                 const int n_aug_states, const Output& y_prev) const {
     Eigen::MatrixXd y_pred_weight = y_weight_ * pred.Su;
@@ -70,7 +87,7 @@ class MpcQpSolver {
                       y_pred_weight);
   }
 
-  /// use QPoases to solve QP
+  /// Use QPoases to solve QP
   const ControlInputPrediction SolveQP(const QP& qp, const ControlInput& u_old);
 
   /// Set output reference to use

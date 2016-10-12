@@ -6,6 +6,16 @@
 #include "controller_interface.h"
 #include "distributed_controller.h"
 
+/**
+ * Nerve center and communication hub for distributed MPC controller.
+ * Coordinates exchange of information between the plant and controllers, as
+ * well as between the different sub-controllers.
+ * Template parameters:\n
+ * - System: class of dynamic system to be controlled\n
+ * - n_total_states: total number of (augmented + real) states\n
+ * - SubControllers: parameter pack of sub-controllers that make up the\n
+ * distributed MPC controller\n
+ */
 template <typename System, int n_total_states, typename... SubControllers>
 class NerveCenter : public ControllerInterface<System> {
  protected:
@@ -28,11 +38,17 @@ class NerveCenter : public ControllerInterface<System> {
       GetPredictionControlInputs();
 
  public:
+  /// State of system
   using State = Eigen::Matrix<double, System::n_states, 1>;
+  /// Augmented state of system
   using AugmentedState = Eigen::Matrix<double, n_total_states, 1>;
+  /// Input to system
   using Input = Eigen::Matrix<double, System::n_inputs, 1>;
+  /// Output of system
   using Output = Eigen::Matrix<double, System::n_outputs, 1>;
+  /// Control input to system
   using ControlInput = Eigen::Matrix<double, System::n_control_inputs, 1>;
+  /// Prediction of control input over move horizon
   using ControlInputPrediction =
       Eigen::Matrix<double, n_prediction_control_inputs, 1>;
 
@@ -60,19 +76,23 @@ class NerveCenter : public ControllerInterface<System> {
   const int n_solver_iterations_;
 
  public:
+  /// Matrix of weights on inputs
   using UWeightType = Eigen::Matrix<double, n_control_inputs, n_control_inputs>;
+  /// Matrix of weights on outputs
   using YWeightType = Eigen::Matrix<double, n_outputs, n_outputs>;
+  /// Tuple of weights on outputs for each sub-controller
   using SubYWeightType = std::tuple<typename SubControllers::YWeightType...>;
+  /// Prediction of output over maximum prediction horizon
   using OutputPrediction = Eigen::Matrix<double, p_max * n_outputs, 1>;
 
+  /// Constructor
   NerveCenter(std::tuple<SubControllers...>& controllers,
               const int n_solver_iterations)
       : ControllerInterface<System>(Input::Zero()),
         n_solver_iterations_(n_solver_iterations),
         u_old_(ControlInput::Zero()),
         du_old_(ControlInputPrediction::Zero()),
-        sub_controllers_(controllers) {
-  }
+        sub_controllers_(controllers) {}
 
   /// Initialize all sub controllers based on given initial conditions
   void Initialize(const State& x_init, const ControlInput& u_init,

@@ -3,12 +3,17 @@
 
 #include <Eigen/Eigen>
 #include <Eigen/SparseCore>
-#include "dynamic_system.h"
 #include "aug_lin_sys.h"
+#include "dynamic_system.h"
+#include "input_constraints.h"
 #include "observer.h"
 #include "qpOASES.hpp"
-#include "input_constraints.h"
 
+/**
+ * Pure virtual class defining a common interface for all controllers. A
+ * function to calculate the next input for the system based on a previous
+ * output must be implemented by daughter classes.
+ */
 template <class System>
 class ControllerInterface {
  protected:

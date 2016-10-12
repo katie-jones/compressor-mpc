@@ -6,20 +6,31 @@
 
 class ParallelCompressors;
 
+/**
+ * Tank with with an inlet and outlet valve to be connected to compressors.
+ */
 class Tank : public DynamicSystem<1, 3, 1, ConstexprArray<>> {
   friend ParallelCompressors;
 
  public:
+  /// Number of system states
   constexpr static int n_states = 1;
+  /// Number of system inputs
   constexpr static int n_inputs = 3;
+  /// Number of system outputs
   constexpr static int n_outputs = 1;
+  /// Number of system control inputs
   constexpr static int n_control_inputs = 0;
+  /// Indices of control inputs relative to inputs
   using ControlInputIndex = ConstexprArray<>;
 
+  /// System state
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
+  /// System input
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
+  /// System output
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Output
       Output;
 
@@ -31,7 +42,7 @@ class Tank : public DynamicSystem<1, 3, 1, ConstexprArray<>> {
     Params();
   };
 
-  /// Optionally give parameters to use
+  /// Constructor with optional parameters to use
   Tank(Params params = Params()) : params_(params) {}
 
   /// Get derivative of tank.

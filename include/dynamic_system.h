@@ -5,13 +5,16 @@
 
 /**
  * Abstract class describing a dynamic system.
- * Template with parameters: n_states (number of states), n_inputs (number of
- * inputs), n_outputs (number of outputs), n_control_inputs (number of inputs
- * used for control).
+ * Template with parameters:\n
+ * - n_states: number of states\n
+ * - n_inputs: number of inputs\n
+ * - n_outputs: number of outputs\n
+ * - ControlInputIndex: array of indices of control inputs relative to system inputs
  */
 template <int n_states, int n_inputs, int n_outputs, typename ControlInputIndex>
 class DynamicSystem {
  public:
+  /// Number of control inputs
   constexpr static int n_control_inputs = ControlInputIndex::size;
 
   /// Type describing system state.
@@ -34,6 +37,7 @@ class DynamicSystem {
     Eigen::Matrix<double, n_states, 1> f;
   };
 
+  /// Destructor
   virtual ~DynamicSystem() {}
 
   /// Return system linearized about given operating point.
@@ -46,15 +50,15 @@ class DynamicSystem {
   /// Return system output at given state.
   virtual Output GetOutput(const State& x) const = 0;
 
-  /// output plant input based on control input and offset
+  /// Output plant input based on control input and offset
   static const Input GetPlantInput(const ControlInput& u_control,
-                            const Input& u_offset) {
+                                   const Input& u_offset) {
     Input u = u_offset;
     ControlInputIndex::ExpandArray(u.data(), u_control.data());
     return u;
   }
 
-  /// output control input based on plant input and offset
+  /// Output control input based on plant input and offset
   const ControlInput GetControlInput(const Input& u) const {
     return ControlInputIndex::GetSubVector(u);
   }

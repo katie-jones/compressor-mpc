@@ -4,6 +4,11 @@
 #include <Eigen/Eigen>
 #include "mpc_qp_solver.h"
 
+/**
+ * Specialization of MpcQpSolver for distributed MPC controllers. Adds the
+ * option of updating and re-solving a QP based on the solutions of other
+ * subcontrollers.
+ */
 template <int n_total_states, int n_outputs, int n_control_inputs, int p, int m>
 class DistributedSolver
     : public MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p, m> {
@@ -18,27 +23,36 @@ class DistributedSolver
                     m>::qp_problem_;
 
  public:
+  /// Augmented state of system
   using AugmentedState =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::AugmentedState;
+  /// Matrix of input weights
   using UWeightType = typename MpcQpSolver<n_total_states, n_outputs,
                                            n_control_inputs, p, m>::UWeightType;
+  /// Matrix of output weights
   using YWeightType = typename MpcQpSolver<n_total_states, n_outputs,
                                            n_control_inputs, p, m>::YWeightType;
+  /// QP to be solved
   using QP = typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs,
                                   p, m>::QP;
+  /// Control input to solve for
   using ControlInput =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInput;
+  /// Prediction of control input over move horizon
   using ControlInputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::ControlInputPrediction;
+  /// Output of system
   using Output = typename MpcQpSolver<n_total_states, n_outputs,
                                       n_control_inputs, p, m>::Output;
+  /// Prediction of output over prediction horizon
   using OutputPrediction =
       typename MpcQpSolver<n_total_states, n_outputs, n_control_inputs, p,
                            m>::OutputPrediction;
 
+  /// Number of control inputs
   static constexpr int n_control_inputs_ = n_control_inputs;
 
   /// Constructor

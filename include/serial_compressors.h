@@ -6,31 +6,47 @@
 #include "constexpr_array.h"
 #include "valve_eqs.h"
 
-// TODO: make n_compressors a template argument
+/**
+ * Dynamic system of 2 compressors arranged in parallel, connected to a common
+ * discharge tank.
+ */
 class SerialCompressors
     : public virtual DynamicSystem<10, 8, 4, ConstexprArray<0, 3, 4, 7>> {
  public:
+   /// Number of system states
   constexpr static int n_states = 10;
+   /// Number of system inputs 
   constexpr static int n_inputs = 8;
+  /// Number of system outputs
   constexpr static int n_outputs = 4;
+  /// Number of system control inputs
   constexpr static int n_control_inputs = 4;
+  /// Number of compressors in system
   constexpr static int n_compressors = 2;
+  /// Number of compressors without an input tank in system
   constexpr static int n_follower_compressors = n_compressors - 1;
 
+  /// Indices of control inputs relative to inputs
   using ControlInputIndex = ConstexprArray<0, 3, 4, 7>;
 
   /// Compressor with input tank
   using FirstComp = Compressor<true>;
+  /// Compressor without an input tank
   using FollowerComp = Compressor<false>;
+  /// Generic compressor
   using Comp = CompressorBase;
 
+  /// State of system
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::State
       State;
+  /// Input to system
   typedef DynamicSystem<n_states, n_inputs, n_outputs, ControlInputIndex>::Input
       Input;
+  /// Output of system
   typedef DynamicSystem<n_states, n_inputs, n_outputs,
                         ControlInputIndex>::Output Output;
 
+  /// Constructor with array of follower compressors given
   SerialCompressors(const double p_in, const double p_out,
                     const FirstComp& first_comp, const FollowerComp comps[])
       : p_in_(p_in), p_out_(p_out), first_comp_(first_comp) {
@@ -41,6 +57,7 @@ class SerialCompressors
     }
   }
 
+  /// Constructor using identical follower compressors
   SerialCompressors(const double p_in = 1.0, const double p_out = 1.0,
                     const FirstComp& first_comp = FirstComp(),
                     const FollowerComp& comp = FollowerComp())
@@ -52,6 +69,7 @@ class SerialCompressors
     }
   }
 
+  /// Destructor
   virtual ~SerialCompressors() {}
 
   /// Get derivative of compressor system about given operating point.
@@ -64,7 +82,6 @@ class SerialCompressors
   virtual Output GetOutput(const State& x) const;
 
   /// Return default compressor state.
-  // TODO: generalize for 3+ compressors
   static const inline State GetDefaultState() {
     const Comp::State x =
         ((Comp::State() << 0.916, 1.145, 0.152, 440, 0).finished());
@@ -73,7 +90,6 @@ class SerialCompressors
   }
 
   /// Return default compressor input.
-  // TODO: generalize for 3+ compressors
   static const inline Input GetDefaultInput() {
     return ((Input() << 0.304, 0.405, 1, 0, 0.304, -1, 0.393, 0).finished());
   }

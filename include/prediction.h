@@ -3,10 +3,23 @@
 
 #include <Eigen/Eigen>
 
-/// Linearized prediction of dynamic system
+/**
+ * Linearized prediction of dynamic system.
+ */
 struct Prediction {
-  Eigen::MatrixXd Su, Sx, Sf, Su_other;
+  /// Prediction matrix for control inputs of a sub-controller
+  Eigen::MatrixXd Su;
+  /// Prediction matrix for initial augmented state
+  Eigen::MatrixXd Sx;
+  /// Prediction matrix for derivative of system at linearization point
+  Eigen::MatrixXd Sf;
+  /// Prediction matrix for control inputs from other sub-controllers
+  Eigen::MatrixXd Su_other;
+
+  /// Empty constructor
   Prediction() : Su(), Sx(), Sf(), Su_other() {}
+
+  /// Constructor with prediction matrices given
   Prediction(const Eigen::MatrixXd& Su_in, const Eigen::MatrixXd& Sx_in,
              const Eigen::MatrixXd& Sf_in,
              const Eigen::MatrixXd& Su_other_in = Eigen::MatrixXd())

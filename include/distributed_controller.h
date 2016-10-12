@@ -9,6 +9,11 @@
 #include "input_constraints.h"
 #include "observer.h"
 
+/**
+ * A sub-controller acting as a component in a distributed MPC solution. Manages
+ * a QP solver to obtain the next optimal input at each timestep. Updates and
+ * re-solves QP as solutions from other sub-controllers are calculated.
+ */
 template <class AugLinSys, typename StateIndices,
           typename ObserverOutputIndices, typename ControlledOutputIndices,
           int p_in, int m_in>
@@ -19,69 +24,102 @@ class DistributedController {
                                      AugLinSys::SystemType::n_control_inputs;
 
  public:
+  /// Number of delayed states
   static constexpr int n_delay_states = AugLinSys::n_delay_states;
+  /// Number of total system outputs
   static constexpr int n_observer_outputs = AugLinSys::n_outputs;
+  /// Number of system states
   static constexpr int n_states = AugLinSys::n_states;
+  /// Number of control inputs for this subcontroller
   static constexpr int n_control_inputs = AugLinSys::n_sub_control_inputs;
+  /// Total number of inputs that are delayed
   static constexpr int n_delayed_inputs = AugLinSys::n_delayed_inputs;
+  /// Number of disturbance/integrator states
   static constexpr int n_disturbance_states = AugLinSys::n_disturbance_states;
+  /// Number of augmented states
   static constexpr int n_aug_states = n_delay_states + n_disturbance_states;
+  /// Number of observable states
   static constexpr int n_obs_states = n_states + n_disturbance_states;
+  /// Number of total states
   static constexpr int n_total_states = n_states + n_aug_states;
+  /// Number of system inputs
   static constexpr int n_inputs = AugLinSys::n_inputs;
+  /// Total number of system control inputs (for all subcontrollers)
   static constexpr int n_full_control_inputs = AugLinSys::n_control_inputs;
 
+  /// Number of outputs controlled by this subcontroller
   static constexpr int n_controlled_outputs = ControlledOutputIndices::size;
+  /// Prediction horizon of controller
   static constexpr int p = p_in;
+  /// Move horizon of controller
   static constexpr int m = m_in;
 
+  /// State of system
   using State = Eigen::Matrix<double, n_states, 1>;
+  /// Input to system
   using Input = Eigen::Matrix<double, n_inputs, 1>;
+  /// Control input for this subcontroller
   using ControlInput =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::ControlInput;
+  /// Control input for system
   using FullControlInput = typename AugLinSys::ControlInput;
+  /// Vector of outputs controlled by this subcontroller 
   using ControlOutput =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::Output;
+  /// Output of system
   using Output = typename Observer<AugLinSys>::Output;
+  /// Augmented state of system
   using AugmentedState =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::AugmentedState;
+  /// Matrix of input weights
   using UWeightType = typename MpcQpSolver<n_total_states, n_controlled_outputs,
                                            n_control_inputs, p, m>::UWeightType;
+  /// Matrix of output weights
   using YWeightType = typename MpcQpSolver<n_total_states, n_controlled_outputs,
                                            n_control_inputs, p, m>::YWeightType;
+  /// QP used in solver
   using QP = typename MpcQpSolver<n_total_states, n_controlled_outputs,
                                   n_control_inputs, p, m>::QP;
+  /// Predicted control inputs over move horizon
   using ControlInputPrediction =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::ControlInputPrediction;
+  /// Predicted outputs over prediction horizon
   using OutputPrediction =
       typename MpcQpSolver<n_total_states, n_controlled_outputs,
                            n_control_inputs, p, m>::OutputPrediction;
+  /// Observer matrix
   using ObserverMatrix = typename Observer<AugLinSys>::ObserverMatrix;
 
+  /// Indices of current subcontrollers states relative to system states
   using StateIndexType = StateIndices;
+  /// Indices of observed outputs relative to system outputs
   using ObserverOutputIndexType = ObserverOutputIndices;
+  /// Indices of outputs controlled by this subcontroller relative to system outputs
   using ControlledOutputIndexType = ControlledOutputIndices;
+  /// Indices of control inputs controlled by this subcontroller relative to system inputs
   using ControlInputIndexType =
       typename AugLinSys::ControlInputIndexType::template IndicesSubArray<
           std::make_integer_sequence<int, n_control_inputs>>;
+  /// Indices of system control inputs relative to system inputs
   using FullControlInputIndexType = typename AugLinSys::ControlInputIndexType;
 
  protected:
   AugLinSys auglinsys_;
   Observer<AugLinSys> observer_;
   DistributedSolver<n_total_states, n_controlled_outputs, n_control_inputs, p,
-                    m> qp_solver_;
+                    m>
+      qp_solver_;
   State x_;                 // current state of system
   FullControlInput u_old_;  // previous optimal input to system
   static constexpr typename AugLinSys::DelayType n_delay_ =
       typename AugLinSys::DelayType();  // delay states per input
   Eigen::MatrixXd su_other_;            // effect of other inputs
   QP qp_;
-  Prediction pred;                   // current value of prediction matrices
+  Prediction pred;  // current value of prediction matrices
 
  public:
   /// Constructor
@@ -151,7 +189,6 @@ class DistributedController {
   void GetStateEstimate(double* x_out) {
     for (int i = 0; i < n_states; ++i) x_out[i] = x_(i);
   }
-
 };
 
 // Declaration of static constexpr member

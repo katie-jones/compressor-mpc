@@ -175,7 +175,7 @@ class NerveCenter : public ControllerInterface<System> {
     timer.stop();
     if (time_out) {
       boost::timer::cpu_times elapsed = timer.elapsed();
-      *time_out = elapsed.user + elapsed.system;
+      *time_out = elapsed.wall;
     }
 
     return u_old_;

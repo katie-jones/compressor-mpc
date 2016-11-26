@@ -3,8 +3,8 @@
 #include <string>
 
 // Define two macros to use correct typedefs etc. in "common-variables.h"
-#define CONTROLLER_TYPE_CENTRALIZED
-#define SYSTEM_TYPE_PARALLEL
+#define CONTROLLER_TYPE_NCOOP
+#define SYSTEM_TYPE_SERIAL
 
 #include "common-simulation.inc"
 

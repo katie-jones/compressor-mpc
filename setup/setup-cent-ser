@@ -1,0 +1,50 @@
+n-iterations
+1
+
+n-timing-iterations
+1
+
+folder-name
+serial
+
+output-filename
+centralized.dat
+
+yref
+1.030830
+8.125790
+1.187190
+8.125790
+
+uwt
+2e4	0	0	0
+0	2.5e5	0	0
+0	0	2e4	0
+0	0	0	2.5e5
+
+ywt
+200 	0	0	0
+0	1	0	0
+0	0	1000	0
+0	0	0	8
+
+constraints-lower
+-0.3	0	-0.3	0
+
+constraints-upper
+0.3	1	0.3	1
+
+constraints-rate-lower
+-0.1	-0.1	-0.1	-0.1
+
+constraints-rate-upper
+0.1	1	0.1	1
+
+simulation
+0 0 0 0
+0 0 0 0
+50
+
+0 0 0 0
+0 0 -0.1 0
+500

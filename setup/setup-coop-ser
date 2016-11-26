@@ -1,0 +1,55 @@
+n-iterations
+9
+
+n-timing-iterations
+9
+
+folder-name
+serial
+
+output-filename
+coop9.dat
+
+yref
+1.030830
+8.125790
+1.187190
+8.125790
+
+uwt
+4.1e4	0	0	0
+0	5e5	0	0
+0	0	2.5e4	0
+0	0	0	5e5
+
+ywt
+750	0	0	0
+0	4	0	0
+0	0	1500	0
+0	0	0	8
+
+750	0	0	0
+0	4	0	0
+0	0	1500	0
+0	0	0	8
+
+constraints-lower
+-0.3	0
+
+constraints-upper
+0.3	1
+
+constraints-rate-lower
+-0.1	-0.1
+
+constraints-rate-upper
+0.1	1
+
+simulation
+0 0 0 0
+0 0 0 0
+50
+
+0 0 0 0
+0 0 -0.1 0
+500

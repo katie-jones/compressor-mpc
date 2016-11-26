@@ -1,0 +1,50 @@
+n-iterations
+9
+
+n-timing-iterations
+9
+
+folder-name
+parallel
+
+output-filename
+ncoop9.dat
+
+yref
+4.5 4.5 0 1.12
+
+uwt
+2.2e4	0	0	0
+0	2.2e5	0	0
+0	0	2.2e4	0
+0	0	0	2.2e5
+
+ywt
+1	0
+0	6e2
+
+1	0
+0	6e2
+
+constraints-lower
+-0.3	0
+
+constraints-upper
+0.3	1
+
+constraints-rate-lower
+-0.1	-0.1
+
+constraints-rate-upper
+0.1	1
+
+simulation
+0 0 0 0
+0 0 0 0
+0
+50
+
+0 0 0 0
+0 0 0 0
+-0.3
+500
